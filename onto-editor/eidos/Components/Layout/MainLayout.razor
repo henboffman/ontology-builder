@@ -3,20 +3,11 @@
 
 <ThemeInitializer @rendermode="InteractiveServer" />
 
-<div class="page">
-    <!-- Mobile menu toggle button -->
-    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle menu">
-        <i class="bi bi-list"></i>
-    </button>
+<!-- TopBar Layout -->
+<div class="page-topbar">
+    <TopBar @rendermode="InteractiveServer" />
 
-    <!-- Mobile overlay -->
-    <div class="mobile-overlay" onclick="toggleMobileMenu()"></div>
-
-    <div class="sidebar">
-        <NavMenu @rendermode="InteractiveServer" />
-    </div>
-
-    <main>
+    <main class="main-topbar">
         <article class="content px-4">
             @Body
         </article>

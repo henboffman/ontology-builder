@@ -86,14 +86,30 @@ if (!builder.Environment.IsDevelopment())
     {
         options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
 
-        // Enable adaptive sampling to reduce data ingestion by ~50%
-        // This helps keep costs under $10/month with the 300 MB/day cap
-        options.EnableAdaptiveSampling = true;
+        // Enable detailed tracking while still maintaining cost controls
+        options.EnableAdaptiveSampling = true; // Reduces ingestion by ~50%
         options.EnablePerformanceCounterCollectionModule = true;
         options.EnableDependencyTrackingTelemetryModule = true;
+        options.EnableRequestTrackingTelemetryModule = true;
+        options.EnableEventCounterCollectionModule = true;
+        options.EnableQuickPulseMetricStream = true; // Live Metrics
+
+        // Enable detailed dependency tracking (SQL queries, HTTP calls, etc.)
+        options.DependencyCollectionOptions.EnableLegacyCorrelationHeadersInjection = true;
     });
 
-    Console.WriteLine("✓ Application Insights configured with adaptive sampling");
+    // Configure detailed SQL tracking
+    builder.Services.ConfigureTelemetryModule<Microsoft.ApplicationInsights.DependencyCollector.DependencyTrackingTelemetryModule>(
+        (module, o) =>
+        {
+            module.EnableSqlCommandTextInstrumentation = true; // Track actual SQL queries
+        }
+    );
+
+    // Add telemetry processor for enriching data
+    builder.Services.AddApplicationInsightsTelemetryProcessor<EnrichmentTelemetryProcessor>();
+
+    Console.WriteLine("✓ Application Insights configured with detailed tracking and adaptive sampling");
 }
 
 // Add services to the container.

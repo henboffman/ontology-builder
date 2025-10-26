@@ -249,6 +249,8 @@ else
                               OnAddRelationshipClick="@GetConditionalCallback(CanAdd(), ShowAddRelationshipDialog)"
                               OnColorModeChanged="@SetColorMode"
                               OnNodeCtrlClicked="@GetConditionalCallback(CanAdd(), HandleNodeCtrlClick)"
+                              OnNodeClicked="@HandleNodeClick"
+                              OnEdgeClicked="@HandleEdgeClick"
                               CanAdd="@CanAdd()"
                               @ref="graphView" />
                 }
@@ -356,6 +358,63 @@ else
                             <hr class="my-3" />
 
                             <button class="btn btn-sm btn-outline-secondary w-100" @onclick="() => selectedConcept = null">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                }
+                else if (selectedRelationship != null)
+                {
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Relationship Details</h6>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="mb-3">@selectedRelationship.RelationType</h5>
+
+                            @{
+                                var sourceConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == selectedRelationship.SourceConceptId);
+                                var targetConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == selectedRelationship.TargetConceptId);
+                            }
+
+                            <div class="mb-3">
+                                <p class="mb-2"><strong>Source Concept:</strong></p>
+                                @if (sourceConcept != null)
+                                {
+                                    <div class="d-flex align-items-center gap-2 ms-3">
+                                        <div style="width: 20px; height: 20px; background-color: @sourceConcept.Color; border-radius: 3px;"></div>
+                                        <span>@sourceConcept.Name</span>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="mb-3">
+                                <p class="mb-2"><strong>Target Concept:</strong></p>
+                                @if (targetConcept != null)
+                                {
+                                    <div class="d-flex align-items-center gap-2 ms-3">
+                                        <div style="width: 20px; height: 20px; background-color: @targetConcept.Color; border-radius: 3px;"></div>
+                                        <span>@targetConcept.Name</span>
+                                    </div>
+                                }
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(selectedRelationship.Label))
+                            {
+                                <p class="mb-2"><strong>Label:</strong> @selectedRelationship.Label</p>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(selectedRelationship.Description))
+                            {
+                                <p class="mb-2">
+                                    <strong>Description:</strong><br/>
+                                    @selectedRelationship.Description
+                                </p>
+                            }
+
+                            <hr class="my-3" />
+
+                            <button class="btn btn-sm btn-outline-secondary w-100" @onclick="() => selectedRelationship = null">
                                 Close
                             </button>
                         </div>
@@ -472,6 +531,7 @@ else
     private bool showAddRelationship = false;
     private bool showAddIndividual = false;
     private Concept? selectedConcept = null;
+    private Relationship? selectedRelationship = null;
     private Concept? editingConcept = null;
     private Relationship? editingRelationship = null;
     private Individual? editingIndividual = null;
@@ -1097,6 +1157,7 @@ else
     private async Task SelectConcept(Concept concept)
     {
         selectedConcept = concept;
+        selectedRelationship = null;
         showAddConcept = false;
         showAddRelationship = false;
 
@@ -1104,6 +1165,32 @@ else
         if (concept != null)
         {
             selectedConceptRestrictions = await RestrictionService.GetByConceptIdAsync(concept.Id);
+        }
+    }
+
+    private void SelectRelationship(Relationship relationship)
+    {
+        selectedRelationship = relationship;
+        selectedConcept = null;
+        showAddConcept = false;
+        showAddRelationship = false;
+    }
+
+    private async Task HandleNodeClick(int conceptId)
+    {
+        var concept = ontology?.Concepts.FirstOrDefault(c => c.Id == conceptId);
+        if (concept != null)
+        {
+            await SelectConcept(concept);
+        }
+    }
+
+    private void HandleEdgeClick(int relationshipId)
+    {
+        var relationship = ontology?.Relationships.FirstOrDefault(r => r.Id == relationshipId);
+        if (relationship != null)
+        {
+            SelectRelationship(relationship);
         }
     }
 

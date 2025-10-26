@@ -38,6 +38,12 @@
     [Parameter]
     public EventCallback<int> OnNodeCtrlClicked { get; set; }
 
+    [Parameter]
+    public EventCallback<int> OnNodeClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnEdgeClicked { get; set; }
+
     private string GraphId = $"graph-{Guid.NewGuid():N}";
     private bool hasRendered = false;
     private int lastConceptCount = 0;
@@ -199,6 +205,18 @@
     public async Task OnNodeCtrlClick(int conceptId)
     {
         await OnNodeCtrlClicked.InvokeAsync(conceptId);
+    }
+
+    [JSInvokable]
+    public async Task OnNodeClick(int conceptId)
+    {
+        await OnNodeClicked.InvokeAsync(conceptId);
+    }
+
+    [JSInvokable]
+    public async Task OnEdgeClick(int relationshipId)
+    {
+        await OnEdgeClicked.InvokeAsync(relationshipId);
     }
 
     public async Task RefreshGraph()

@@ -13,10 +13,10 @@
 .shortcut-section-title {
     font-size: 1rem;
     font-weight: 600;
-    color: #333;
+    color: var(--bs-body-color);
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
-    border-bottom: 2px solid #e9ecef;
+    border-bottom: 2px solid var(--bs-border-color);
 }
 
 .shortcut-list {
@@ -40,11 +40,11 @@
 }
 
 .shortcut-keys kbd {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
+    background-color: var(--bs-secondary-bg);
+    border: 1px solid var(--bs-border-color);
     border-radius: 4px;
     box-shadow: 0 2px 0 rgba(0, 0, 0, 0.1);
-    color: #333;
+    color: var(--bs-body-color);
     display: inline-block;
     font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
     font-size: 0.875rem;
@@ -57,7 +57,7 @@
 }
 
 .shortcut-description {
-    color: #6c757d;
+    color: var(--bs-secondary-color);
     font-size: 0.9375rem;
     flex: 1;
     text-align: right;

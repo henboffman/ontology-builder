@@ -134,6 +134,12 @@ public class UserPreferences
     [StringLength(20)]
     public string Theme { get; set; } = "light";
 
+    /// <summary>
+    /// Layout style preference: "sidebar" or "topbar"
+    /// </summary>
+    [StringLength(20)]
+    public string LayoutStyle { get; set; } = "topbar";
+
     // === Metadata ===
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

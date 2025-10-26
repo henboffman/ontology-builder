@@ -236,19 +236,33 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
             });
         }
 
-        // Add click handler for Cmd/Ctrl + click to create relationships
+        // Add click handlers for nodes and edges
         if (dotNetHelper) {
             cy.on('click', 'node', function (event) {
+                const node = event.target;
+                const nodeId = node.data('id');
+                // Extract the concept ID from the node ID (format: "concept-123")
+                const conceptId = parseInt(nodeId.replace('concept-', ''));
+
                 // Check if Cmd (Mac) or Ctrl (Windows/Linux) was pressed
                 if (event.originalEvent.metaKey || event.originalEvent.ctrlKey) {
-                    const node = event.target;
-                    const nodeId = node.data('id');
-                    // Extract the concept ID from the node ID (format: "concept-123")
-                    const conceptId = parseInt(nodeId.replace('concept-', ''));
-
-                    // Call back to Blazor
+                    // Ctrl/Cmd + click to create relationships
                     dotNetHelper.invokeMethodAsync('OnNodeCtrlClick', conceptId);
+                } else {
+                    // Regular click to show details
+                    dotNetHelper.invokeMethodAsync('OnNodeClick', conceptId);
                 }
+            });
+
+            // Add click handler for edges to show relationship details
+            cy.on('click', 'edge', function (event) {
+                const edge = event.target;
+                const edgeId = edge.data('id');
+                // Extract the relationship ID from the edge ID (format: "rel-123")
+                const relationshipId = parseInt(edgeId.replace('rel-', ''));
+
+                // Call back to Blazor to show relationship details
+                dotNetHelper.invokeMethodAsync('OnEdgeClick', relationshipId);
             });
         }
 

@@ -128,6 +128,7 @@ public class UserPreferencesService : IUserPreferencesService
         existing.AutoColorByCategory = preferences.AutoColorByCategory;
         existing.TextSizeScale = preferences.TextSizeScale;
         existing.Theme = preferences.Theme;
+        existing.LayoutStyle = preferences.LayoutStyle;
 
         existing.UpdatedAt = DateTime.UtcNow;
 
@@ -181,6 +182,7 @@ public class UserPreferencesService : IUserPreferencesService
         preferences.AutoColorByCategory = defaults.AutoColorByCategory;
         preferences.TextSizeScale = defaults.TextSizeScale;
         preferences.Theme = defaults.Theme;
+        preferences.LayoutStyle = defaults.LayoutStyle;
 
         preferences.UpdatedAt = DateTime.UtcNow;
 

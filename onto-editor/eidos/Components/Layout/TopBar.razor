@@ -1,0 +1,197 @@
+@using Eidos.Models
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@using Eidos.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IOntologyService OntologyService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<nav class="topbar">
+    <div class="topbar-container">
+        <!-- Left: Brand and Navigation -->
+        <div class="topbar-left">
+            <NavLink href="" class="topbar-brand" Match="NavLinkMatch.All">
+                <i class="bi bi-house-door-fill"></i>
+                <span class="brand-text">Eidos</span>
+            </NavLink>
+
+            <div class="topbar-nav">
+                <NavLink href="" class="topbar-nav-link" Match="NavLinkMatch.All">
+                    <i class="bi bi-house"></i>
+                    <span class="nav-text">Home</span>
+                </NavLink>
+                <NavLink href="features" class="topbar-nav-link">
+                    <i class="bi bi-star-fill"></i>
+                    <span class="nav-text">Features</span>
+                </NavLink>
+                <NavLink href="learn" class="topbar-nav-link">
+                    <i class="bi bi-book"></i>
+                    <span class="nav-text">Learn</span>
+                </NavLink>
+                <NavLink href="release-notes" class="topbar-nav-link">
+                    <i class="bi bi-megaphone"></i>
+                    <span class="nav-text">What's New</span>
+                </NavLink>
+            </div>
+        </div>
+
+        <!-- Right: Recent Ontologies, Theme, User -->
+        <div class="topbar-right">
+            @if (currentUser != null)
+            {
+                <!-- Recent Ontologies Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="recentOntologiesDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false" title="Recent Ontologies">
+                        <i class="bi bi-clock-history"></i>
+                        <span class="dropdown-text">Recent</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="recentOntologiesDropdown" style="min-width: 300px; max-height: 400px; overflow-y: auto;">
+                        @if (recentOntologies == null)
+                        {
+                            <li class="text-center py-3">
+                                <div class="spinner-border spinner-border-sm" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </li>
+                        }
+                        else if (!recentOntologies.Any())
+                        {
+                            <li class="px-3 py-2 text-muted">
+                                <small>No ontologies yet</small>
+                            </li>
+                        }
+                        else
+                        {
+                            @foreach (var ontology in recentOntologies.Take(10))
+                            {
+                                <li>
+                                    <a class="dropdown-item d-flex justify-content-between align-items-center" href="@($"/ontology/{ontology.Id}")">
+                                        <span class="text-truncate flex-grow-1">@ontology.Name</span>
+                                        <small class="text-muted ms-2">@FormatTimeAgo(ontology.UpdatedAt)</small>
+                                    </a>
+                                </li>
+                            }
+                            @if (recentOntologies.Count > 10)
+                            {
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item text-center text-muted" href="/">
+                                        <small>View all (@recentOntologies.Count)</small>
+                                    </a>
+                                </li>
+                            }
+                        }
+                    </ul>
+                </div>
+            }
+
+            <!-- Theme Toggle -->
+            <div class="topbar-theme">
+                <ThemeToggle ShowLabel="false" @rendermode="InteractiveServer" />
+            </div>
+
+            <!-- User Menu -->
+            @if (currentUser != null)
+            {
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="userMenuDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false" title="@currentUser">
+                        <i class="bi bi-person-circle"></i>
+                        <span class="dropdown-text">@GetShortName(currentUser)</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuDropdown">
+                        <li class="px-3 py-2">
+                            <small class="text-muted d-block">Signed in as</small>
+                            <strong class="d-block text-truncate">@currentUser</strong>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="/settings">
+                                <i class="bi bi-gear"></i> Settings
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="/Account/Logout">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            }
+            else
+            {
+                <a href="/Account/Login" class="btn btn-sm btn-primary">
+                    <i class="bi bi-box-arrow-in-right"></i> Login
+                </a>
+            }
+        </div>
+    </div>
+</nav>
+
+@code {
+    private List<Ontology>? recentOntologies;
+    private string? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUser();
+
+        // Only load ontologies if user is authenticated
+        if (currentUser != null)
+        {
+            await LoadRecentOntologies();
+        }
+    }
+
+    private async Task LoadRecentOntologies()
+    {
+        recentOntologies = await OntologyService.GetOntologiesForCurrentUserAsync();
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            currentUser = user.Identity.Name;
+        }
+    }
+
+    private string GetShortName(string fullName)
+    {
+        // Get first name or first part before @ for emails
+        if (fullName.Contains('@'))
+        {
+            return fullName.Split('@')[0];
+        }
+        if (fullName.Contains(' '))
+        {
+            return fullName.Split(' ')[0];
+        }
+        return fullName.Length > 15 ? fullName.Substring(0, 15) + "..." : fullName;
+    }
+
+    private string FormatTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalMinutes < 1)
+            return "now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)}w";
+        if (timeSpan.TotalDays < 365)
+            return $"{(int)(timeSpan.TotalDays / 30)}mo";
+
+        return $"{(int)(timeSpan.TotalDays / 365)}y";
+    }
+}

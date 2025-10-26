@@ -41,40 +41,58 @@
                     }
                 </div>
             </div>
-            <div class="d-flex gap-2 align-items-center flex-wrap">
-                <button class="btn btn-outline-secondary"
-                        @onclick="ShowLineage">
+            <div class="d-flex gap-3 align-items-center flex-wrap">
+                <!-- View Section -->
+                <button class="btn btn-sm btn-outline-secondary"
+                        @onclick="ShowLineage"
+                        title="View ontology lineage and provenance">
                     <i class="bi bi-diagram-3"></i> Lineage
                 </button>
 
-                <!-- Fork/Clone Buttons -->
-                <button class="btn btn-outline-primary"
-                        @onclick="ShowForkDialog">
-                    <i class="bi bi-diagram-2"></i> Fork
-                </button>
-                <button class="btn btn-outline-success"
-                        @onclick="ShowCloneDialog">
-                    <i class="bi bi-files"></i> Clone
-                </button>
+                <!-- Actions Section -->
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-primary"
+                            @onclick="ShowForkDialog"
+                            title="Fork this ontology to create a divergent copy">
+                        <i class="bi bi-diagram-2"></i> Fork
+                    </button>
+                    <button class="btn btn-outline-primary"
+                            @onclick="ShowCloneDialog"
+                            title="Clone this ontology to create an exact copy">
+                        <i class="bi bi-files"></i> Clone
+                    </button>
+                </div>
 
-                <button class="btn btn-outline-info"
-                        @onclick="OpenShareModal"
-                        disabled="@(!CanShare)">
-                    <i class="bi bi-share"></i> Share
-                </button>
-                <button class="btn btn-outline-secondary"
-                        @onclick="OnSettingsClick"
-                        disabled="@(!CanShare)">
-                    <i class="bi bi-gear"></i> Settings
-                </button>
-                <button class="btn btn-outline-success"
-                        @onclick="OnImportClick"
-                        disabled="@(!CanEdit)">
-                    <i class="bi bi-upload"></i> Import TTL
-                </button>
-                <button class="btn btn-outline-primary" @onclick="OnExportClick">
-                    <i class="bi bi-download"></i> Export
-                </button>
+                <!-- Management Section -->
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-info"
+                            @onclick="OpenShareModal"
+                            disabled="@(!CanShare)"
+                            title="Share this ontology with others">
+                        <i class="bi bi-share"></i> Share
+                    </button>
+                    <button class="btn btn-outline-secondary"
+                            @onclick="OnSettingsClick"
+                            disabled="@(!CanShare)"
+                            title="Edit ontology settings and metadata">
+                        <i class="bi bi-gear"></i> Settings
+                    </button>
+                </div>
+
+                <!-- Data Section -->
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-success"
+                            @onclick="OnImportClick"
+                            disabled="@(!CanEdit)"
+                            title="Import concepts from TTL file">
+                        <i class="bi bi-upload"></i> Import
+                    </button>
+                    <button class="btn btn-outline-success"
+                            @onclick="OnExportClick"
+                            title="Export ontology to various formats">
+                        <i class="bi bi-download"></i> Export
+                    </button>
+                </div>
             </div>
         </div>
     </div>
