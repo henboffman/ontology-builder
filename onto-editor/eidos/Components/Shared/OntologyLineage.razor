@@ -8,11 +8,11 @@
     <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
+                <div class="modal-header">
                     <h5 class="modal-title">
-                        <i class="bi bi-diagram-3"></i> Ontology Lineage: @ontology.Name
+                        <i class="bi bi-diagram-3 text-primary"></i> Ontology Lineage: @ontology.Name
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="Hide" aria-label="Close"></button>
+                    <button type="button" class="btn-close" @onclick="Hide" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     @if (isLoading)

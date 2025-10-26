@@ -13,62 +13,39 @@ input.navbar-toggler {
 
 .sidebar-header {
     padding: 1.25rem 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--bs-border-color);
 }
 
 .brand-link {
-    color: var(--text-primary) !important;
-    text-decoration: none !important;
-    display: flex !important;
-    flex-direction: row !important;
+    text-decoration: none;
+    display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 0.75rem;
     padding: 0.5rem 0.75rem;
     border-radius: 8px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: var(--bg-hover);
-    border-bottom: none !important;
+    background: var(--bs-secondary-bg);
 }
 
 .brand-link:hover {
-    background: var(--bg-tertiary);
+    background: var(--bs-tertiary-bg);
     transform: translateX(4px) scale(1.02);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    text-decoration: none !important;
-    color: var(--text-primary) !important;
-    border-bottom: none !important;
+    box-shadow: 0 4px 12px var(--bs-border-color);
+    text-decoration: none;
 }
 
 .brand-link:focus,
 .brand-link:active,
 .brand-link:visited {
-    text-decoration: none !important;
-    color: var(--text-primary) !important;
-    border-bottom: none !important;
-}
-
-[data-theme="dark"] .brand-link {
-    color: white !important;
-    background: rgba(255, 255, 255, 0.05);
-}
-
-[data-theme="dark"] .brand-link:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: white !important;
-}
-
-[data-theme="dark"] .brand-link:focus,
-[data-theme="dark"] .brand-link:active,
-[data-theme="dark"] .brand-link:visited {
-    color: white !important;
+    text-decoration: none;
 }
 
 .brand-link *,
 .brand-link:hover *,
 .brand-link:focus *,
 .brand-link:active * {
-    text-decoration: none !important;
-    border-bottom: none !important;
+    text-decoration: none;
 }
 
 .brand-icon {
@@ -77,12 +54,12 @@ input.navbar-toggler {
     justify-content: center;
     width: 32px;
     height: 32px;
-    background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+    background: var(--bs-primary);
     border-radius: 8px;
     font-size: 1rem;
     flex-shrink: 0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    color: white;
+    box-shadow: 0 2px 4px var(--bs-border-color);
+    color: var(--bs-white);
 }
 
 .brand-text {
@@ -90,13 +67,8 @@ input.navbar-toggler {
     font-size: 1.25rem;
     font-weight: 700;
     letter-spacing: -0.02em;
-    color: var(--text-primary);
-    text-decoration: none !important;
+    text-decoration: none;
     line-height: 32px;
-}
-
-[data-theme="dark"] .brand-text {
-    color: white;
 }
 
 .sidebar-section {
@@ -104,7 +76,7 @@ input.navbar-toggler {
 }
 
 .sidebar-section-title {
-    color: var(--text-secondary);
+    color: var(--bs-secondary-color);
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -112,10 +84,6 @@ input.navbar-toggler {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-}
-
-[data-theme="dark"] .sidebar-section-title {
-    color: rgba(255, 255, 255, 0.7);
 }
 
 .nav-links {
@@ -129,9 +97,9 @@ input.navbar-toggler {
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem;
-    background: var(--bg-hover);
+    background: var(--bs-secondary-bg);
     border-radius: 6px;
-    color: var(--text-primary);
+    color: var(--bs-body-color);
     text-decoration: none;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid transparent;
@@ -139,36 +107,19 @@ input.navbar-toggler {
 }
 
 .nav-link-item:hover {
-    background: var(--bg-tertiary);
-    border-color: var(--border-color);
+    background: var(--bs-tertiary-bg);
+    border-color: var(--bs-border-color);
     transform: translateX(4px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    color: var(--text-primary);
+    box-shadow: 0 2px 8px var(--bs-border-color);
+    color: var(--bs-body-color);
     text-decoration: none;
 }
 
 .nav-link-item.active {
-    background: var(--list-active-bg);
-    border-color: var(--primary-color);
-    box-shadow: 0 2px 12px rgba(6, 182, 212, 0.3);
-    color: var(--text-primary);
-}
-
-[data-theme="dark"] .nav-link-item {
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.9);
-}
-
-[data-theme="dark"] .nav-link-item:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-    color: white;
-}
-
-[data-theme="dark"] .nav-link-item.active {
-    background: linear-gradient(135deg, rgba(6, 182, 212, 0.3) 0%, rgba(59, 130, 246, 0.3) 100%);
-    border-color: rgba(6, 182, 212, 0.5);
-    color: white;
+    background: var(--bs-primary-bg-subtle);
+    border-color: var(--bs-primary);
+    box-shadow: 0 2px 12px var(--bs-primary-border-subtle);
+    color: var(--bs-primary);
 }
 
 .nav-link-item i {
@@ -184,40 +135,25 @@ input.navbar-toggler {
 .ontology-item {
     display: block;
     padding: 0.75rem;
-    background: var(--bg-hover);
+    background: var(--bs-secondary-bg);
     border-radius: 6px;
-    color: var(--text-primary);
+    color: var(--bs-body-color);
     text-decoration: none;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid transparent;
 }
 
 .ontology-item:hover {
-    background: var(--bg-tertiary);
-    border-color: var(--border-color);
+    background: var(--bs-tertiary-bg);
+    border-color: var(--bs-border-color);
     transform: translateX(4px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 8px var(--bs-border-color);
 }
 
 .ontology-item.active {
-    background: var(--list-active-bg);
-    border-color: var(--primary-color);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-}
-
-[data-theme="dark"] .ontology-item {
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.9);
-}
-
-[data-theme="dark"] .ontology-item:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-[data-theme="dark"] .ontology-item.active {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: var(--bs-primary-bg-subtle);
+    border-color: var(--bs-primary);
+    box-shadow: 0 2px 12px var(--bs-primary-border-subtle);
 }
 
 .ontology-item-content {
@@ -229,30 +165,25 @@ input.navbar-toggler {
 .ontology-name {
     font-weight: 500;
     font-size: 0.9rem;
-    color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-[data-theme="dark"] .ontology-name {
-    color: white;
-}
-
 .ontology-meta {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--bs-secondary-color);
     font-size: 0.75rem;
 }
 
 .ontology-updated {
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--bs-secondary-color);
     font-size: 0.7rem;
 }
 
 .empty-state {
     padding: 2rem 1rem;
     text-align: center;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--bs-secondary-color);
 }
 
 .bi {
@@ -262,12 +193,12 @@ input.navbar-toggler {
 .sidebar-footer {
     margin-top: auto;
     padding: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid var(--bs-border-color);
+    background: var(--bs-secondary-bg);
 }
 
 .user-info {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bs-tertiary-bg);
     border-radius: 6px;
 }
 
@@ -277,9 +208,4 @@ input.navbar-toggler {
 
 .user-info strong {
     font-size: 0.85rem;
-    color: var(--text-primary);
-}
-
-[data-theme="dark"] .user-info strong {
-    color: white;
 }

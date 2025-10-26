@@ -1,0 +1,491 @@
+@page "/admin"
+@using Microsoft.EntityFrameworkCore
+@using Eidos.Data
+@using Microsoft.Extensions.Diagnostics.HealthChecks
+@using Microsoft.JSInterop
+@using System.Runtime.InteropServices
+@inject OntologyDbContext DbContext
+@inject IConfiguration Configuration
+@inject HealthCheckService HealthCheckService
+@inject ILogger<Admin> Logger
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Admin Dashboard - Eidos</PageTitle>
+
+<div class="admin-dashboard">
+    <div class="admin-header">
+        <div class="admin-header-content">
+            <div class="admin-header-left">
+                <i class="bi bi-sliders"></i>
+                <div>
+                    <h1>Admin Dashboard</h1>
+                    <p class="text-muted mb-0">System monitoring and management</p>
+                </div>
+            </div>
+            <div class="admin-header-right">
+                <button class="btn btn-outline-primary btn-sm" @onclick="RefreshAllData">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading dashboard data...</p>
+        </div>
+    }
+    else
+    {
+        <div class="admin-content">
+            <!-- System Health Overview -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="bi bi-heart-pulse"></i> System Health</h2>
+                    <span class="badge bg-@GetHealthBadgeClass()">@healthStatus</span>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="stat-card @(databaseHealthy ? "stat-card-success" : "stat-card-danger")">
+                            <div class="stat-icon">
+                                <i class="bi bi-database"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-label">Database</div>
+                                <div class="stat-value">@(databaseHealthy ? "Healthy" : "Unhealthy")</div>
+                                <div class="stat-meta">@dbResponseTime ms</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card stat-card-info">
+                            <div class="stat-icon">
+                                <i class="bi bi-server"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-label">Environment</div>
+                                <div class="stat-value">@environment</div>
+                                <div class="stat-meta">@RuntimeInformation.OSDescription</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card stat-card-warning">
+                            <div class="stat-icon">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-label">Uptime</div>
+                                <div class="stat-value">@FormatUptime()</div>
+                                <div class="stat-meta">Since @startupTime.ToString("MMM dd, HH:mm")</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card stat-card-primary">
+                            <div class="stat-icon">
+                                <i class="bi bi-memory"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-label">Memory</div>
+                                <div class="stat-value">@GetMemoryUsage() MB</div>
+                                <div class="stat-meta">Working set</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Database Analytics -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="bi bi-database-fill-gear"></i> Database Analytics</h2>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshDatabaseStats">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="info-card">
+                            <div class="info-card-header">
+                                <i class="bi bi-diagram-3"></i>
+                                <h3>Ontologies</h3>
+                            </div>
+                            <div class="info-card-body">
+                                <div class="metric">
+                                    <span class="metric-value">@ontologyCount</span>
+                                    <span class="metric-label">Total ontologies</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-value">@conceptCount</span>
+                                    <span class="metric-label">Total concepts</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-card">
+                            <div class="info-card-header">
+                                <i class="bi bi-people"></i>
+                                <h3>Users</h3>
+                            </div>
+                            <div class="info-card-body">
+                                <div class="metric">
+                                    <span class="metric-value">@userCount</span>
+                                    <span class="metric-label">Total users</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-value">@recentUserCount</span>
+                                    <span class="metric-label">Active (7 days)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-card">
+                            <div class="info-card-header">
+                                <i class="bi bi-activity"></i>
+                                <h3>Activity</h3>
+                            </div>
+                            <div class="info-card-body">
+                                <div class="metric">
+                                    <span class="metric-value">@activityCount</span>
+                                    <span class="metric-label">Recent actions (24h)</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-value">@versionCount</span>
+                                    <span class="metric-label">Total versions</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Info -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="bi bi-gear"></i> Configuration</h2>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="config-panel">
+                            <h3><i class="bi bi-cloud"></i> Azure Resources</h3>
+                            <div class="config-list">
+                                <div class="config-item">
+                                    <span class="config-key">Resource Group</span>
+                                    <span class="config-value">eidos_group</span>
+                                </div>
+                                <div class="config-item">
+                                    <span class="config-key">App Service</span>
+                                    <span class="config-value">eidos (Canada Central)</span>
+                                </div>
+                                <div class="config-item">
+                                    <span class="config-key">SQL Server</span>
+                                    <span class="config-value">eidos-canada-central</span>
+                                </div>
+                                <div class="config-item">
+                                    <span class="config-key">Database</span>
+                                    <span class="config-value">eidos-p1 (GP_S_Gen5_1 Serverless)</span>
+                                </div>
+                                <div class="config-item">
+                                    <span class="config-key">Key Vault</span>
+                                    <span class="config-value">eidos</span>
+                                </div>
+                                <div class="config-item">
+                                    <span class="config-key">App Insights</span>
+                                    <span class="config-value">eidos-insights</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="config-panel">
+                            <h3><i class="bi bi-key"></i> Authentication</h3>
+                            <div class="config-list">
+                                <div class="config-item">
+                                    <span class="config-key">Managed Identity</span>
+                                    <span class="config-value"><i class="bi bi-check-circle text-success"></i> Enabled</span>
+                                </div>
+                                <div class="config-item">
+                                    <span class="config-key">GitHub OAuth</span>
+                                    <span class="config-value"><i class="bi bi-check-circle text-success"></i> Configured</span>
+                                </div>
+                                <div class="config-item">
+                                    <span class="config-key">Google OAuth</span>
+                                    <span class="config-value"><i class="bi bi-check-circle text-success"></i> Configured</span>
+                                </div>
+                                <div class="config-item">
+                                    <span class="config-key">Microsoft OAuth</span>
+                                    <span class="config-value"><i class="bi bi-check-circle text-success"></i> Configured</span>
+                                </div>
+                                <div class="config-item">
+                                    <span class="config-key">Connection Type</span>
+                                    <span class="config-value">Azure AD Authentication</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="bi bi-lightning"></i> Quick Actions</h2>
+                </div>
+                <div class="quick-actions">
+                    <div class="action-group">
+                        <h3>Application</h3>
+                        <div class="action-buttons">
+                            <button class="btn btn-outline-warning" @onclick="@(() => ShowCommandInfo("Restart App Service", "az webapp restart --name eidos --resource-group eidos_group"))">
+                                <i class="bi bi-arrow-clockwise"></i> Restart App
+                            </button>
+                            <button class="btn btn-outline-info" @onclick="@(() => ShowCommandInfo("View Live Logs", "az webapp log tail --name eidos --resource-group eidos_group"))">
+                                <i class="bi bi-file-text"></i> View Logs
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick="@(() => ShowCommandInfo("Check App Status", "az webapp show --name eidos --resource-group eidos_group"))">
+                                <i class="bi bi-info-circle"></i> App Status
+                            </button>
+                        </div>
+                    </div>
+                    <div class="action-group">
+                        <h3>Database</h3>
+                        <div class="action-buttons">
+                            <button class="btn btn-outline-primary" @onclick="@(() => ShowCommandInfo("Database Info", "az sql db show --resource-group eidos_group --server eidos-canada-central --name eidos-p1"))">
+                                <i class="bi bi-database"></i> DB Info
+                            </button>
+                            <button class="btn btn-outline-success" @onclick="@(() => ShowCommandInfo("Database Metrics", "az monitor metrics list --resource eidos-p1 --metric-names cpu_percent,storage_percent"))">
+                                <i class="bi bi-graph-up"></i> DB Metrics
+                            </button>
+                            <button class="btn btn-outline-warning" @onclick="@(() => ShowCommandInfo("Database Pause/Resume", "Serverless database auto-pauses after 60 minutes of inactivity"))">
+                                <i class="bi bi-pause-circle"></i> Auto-Pause
+                            </button>
+                        </div>
+                    </div>
+                    <div class="action-group">
+                        <h3>Monitoring</h3>
+                        <div class="action-buttons">
+                            <button class="btn btn-outline-info" @onclick="@(() => ShowCommandInfo("App Insights Query", "az monitor app-insights query --app eidos --resource-group eidos_group --analytics-query 'requests | where timestamp > ago(1h) | summarize count() by resultCode'"))">
+                                <i class="bi bi-graph-up-arrow"></i> Insights
+                            </button>
+                            <button class="btn btn-outline-danger" @onclick="@(() => ShowCommandInfo("Recent Errors", "az monitor app-insights query --app eidos --resource-group eidos_group --analytics-query 'exceptions | where timestamp > ago(24h) | project timestamp, type, outerMessage'"))">
+                                <i class="bi bi-exclamation-triangle"></i> Errors
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick="@(() => ShowCommandInfo("Download Logs", "az webapp log download --name eidos --resource-group eidos_group --log-file logs.zip"))">
+                                <i class="bi bi-download"></i> Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Command Info Modal -->
+            @if (showCommandModal)
+            {
+                <div class="modal-backdrop show" @onclick="CloseCommandModal"></div>
+                <div class="modal show d-block" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="bi bi-terminal"></i> @commandTitle
+                                </h5>
+                                <button type="button" class="btn-close" @onclick="CloseCommandModal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> Run this command in your terminal or Azure Cloud Shell:
+                                </div>
+                                <div class="command-box">
+                                    <code>@commandText</code>
+                                    <button class="btn btn-sm btn-outline-primary copy-btn" @onclick="CopyCommand">
+                                        <i class="bi bi-clipboard"></i> Copy
+                                    </button>
+                                </div>
+                                @if (commandCopied)
+                                {
+                                    <div class="alert alert-success mt-3">
+                                        <i class="bi bi-check-circle"></i> Command copied to clipboard!
+                                    </div>
+                                }
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" @onclick="CloseCommandModal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private string healthStatus = "Loading...";
+    private bool databaseHealthy = false;
+    private long dbResponseTime = 0;
+    private string environment = "";
+    private DateTime startupTime = DateTime.UtcNow;
+
+    private int ontologyCount = 0;
+    private int conceptCount = 0;
+    private int userCount = 0;
+    private int recentUserCount = 0;
+    private int activityCount = 0;
+    private int versionCount = 0;
+
+    private bool showCommandModal = false;
+    private string commandTitle = "";
+    private string commandText = "";
+    private bool commandCopied = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Get environment
+            environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+
+            // Check database health
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                await DbContext.Database.CanConnectAsync();
+                databaseHealthy = true;
+                sw.Stop();
+                dbResponseTime = sw.ElapsedMilliseconds;
+            }
+            catch
+            {
+                databaseHealthy = false;
+                dbResponseTime = -1;
+            }
+
+            // Load database statistics
+            await RefreshDatabaseStats();
+
+            // Set overall health status
+            healthStatus = databaseHealthy ? "Healthy" : "Degraded";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading dashboard data");
+            healthStatus = "Error";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshDatabaseStats()
+    {
+        try
+        {
+            ontologyCount = await DbContext.Ontologies.CountAsync();
+            conceptCount = await DbContext.Concepts.CountAsync();
+            userCount = await DbContext.Users.CountAsync();
+
+            var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
+            recentUserCount = await DbContext.Users
+                .Where(u => u.LastLoginAt.HasValue && u.LastLoginAt >= sevenDaysAgo)
+                .CountAsync();
+
+            var oneDayAgo = DateTime.UtcNow.AddDays(-1);
+            activityCount = await DbContext.OntologyActivities
+                .Where(a => a.CreatedAt >= oneDayAgo)
+                .CountAsync();
+
+            versionCount = await DbContext.OntologyActivities
+                .Where(a => a.VersionNumber.HasValue)
+                .Select(a => a.VersionNumber)
+                .Distinct()
+                .CountAsync();
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing database stats");
+        }
+    }
+
+    private async Task RefreshAllData()
+    {
+        await LoadDashboardData();
+    }
+
+    private string GetHealthBadgeClass()
+    {
+        return healthStatus switch
+        {
+            "Healthy" => "success",
+            "Degraded" => "warning",
+            "Error" => "danger",
+            _ => "secondary"
+        };
+    }
+
+    private string FormatUptime()
+    {
+        var uptime = DateTime.UtcNow - startupTime;
+        if (uptime.TotalDays >= 1)
+            return $"{(int)uptime.TotalDays}d {uptime.Hours}h";
+        if (uptime.TotalHours >= 1)
+            return $"{(int)uptime.TotalHours}h {uptime.Minutes}m";
+        return $"{uptime.Minutes}m";
+    }
+
+    private long GetMemoryUsage()
+    {
+        return System.Diagnostics.Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024);
+    }
+
+    private void ShowCommandInfo(string title, string command)
+    {
+        commandTitle = title;
+        commandText = command;
+        commandCopied = false;
+        showCommandModal = true;
+        StateHasChanged();
+    }
+
+    private void CloseCommandModal()
+    {
+        showCommandModal = false;
+        StateHasChanged();
+    }
+
+    private async Task CopyCommand()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("copyToClipboardFallback", commandText);
+            commandCopied = true;
+            StateHasChanged();
+            await Task.Delay(2000);
+            commandCopied = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error copying to clipboard");
+        }
+    }
+}

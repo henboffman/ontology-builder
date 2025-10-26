@@ -7,7 +7,7 @@
 }
 
 .lineage-connector {
-    color: #6c757d;
+    color: var(--bs-secondary);
     font-size: 1.2rem;
     margin-bottom: 0.25rem;
     margin-left: -5px;
@@ -18,7 +18,7 @@
 }
 
 .lineage-item .card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px var(--bs-border-color);
     transform: translateX(2px);
 }
 
@@ -27,7 +27,7 @@
 }
 
 .descendants-list .card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px var(--bs-border-color);
     transform: translateX(2px);
 }
 
