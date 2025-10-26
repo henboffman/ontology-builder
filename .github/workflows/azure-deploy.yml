@@ -42,11 +42,11 @@ jobs:
       continue-on-error: true
 
     - name: Publish
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
       run: dotnet publish ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/Eidos.csproj --configuration Release --output ./publish
 
     - name: Upload artifact for deployment job
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
       uses: actions/upload-artifact@v4
       with:
         name: dotnet-app
@@ -56,7 +56,7 @@ jobs:
     name: Deploy to Azure
     runs-on: ubuntu-latest
     needs: build-and-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     environment:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
@@ -68,12 +68,16 @@ jobs:
         name: dotnet-app
         path: ./publish
 
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
     - name: Deploy to Azure Web App
       id: deploy-to-webapp
       uses: azure/webapps-deploy@v3
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         package: ./publish
 
     - name: Deployment summary
