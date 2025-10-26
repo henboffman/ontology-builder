@@ -1,0 +1,182 @@
+@using Eidos.Models
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@using Eidos.Services.Export
+@inject ITtlExportService TtlExportService
+@inject IOntologyExporter OntologyExporter
+@inject IJSRuntime JSRuntime
+
+@if (IsVisible)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-download"></i> Export Ontology
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="Hide" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Export Format</label>
+                        <div class="list-group">
+                            <button type="button"
+                                    class="list-group-item list-group-item-action @(selectedFormat == "ttl" ? "active" : "")"
+                                    @onclick='() => selectedFormat = "ttl"'>
+                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <i class="bi bi-file-code"></i> TTL (Turtle)
+                                        </h6>
+                                        <p class="mb-0 small">Standard RDF format compatible with ontology tools</p>
+                                    </div>
+                                    @if (selectedFormat == "ttl")
+                                    {
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    }
+                                </div>
+                            </button>
+
+                            <button type="button"
+                                    class="list-group-item list-group-item-action @(selectedFormat == "json" ? "active" : "")"
+                                    @onclick='() => selectedFormat = "json"'>
+                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <i class="bi bi-filetype-json"></i> JSON
+                                        </h6>
+                                        <p class="mb-0 small">Structured data format for programming and APIs</p>
+                                    </div>
+                                    @if (selectedFormat == "json")
+                                    {
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    }
+                                </div>
+                            </button>
+
+                            <button type="button"
+                                    class="list-group-item list-group-item-action @(selectedFormat == "csv-concepts" ? "active" : "")"
+                                    @onclick='() => selectedFormat = "csv-concepts"'>
+                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <i class="bi bi-filetype-csv"></i> CSV - Concepts Only
+                                        </h6>
+                                        <p class="mb-0 small">Spreadsheet format with concepts data</p>
+                                    </div>
+                                    @if (selectedFormat == "csv-concepts")
+                                    {
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    }
+                                </div>
+                            </button>
+
+                            <button type="button"
+                                    class="list-group-item list-group-item-action @(selectedFormat == "csv-relationships" ? "active" : "")"
+                                    @onclick='() => selectedFormat = "csv-relationships"'>
+                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <i class="bi bi-filetype-csv"></i> CSV - Relationships Only
+                                        </h6>
+                                        <p class="mb-0 small">Spreadsheet format with relationships data</p>
+                                    </div>
+                                    @if (selectedFormat == "csv-relationships")
+                                    {
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    }
+                                </div>
+                            </button>
+
+                            <button type="button"
+                                    class="list-group-item list-group-item-action @(selectedFormat == "csv-full" ? "active" : "")"
+                                    @onclick='() => selectedFormat = "csv-full"'>
+                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <i class="bi bi-filetype-csv"></i> CSV - Full Ontology
+                                        </h6>
+                                        <p class="mb-0 small">Complete export with metadata, concepts, and relationships</p>
+                                    </div>
+                                    @if (selectedFormat == "csv-full")
+                                    {
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    }
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(exportedContent))
+                    {
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i> Export generated successfully! Content has been copied to clipboard.
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Preview</label>
+                            <textarea class="form-control font-monospace"
+                                      rows="10"
+                                      readonly
+                                      style="font-size: 0.875rem;">@exportedContent</textarea>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Hide">
+                        <i class="bi bi-x-circle"></i> Close
+                    </button>
+                    <button type="button" class="btn btn-primary" @onclick="ExportAndCopy">
+                        <i class="bi bi-download"></i> Export & Copy to Clipboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter]
+    public Ontology? Ontology { get; set; }
+
+    private bool IsVisible = false;
+    private string selectedFormat = "ttl";
+    private string exportedContent = string.Empty;
+
+    public void Show()
+    {
+        IsVisible = true;
+        selectedFormat = "ttl";
+        exportedContent = string.Empty;
+        StateHasChanged();
+    }
+
+    public void Hide()
+    {
+        IsVisible = false;
+        exportedContent = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task ExportAndCopy()
+    {
+        if (Ontology == null) return;
+
+        exportedContent = selectedFormat switch
+        {
+            "ttl" => TtlExportService.ExportToTtl(Ontology),
+            "json" => OntologyExporter.Export(Ontology, "JSON"),
+            "csv-concepts" => OntologyExporter.Export(Ontology, "CSV"),
+            "csv-relationships" => OntologyExporter.Export(Ontology, "CSV"),
+            "csv-full" => OntologyExporter.Export(Ontology, "CSV"),
+            _ => ""
+        };
+
+        // Copy to clipboard
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", exportedContent);
+
+        StateHasChanged();
+    }
+}

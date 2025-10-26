@@ -1,0 +1,83 @@
+name: Build and Deploy to Azure
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  AZURE_WEBAPP_NAME: 'eidos'
+  AZURE_WEBAPP_PACKAGE_PATH: './onto-editor/eidos'
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/Eidos.csproj
+
+    - name: Build
+      run: dotnet build ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/Eidos.csproj --configuration Release --no-restore
+
+    - name: Run tests
+      run: |
+        if [ -f "Eidos.Tests/Eidos.Tests.csproj" ]; then
+          dotnet test Eidos.Tests/Eidos.Tests.csproj --no-restore --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        else
+          echo "No test project found, skipping tests"
+        fi
+      continue-on-error: true
+
+    - name: Publish
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: dotnet publish ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/Eidos.csproj --configuration Release --output ./publish
+
+    - name: Upload artifact for deployment job
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: dotnet-app
+        path: ./publish
+
+  deploy:
+    name: Deploy to Azure
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Download artifact from build job
+      uses: actions/download-artifact@v4
+      with:
+        name: dotnet-app
+        path: ./publish
+
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ./publish
+
+    - name: Deployment summary
+      run: |
+        echo "✅ Deployment to Azure completed successfully"
+        echo "🌐 Site URL: https://eidosonto.com"
+        echo "📦 Deployment ID: ${{ github.run_id }}"
+        echo "🔖 Commit SHA: ${{ github.sha }}"

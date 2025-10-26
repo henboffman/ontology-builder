@@ -1,0 +1,989 @@
+@page "/"
+@using Eidos.Models
+@using Eidos.Models.Enums
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@using Eidos.Components.Shared
+@using Eidos.Constants
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IOntologyService OntologyService
+@inject IUserService UserService
+@inject IOntologyShareService ShareService
+@inject OntologyTemplateService TemplateService
+@inject OntologyDownloadService DownloadService
+@inject ITtlImportService ImportService
+@inject TutorialService TutorialService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject ILogger<Home> Logger
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ToastService ToastService
+@rendermode InteractiveServer
+
+<PageTitle>Eidos</PageTitle>
+
+<TutorialOverlay @ref="tutorialOverlay"
+                Steps="@TutorialService.GetHomeTutorialSteps()"
+                OnComplete="@HandleTutorialComplete"
+                OnSkip="@HandleTutorialSkip" />
+
+
+@if (isImporting && importProgress != null)
+{
+    <div class="loading-overlay">
+        <div class="loading-content" style="min-width: 400px;">
+            <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+                <span class="visually-hidden">Importing...</span>
+            </div>
+            <h4>@importProgress.Stage</h4>
+            <div class="progress mt-3 mb-2" style="height: 25px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar"
+                     style="width: @(importProgress.Percentage)%"
+                     aria-valuenow="@importProgress.Percentage"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                    @importProgress.Percentage%
+                </div>
+            </div>
+            <p class="text-muted mb-0">@importProgress.Message</p>
+            @if (importProgress.Total > 0)
+            {
+                <small class="text-muted">@importProgress.Current / @importProgress.Total</small>
+            }
+        </div>
+    </div>
+}
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <!-- Header Section -->
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <h1 class="display-4 mb-2">🧠 Eidos</h1>
+                    <p class="lead text-muted mb-0">Shape the essence of knowledge</p>
+                </div>
+                <div class="d-flex gap-3 align-items-center">
+                    <UserSelector />
+                    @if (isAuthenticated)
+                    {
+                        <FeatureToggleManager OnToggleChanged="HandleFeatureToggleChanged" />
+                    }
+                </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="btn-group" role="group" aria-label="Help and tutorial actions">
+                    <button class="btn btn-outline-secondary" @onclick="() => showGettingStarted = !showGettingStarted" title="View quick start guide">
+                        <i class="bi bi-question-circle"></i> Getting Started
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="RestartTutorial" title="Restart interactive tutorial">
+                        <i class="bi bi-play-circle"></i> Tutorial
+                    </button>
+                </div>
+                <div>
+                    @if (!isAuthenticated)
+                    {
+                        <div class="text-end mb-2">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i> Please <a href="/Account/Login">sign in</a> to create ontologies
+                            </small>
+                        </div>
+                    }
+                    <button class="btn btn-primary btn-lg" @onclick="ShowCreateOntologyDialog" disabled="@(!isAuthenticated)"
+                            title="@(isAuthenticated ? "Create a new ontology" : "Please sign in to create ontologies")">
+                        <i class="bi bi-plus-circle"></i> Create New Ontology
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (showGettingStarted)
+    {
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Getting Started with Eidos</h5>
+                        <button class="btn btn-sm btn-outline-light" @onclick="() => showGettingStarted = false">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-primary">Quick Start Guide</h6>
+                                <ol class="mb-3">
+                                    <li><strong>Create an Ontology</strong> - Click "Create New Ontology" and give it a name</li>
+                                    <li><strong>Add Concepts</strong> - Define the key ideas or entities in your domain</li>
+                                    <li><strong>Create Relationships</strong> - Connect concepts to show how they relate</li>
+                                    <li><strong>Visualize</strong> - Switch between Graph, List, and TTL views</li>
+                                    <li><strong>Export</strong> - Download as TTL (Turtle) format for sharing</li>
+                                </ol>
+
+                                <h6 class="text-primary">Key Features</h6>
+                                <ul>
+                                    <li><strong>Interactive Graph</strong> - Drag nodes, zoom, and explore visually</li>
+                                    <li><strong>Templates</strong> - Start with BFO or PROV-O foundations</li>
+                                    <li><strong>Import/Export</strong> - Work with standard TTL files</li>
+                                    <li><strong>Notes</strong> - Document your thinking with markdown</li>
+                                    <li><strong>Search & Filter</strong> - Find concepts quickly</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-primary">Understanding the Interface</h6>
+                                <div class="mb-3">
+                                    <strong>Views:</strong>
+                                    <ul>
+                                        <li><i class="bi bi-diagram-3"></i> <strong>Graph</strong> - Visual network of concepts and relationships</li>
+                                        <li><i class="bi bi-list-ul"></i> <strong>List</strong> - Detailed tabular view with search and sort</li>
+                                        <li><i class="bi bi-file-code"></i> <strong>TTL</strong> - Standard format for semantic web</li>
+                                        <li><i class="bi bi-journal-text"></i> <strong>Notes</strong> - Your documentation and thoughts</li>
+                                    </ul>
+                                </div>
+
+                                <h6 class="text-primary">Tips & Tricks</h6>
+                                <ul class="mb-0">
+                                    <li><strong>Ctrl+Click</strong> on graph nodes to quickly add relationships</li>
+                                    <li>Use <strong>templates</strong> for common concept patterns</li>
+                                    <li><strong>Color code</strong> concepts by category for clarity</li>
+                                    <li><strong>Import TTL</strong> files to merge with existing ontologies</li>
+                                    <li>Add <strong>examples</strong> to concepts for better understanding</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showCreateDialog)
+    {
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Create New Ontology</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" @bind="newOntology.Name"
+                                   placeholder="e.g., Medical Terminology, Software Architecture" autocomplete="off" />
+                            <small class="text-muted">Give your ontology a clear, descriptive name</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" rows="3" @bind="newOntology.Description"
+                                      placeholder="What does this ontology represent? What domain does it cover?" autocomplete="off"></textarea>
+                            <small class="text-muted">Help others understand what this ontology is about</small>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Author</label>
+                                <input type="text" class="form-control" @bind="newOntology.Author"
+                                       placeholder="Your name" autocomplete="off" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Version</label>
+                                <input type="text" class="form-control" @bind="newOntology.Version"
+                                       placeholder="1.0" autocomplete="off" />
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Start From</label>
+                            <select class="form-select" @bind="startFromType">
+                                <option value="scratch">Empty (start from scratch)</option>
+                                <option value="template">Standard Template</option>
+                                <option value="existing">Existing Ontology (fork/clone)</option>
+                            </select>
+                        </div>
+
+                        @if (startFromType == "template")
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Base Framework</label>
+                                <select class="form-select" @bind="selectedTemplate">
+                                    <option value="bfo">Basic Formal Ontology (BFO) - Top-level categories</option>
+                                    <option value="ro">Relations Ontology (RO) - Standard biological relationships</option>
+                                    <option value="owl">OWL/RDFS - Web Ontology Language foundation</option>
+                                    <option value="skos">SKOS - Simple Knowledge Organization System</option>
+                                    <option value="foaf">FOAF - People and organizations</option>
+                                    <option value="schema">Schema.org - General purpose vocabulary</option>
+                                    <option value="dcterms">Dublin Core Metadata Terms - Metadata vocabulary</option>
+                                    <option value="software-description">Software Description - Software components and architecture</option>
+                                </select>
+                            <small class="text-muted">
+                                @if (selectedTemplate == "bfo")
+                                {
+                                    <span>BFO: Top-level concepts like Continuant, Occurrent, Material Entity, Process</span>
+                                }
+                                else if (selectedTemplate == "ro")
+                                {
+                                    <span>RO: Standard relationships for biology - part-of, located-in, has-input, develops-from</span>
+                                }
+                                else if (selectedTemplate == "owl")
+                                {
+                                    <span>OWL/RDFS: Core semantic web vocabulary - Class, Property, subClassOf, type, domain, range</span>
+                                }
+                                else if (selectedTemplate == "skos")
+                                {
+                                    <span>SKOS: Organize concepts, taxonomies, and thesauri - Concept, broader, narrower, related</span>
+                                }
+                                else if (selectedTemplate == "foaf")
+                                {
+                                    <span>FOAF: Model people, organizations, and their social connections</span>
+                                }
+                                else if (selectedTemplate == "schema")
+                                {
+                                    <span>Schema.org: Common concepts like Person, Organization, Place, Event</span>
+                                }
+                                else if (selectedTemplate == "dcterms")
+                                {
+                                    <span>Dublin Core: Standard metadata properties like title, creator, subject, description</span>
+                                }
+                                else if (selectedTemplate == "software-description")
+                                {
+                                    <span>Software Description: Concepts for software architecture - Component, Module, Interface, Dependency</span>
+                                }
+                            </small>
+                        </div>
+                        }
+                        else if (startFromType == "existing")
+                        {
+                            @if (ontologies == null || !ontologies.Any())
+                            {
+                                <div class="alert alert-info mb-3">
+                                    <i class="bi bi-info-circle"></i> You don't have any ontologies yet. Create your first ontology to be able to fork or clone it later.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">Select Ontology</label>
+                                    <select class="form-select" @bind="selectedSourceOntologyId">
+                                        <option value="0">-- Select an ontology --</option>
+                                        @foreach (var ont in ontologies)
+                                        {
+                                            <option value="@ont.Id">@ont.Name (@ont.Concepts.Count concepts)</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                @if (selectedSourceOntologyId > 0)
+                                {
+                                    <div class="mb-3">
+                                        <label class="form-label">Derivation Type</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="derivationType" id="derivationClone"
+                                                   checked="@(derivationType == "clone")"
+                                                   @onchange="@(() => derivationType = "clone")">
+                                            <label class="form-check-label" for="derivationClone">
+                                                <strong>Clone</strong> - Exact copy for experimentation
+                                            </label>
+                                            <small class="text-muted d-block ms-4">Create an independent copy. Changes won't affect the original.</small>
+                                        </div>
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="radio" name="derivationType" id="derivationFork"
+                                                   checked="@(derivationType == "fork")"
+                                                   @onchange="@(() => derivationType = "fork")">
+                                            <label class="form-check-label" for="derivationFork">
+                                                <strong>Fork</strong> - Starting point for a new direction
+                                            </label>
+                                            <small class="text-muted d-block ms-4">Create a new ontology based on this one, intended to diverge over time.</small>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Notes (Optional)</label>
+                                        <textarea class="form-control" rows="2" @bind="provenanceNotes"
+                                                  placeholder="Why are you creating this fork/clone?"></textarea>
+                                        <small class="text-muted">These notes help track the purpose and history of this derivation</small>
+                                    </div>
+                                }
+                            }
+                        }
+                        <div class="mb-3">
+                            <label class="form-label">Ontology Frameworks</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="usesBFO" @bind="newOntology.UsesBFO" disabled="@(selectedTemplate == "bfo")">
+                                <label class="form-check-label" for="usesBFO">
+                                    Use Basic Formal Ontology (BFO)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="usesProvO" @bind="newOntology.UsesProvO">
+                                <label class="form-check-label" for="usesProvO">
+                                    Use PROV-O for provenance tracking
+                                </label>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                BFO structures your ontology, while PROV-O tracks its history and changes. They work well together!
+                            </small>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" @onclick="CreateOntology" disabled="@(string.IsNullOrWhiteSpace(newOntology.Name))">
+                                <i class="bi bi-check-circle"></i> Create
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick="() => showCreateDialog = false">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h5 class="card-title">💡 What is an Ontology?</h5>
+                        <p>An ontology is a structured way to organize knowledge about a specific domain. Think of it as:</p>
+                        <ul>
+                            <li><strong>Concepts</strong> - The "things" in your domain (like nodes in a graph)</li>
+                            <li><strong>Relationships</strong> - How concepts connect (like edges in a graph)</li>
+                            <li><strong>Properties</strong> - Attributes that describe concepts</li>
+                        </ul>
+                        <hr />
+                        <p class="mb-0"><strong>Examples:</strong></p>
+                        <ul class="mb-0">
+                            <li>Medical: Disease → is-a → Medical Condition</li>
+                            <li>Family: Child → child-of → Parent</li>
+                            <li>Software: Class → implements → Interface</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-12">
+            @if (ontologies == null)
+            {
+                <div class="text-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading ontologies...</p>
+                </div>
+            }
+            else if (!ontologies.Any())
+            {
+                <div class="alert alert-info text-center p-5">
+                    <h4>No ontologies yet</h4>
+                    <p>Get started by creating your first ontology, or explore the example that came with the app!</p>
+                </div>
+            }
+            else
+            {
+                <!-- Dashboard Controls -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label small text-muted">Search</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="text" class="form-control" placeholder="Search by name, description, author..." @bind="searchFilter" @bind:event="oninput" />
+                                    @if (!string.IsNullOrWhiteSpace(searchFilter))
+                                    {
+                                        <button class="btn btn-outline-secondary" type="button" @onclick="() => searchFilter = string.Empty">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">Sort By</label>
+                                <select class="form-select form-select-sm" @bind="sortBy">
+                                    <option value="updated-desc">Recently Updated</option>
+                                    <option value="updated-asc">Oldest Updated</option>
+                                    <option value="created-desc">Recently Created</option>
+                                    <option value="created-asc">Oldest Created</option>
+                                    <option value="name-asc">Name (A-Z)</option>
+                                    <option value="name-desc">Name (Z-A)</option>
+                                    <option value="concepts-desc">Most Concepts</option>
+                                    <option value="concepts-asc">Least Concepts</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">Filter by Tag</label>
+                                <select class="form-select form-select-sm" @bind="selectedTagFilter">
+                                    <option value="">All Tags</option>
+                                    @foreach (var tag in GetAllTags())
+                                    {
+                                        <option value="@tag">@tag</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small text-muted">View</label>
+                                <div class="btn-group btn-group-sm w-100" role="group">
+                                    <button type="button" class="btn @(viewType == "grid" ? "btn-primary" : "btn-outline-primary")" @onclick='() => viewType = "grid"'>
+                                        <i class="bi bi-grid-3x3-gap"></i>
+                                    </button>
+                                    <button type="button" class="btn @(viewType == "list" ? "btn-primary" : "btn-outline-primary")" @onclick='() => viewType = "list"'>
+                                        <i class="bi bi-list-ul"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                Showing @FilteredOntologies.Count() of @ontologies.Count ontologies
+                            </small>
+                            @if (!string.IsNullOrWhiteSpace(searchFilter) || !string.IsNullOrWhiteSpace(selectedTagFilter))
+                            {
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="ClearFilters">
+                                    <i class="bi bi-x-circle"></i> Clear Filters
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @if (viewType == "grid")
+                {
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    @foreach (var ontology in FilteredOntologies)
+                    {
+                        <div class="col">
+                            <div class="card h-100 ontology-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="card-title">@ontology.Name</h5>
+                                        @if (ontology.Name.Contains("Example"))
+                                        {
+                                            <span class="badge bg-info">Example</span>
+                                        }
+                                    </div>
+                                    <p class="card-text text-muted">
+                                        @if (!string.IsNullOrWhiteSpace(ontology.Description))
+                                        {
+                                            @ontology.Description
+                                        }
+                                        else
+                                        {
+                                            <em>No description</em>
+                                        }
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <small class="text-muted">
+                                            <i class="bi bi-circle-fill"></i> @ontology.Concepts.Count concepts
+                                            <i class="bi bi-arrow-left-right ms-2"></i> @ontology.Relationships.Count relationships
+                                        </small>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            Updated @ontology.UpdatedAt.ToString("MMM dd, yyyy")
+                                        </small>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(ontology.Author))
+                                    {
+                                        <div class="mt-1">
+                                            <small class="text-muted">
+                                                <i class="bi bi-person"></i> @ontology.Author
+                                            </small>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(ontology.Tags))
+                                    {
+                                        <div class="mt-2">
+                                            @foreach (var tag in ontology.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                            {
+                                                <span class="badge bg-secondary me-1">@tag</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <button class="btn btn-sm btn-outline-primary w-100" @onclick="() => ViewOntology(ontology.Id)">
+                                        <i class="bi bi-eye"></i> @(permissionButtonTexts.GetValueOrDefault(ontology.Id, "View & Edit"))
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    </div>
+                }
+                else
+                {
+                    <!-- List View -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>Author</th>
+                                    <th>Stats</th>
+                                    <th>Tags</th>
+                                    <th>Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var ontology in FilteredOntologies)
+                                {
+                                    <tr style="cursor: pointer;" @onclick="() => ViewOntology(ontology.Id)">
+                                        <td>
+                                            <strong>@ontology.Name</strong>
+                                            @if (ontology.Name.Contains("Example"))
+                                            {
+                                                <span class="badge bg-info ms-1">Example</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                @if (!string.IsNullOrWhiteSpace(ontology.Description))
+                                                {
+                                                    @(ontology.Description.Length > 100 ? ontology.Description.Substring(0, 100) + "..." : ontology.Description)
+                                                }
+                                                else
+                                                {
+                                                    <em>No description</em>
+                                                }
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                @if (!string.IsNullOrWhiteSpace(ontology.Author))
+                                                {
+                                                    <i class="bi bi-person"></i> @ontology.Author
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <small>
+                                                <span class="badge bg-secondary">@ontology.Concepts.Count concepts</span>
+                                                <span class="badge bg-secondary">@ontology.Relationships.Count links</span>
+                                            </small>
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrWhiteSpace(ontology.Tags))
+                                            {
+                                                @foreach (var tag in ontology.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(2))
+                                                {
+                                                    <span class="badge bg-secondary me-1">@tag</span>
+                                                }
+                                                @if (ontology.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).Length > 2)
+                                                {
+                                                    <span class="badge bg-secondary">+@(ontology.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).Length - 2)</span>
+                                                }
+                                            }
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">@ontology.UpdatedAt.ToString("MMM dd, yyyy")</small>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    @onclick:stopPropagation="true"
+                                                    @onclick="() => ViewOntology(ontology.Id)"
+                                                    title="@(permissionButtonTexts.GetValueOrDefault(ontology.Id, "View & Edit"))">
+                                                <i class="bi bi-eye"></i> @(permissionButtonTexts.GetValueOrDefault(ontology.Id, "View & Edit"))
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .ontology-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .ontology-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.95);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+
+    .loading-content {
+        text-align: center;
+        padding: 2rem;
+    }
+</style>
+
+@code {
+    private List<Ontology>? ontologies;
+    private bool showCreateDialog = false;
+    private bool showGettingStarted = false;
+    private Ontology newOntology = new();
+    private string selectedTemplate = "";
+    private string startFromType = "scratch"; // "scratch", "template", or "existing"
+    private int selectedSourceOntologyId = 0;
+    private string derivationType = "clone"; // "clone" or "fork"
+    private string provenanceNotes = "";
+    private TutorialOverlay? tutorialOverlay;
+    private bool isImporting = false;
+    private ImportProgress? importProgress = null;
+    private bool isAuthenticated = false;
+    private string? currentUserId = null;
+    private Dictionary<int, string> permissionButtonTexts = new();
+
+    // Dashboard state
+    private string searchFilter = string.Empty;
+    private string sortBy = "updated-desc";
+    private string selectedTagFilter = string.Empty;
+    private string viewType = "grid";
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAuthenticated = await UserService.IsAuthenticatedAsync();
+
+        // Get current user ID for permission checking
+        if (isAuthenticated)
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        await LoadOntologies();
+
+        // Load permission button texts for all ontologies
+        if (ontologies != null)
+        {
+            foreach (var ontology in ontologies)
+            {
+                permissionButtonTexts[ontology.Id] = await GetPermissionButtonText(ontology);
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await TutorialService.InitializeAsync(JSRuntime);
+
+            if (tutorialOverlay != null)
+            {
+                // 500ms delay ensures DOM is fully rendered and interactive elements are ready
+                // This prevents tutorial tooltips from positioning incorrectly on slow devices
+                await Task.Delay(500);
+                tutorialOverlay.Show();
+            }
+        }
+    }
+
+    private Task HandleTutorialComplete()
+    {
+        // Tutorial completed
+        return Task.CompletedTask;
+    }
+
+    private Task HandleTutorialSkip()
+    {
+        // Tutorial skipped
+        return Task.CompletedTask;
+    }
+
+    private async Task RestartTutorial()
+    {
+        await TutorialService.ResetTutorialAsync(JSRuntime);
+        tutorialOverlay?.Show();
+    }
+
+    private async Task LoadOntologies()
+    {
+        ontologies = await OntologyService.GetOntologiesForCurrentUserAsync();
+
+        // Reload permission button texts
+        if (ontologies != null)
+        {
+            permissionButtonTexts.Clear();
+            foreach (var ontology in ontologies)
+            {
+                permissionButtonTexts[ontology.Id] = await GetPermissionButtonText(ontology);
+            }
+        }
+    }
+
+    private async Task<string> GetPermissionButtonText(Ontology ontology)
+    {
+        // If user owns the ontology, they have full access
+        if (ontology.UserId == currentUserId)
+        {
+            return "View & Edit";
+        }
+
+        // Check permission level via share service
+        var permissionLevel = await ShareService.GetPermissionLevelAsync(ontology.Id, currentUserId, null);
+
+        return permissionLevel switch
+        {
+            PermissionLevel.View => "View",
+            PermissionLevel.ViewAndAdd => "View & Add",
+            PermissionLevel.ViewAddEdit => "View & Edit",
+            PermissionLevel.FullAccess => "Manage",
+            _ => "View & Edit" // Default for owner
+        };
+    }
+
+    private Task HandleFeatureToggleChanged()
+    {
+        // Feature toggle changed, UI will be refreshed automatically
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private IEnumerable<Ontology> FilteredOntologies
+    {
+        get
+        {
+            if (ontologies == null) return Enumerable.Empty<Ontology>();
+
+            var filtered = ontologies.AsEnumerable();
+
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(searchFilter))
+            {
+                var query = searchFilter.ToLower();
+                filtered = filtered.Where(o =>
+                    (o.Name?.ToLower().Contains(query) ?? false) ||
+                    (o.Description?.ToLower().Contains(query) ?? false) ||
+                    (o.Author?.ToLower().Contains(query) ?? false) ||
+                    (o.Tags?.ToLower().Contains(query) ?? false)
+                );
+            }
+
+            // Apply tag filter
+            if (!string.IsNullOrWhiteSpace(selectedTagFilter))
+            {
+                filtered = filtered.Where(o =>
+                    !string.IsNullOrWhiteSpace(o.Tags) &&
+                    o.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Any(t => t.Equals(selectedTagFilter, StringComparison.OrdinalIgnoreCase))
+                );
+            }
+
+            // Apply sorting
+            filtered = sortBy switch
+            {
+                "updated-desc" => filtered.OrderByDescending(o => o.UpdatedAt),
+                "updated-asc" => filtered.OrderBy(o => o.UpdatedAt),
+                "created-desc" => filtered.OrderByDescending(o => o.CreatedAt),
+                "created-asc" => filtered.OrderBy(o => o.CreatedAt),
+                "name-asc" => filtered.OrderBy(o => o.Name),
+                "name-desc" => filtered.OrderByDescending(o => o.Name),
+                "concepts-desc" => filtered.OrderByDescending(o => o.Concepts.Count),
+                "concepts-asc" => filtered.OrderBy(o => o.Concepts.Count),
+                _ => filtered.OrderByDescending(o => o.UpdatedAt)
+            };
+
+            return filtered;
+        }
+    }
+
+    private List<string> GetAllTags()
+    {
+        if (ontologies == null) return new List<string>();
+
+        return ontologies
+            .Where(o => !string.IsNullOrWhiteSpace(o.Tags))
+            .SelectMany(o => o.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+    }
+
+    private void ClearFilters()
+    {
+        searchFilter = string.Empty;
+        selectedTagFilter = string.Empty;
+    }
+
+    private void ShowCreateOntologyDialog()
+    {
+        newOntology = new Ontology
+        {
+            Version = "1.0"
+        };
+        selectedTemplate = "";
+        showCreateDialog = true;
+    }
+
+    private async Task CreateOntology()
+    {
+        // Security: Prevent ontology creation if not authenticated
+        if (!isAuthenticated)
+        {
+            Logger.LogWarning("Unauthorized ontology creation attempt - user not authenticated");
+            ToastService.ShowError("You must be signed in to create ontologies");
+            return;
+        }
+
+        // Input validation
+        if (string.IsNullOrWhiteSpace(newOntology.Name))
+        {
+            ToastService.ShowError("Ontology name is required");
+            return;
+        }
+
+        // Validate name length (prevent excessively long names)
+        if (newOntology.Name.Length > 200)
+        {
+            ToastService.ShowError("Ontology name must be 200 characters or less");
+            return;
+        }
+
+        // Sanitize input - trim whitespace
+        newOntology.Name = newOntology.Name.Trim();
+        newOntology.Description = newOntology.Description?.Trim();
+        newOntology.Author = newOntology.Author?.Trim();
+
+        Ontology createdOntology;
+
+        // Handle fork/clone from existing ontology
+        if (startFromType == "existing" && selectedSourceOntologyId > 0)
+        {
+            try
+            {
+                if (derivationType == "fork")
+                {
+                    createdOntology = await OntologyService.ForkOntologyAsync(
+                        selectedSourceOntologyId,
+                        newOntology.Name,
+                        string.IsNullOrWhiteSpace(provenanceNotes) ? null : provenanceNotes
+                    );
+                }
+                else // clone
+                {
+                    createdOntology = await OntologyService.CloneOntologyAsync(
+                        selectedSourceOntologyId,
+                        newOntology.Name,
+                        string.IsNullOrWhiteSpace(provenanceNotes) ? null : provenanceNotes
+                    );
+                }
+
+                ToastService.ShowSuccess($"Successfully {derivationType}d ontology!");
+                showCreateDialog = false;
+                await LoadOntologies();
+                Navigation.NavigateTo($"/ontology/{createdOntology.Id}");
+                return;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to {DerivationType} ontology {SourceId}", derivationType, selectedSourceOntologyId);
+                ToastService.ShowError($"Failed to {derivationType} ontology: {ex.Message}");
+                return;
+            }
+        }
+
+        // Check if we should download and import an ontology from a standard framework
+        // Using constants for template keys improves maintainability
+        if (startFromType == "template" && OntologyTemplateKeys.IsImportableTemplate(selectedTemplate))
+        {
+            // Create empty ontology first
+            createdOntology = await OntologyService.CreateOntologyAsync(newOntology);
+
+            // Download and import the selected framework
+            try
+            {
+                isImporting = true;
+                StateHasChanged();
+
+                var ontologyContent = await DownloadService.GetOntologyAsync(selectedTemplate);
+                if (!string.IsNullOrEmpty(ontologyContent))
+                {
+                    // Parse and merge the ontology content
+                    using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(ontologyContent));
+                    var parseResult = await ImportService.ParseTtlFileAsync(stream);
+
+                    if (parseResult.Success && parseResult.ParsedGraph != null)
+                    {
+                        await ImportService.MergeIntoExistingAsync(createdOntology.Id, parseResult.ParsedGraph, (progress) =>
+                        {
+                            importProgress = progress;
+                            InvokeAsync(StateHasChanged);
+                        });
+
+                        // Update ontology metadata if available
+                        var source = DownloadService.GetOntologySource(selectedTemplate);
+                        if (source != null)
+                        {
+                            createdOntology.Namespace = source.Namespace;
+                            await OntologyService.UpdateOntologyAsync(createdOntology);
+                        }
+                    }
+                }
+
+                isImporting = false;
+                importProgress = null;
+            }
+            catch (Exception ex)
+            {
+                isImporting = false;
+                importProgress = null;
+                // Log error but don't fail - user can still work with empty ontology
+                Logger.LogWarning(ex, "Failed to import template {Template} for new ontology", selectedTemplate);
+            }
+        }
+        // Create from BFO template if either the template is selected OR the UsesBFO checkbox is checked
+        else if (startFromType == "template" && (selectedTemplate == "bfo" || newOntology.UsesBFO))
+        {
+            // Create from BFO template
+            createdOntology = await TemplateService.CreateFromBFOTemplateAsync(
+                newOntology.Name,
+                newOntology.Description,
+                newOntology.Author
+            );
+
+            // Add PROV-O concepts if checked
+            if (newOntology.UsesProvO)
+            {
+                createdOntology.UsesProvO = true;
+                await OntologyService.UpdateOntologyAsync(createdOntology);
+                await TemplateService.AddProvOConceptsAsync(createdOntology);
+            }
+        }
+        else
+        {
+            // Create empty ontology
+            createdOntology = await OntologyService.CreateOntologyAsync(newOntology);
+
+            // Add PROV-O concepts if checked (even for empty ontology)
+            if (newOntology.UsesProvO)
+            {
+                await TemplateService.AddProvOConceptsAsync(createdOntology);
+            }
+        }
+
+        showCreateDialog = false;
+        await LoadOntologies();
+
+        // Navigate to the new ontology
+        Navigation.NavigateTo($"/ontology/{createdOntology.Id}");
+    }
+
+    private void ViewOntology(int id)
+    {
+        Navigation.NavigateTo($"/ontology/{id}");
+    }
+}

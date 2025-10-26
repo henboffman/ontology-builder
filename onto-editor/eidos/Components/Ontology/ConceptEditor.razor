@@ -1,0 +1,225 @@
+@using Eidos.Models
+
+<div class="card border-primary @(ShouldPulse ? "pulse-attention" : "")">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">@(IsEditing ? "Edit Concept" : "Add New Concept")</h6>
+        <button class="btn btn-sm text-white" style="background: none; border: none;" title="What is a concept?" @onclick="() => showConceptHelp = !showConceptHelp">
+            <i class="bi bi-question-circle"></i>
+        </button>
+    </div>
+    <div class="card-body">
+        @if (showConceptHelp)
+        {
+            <div class="alert alert-info small mb-3">
+                <strong>What is a concept?</strong>
+                <p class="mb-1">A concept is a fundamental idea or entity in your domain. Examples:</p>
+                <ul class="mb-0 small">
+                    <li><strong>Person</strong> - an individual human</li>
+                    <li><strong>Disease</strong> - a medical condition</li>
+                    <li><strong>Class</strong> - a programming construct</li>
+                </ul>
+            </div>
+        }
+        @if (!IsEditing)
+        {
+            <div class="mb-3">
+                <label class="form-label small">
+                    Start from Template (optional)
+                    <i class="bi bi-info-circle" title="Templates provide pre-filled examples for common concept patterns"></i>
+                </label>
+                <select class="form-select form-select-sm" @onchange="OnTemplateChange">
+                    <option value="">-- Choose a template --</option>
+                    @if (CustomTemplates.Any())
+                    {
+                        <optgroup label="Your Custom Templates">
+                            @foreach (var template in CustomTemplates.OrderBy(t => t.Category))
+                            {
+                                <option value="custom:@template.Id">@template.Category (@template.Type)</option>
+                            }
+                        </optgroup>
+                    }
+                    <optgroup label="Default Templates">
+                        @foreach (var template in CommonConceptTemplates.Templates)
+                        {
+                            <option value="default:@template.Category">@template.Category (@template.Type)</option>
+                        }
+                    </optgroup>
+                </select>
+                <small class="text-muted">Quick-start with common concept types</small>
+            </div>
+        }
+        <div class="mb-2">
+            <label class="form-label small">Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-control-sm" @bind="conceptName"
+                   placeholder="e.g., Mammal" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label small">
+                Category
+                <i class="bi bi-info-circle" title="Group similar concepts together (e.g., 'Biology', 'Technology')"></i>
+            </label>
+            <input type="text" class="form-control form-control-sm" @bind="conceptCategory"
+                   placeholder="e.g., Classification, Entity Type" />
+            <small class="text-muted">Helps organize and group concepts</small>
+        </div>
+        <div class="mb-2">
+            <label class="form-label small">
+                Simple Explanation
+                <i class="bi bi-info-circle" title="A brief, plain-language description of what this concept means"></i>
+            </label>
+            <textarea class="form-control form-control-sm" rows="2" @bind="conceptExplanation"
+                      placeholder="Explain this concept in simple terms so anyone can understand it"></textarea>
+        </div>
+        <div class="mb-2">
+            <label class="form-label small">
+                Examples
+                <i class="bi bi-info-circle" title="Specific instances that illustrate this concept"></i>
+            </label>
+            <input type="text" class="form-control form-control-sm" @bind="conceptExamples"
+                   placeholder="e.g., Dog, Cat, Whale (for 'Mammal' concept)" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label small">
+                Color
+                <i class="bi bi-info-circle" title="Visual color for this concept in the graph view"></i>
+            </label>
+            <input type="color" class="form-control form-control-sm form-control-color"
+                   @bind="conceptColor" />
+        </div>
+        <div class="d-grid gap-2">
+            <button class="btn btn-sm btn-primary" @onclick="OnSaveClick"
+                    disabled="@string.IsNullOrWhiteSpace(ConceptName)">
+                <i class="bi bi-check-circle"></i> @(IsEditing ? "Save" : "Add")
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="OnCancelClick">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public bool IsEditing { get; set; }
+
+    [Parameter]
+    public bool ShouldPulse { get; set; }
+
+    private bool showConceptHelp = false;
+
+    [Parameter]
+    public ICollection<CustomConceptTemplate> CustomTemplates { get; set; } = new List<CustomConceptTemplate>();
+
+    [Parameter]
+    public string ConceptName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? ConceptCategory { get; set; }
+
+    [Parameter]
+    public string? ConceptExplanation { get; set; }
+
+    [Parameter]
+    public string? ConceptExamples { get; set; }
+
+    [Parameter]
+    public string? ConceptColor { get; set; }
+
+    [Parameter]
+    public EventCallback<string> ConceptNameChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ConceptCategoryChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ConceptExplanationChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ConceptExamplesChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ConceptColorChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnSaveClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelClick { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnTemplateSelected { get; set; }
+
+    private string conceptName
+    {
+        get => ConceptName;
+        set
+        {
+            if (ConceptName != value)
+            {
+                ConceptName = value;
+                ConceptNameChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? conceptCategory
+    {
+        get => ConceptCategory;
+        set
+        {
+            if (ConceptCategory != value)
+            {
+                ConceptCategory = value;
+                ConceptCategoryChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? conceptExplanation
+    {
+        get => ConceptExplanation;
+        set
+        {
+            if (ConceptExplanation != value)
+            {
+                ConceptExplanation = value;
+                ConceptExplanationChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? conceptExamples
+    {
+        get => ConceptExamples;
+        set
+        {
+            if (ConceptExamples != value)
+            {
+                ConceptExamples = value;
+                ConceptExamplesChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? conceptColor
+    {
+        get => ConceptColor;
+        set
+        {
+            if (ConceptColor != value)
+            {
+                ConceptColor = value;
+                ConceptColorChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private async Task OnTemplateChange(ChangeEventArgs e)
+    {
+        var templateValue = e.Value?.ToString() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(templateValue))
+        {
+            await OnTemplateSelected.InvokeAsync(templateValue);
+        }
+    }
+}

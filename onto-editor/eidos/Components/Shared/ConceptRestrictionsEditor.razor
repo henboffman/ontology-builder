@@ -1,0 +1,144 @@
+@using Eidos.Models
+@using Eidos.Services.Interfaces
+
+<div class="restrictions-editor">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">
+            <i class="bi bi-shield-check"></i> Restrictions
+        </h5>
+        @if (CanEdit)
+        {
+            <button class="btn btn-sm btn-primary" @onclick="ShowAddRestrictionDialog">
+                <i class="bi bi-plus-circle"></i> Add Restriction
+            </button>
+        }
+    </div>
+
+    @if (Restrictions == null || !Restrictions.Any())
+    {
+        <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle"></i> No restrictions defined for this concept.
+            @if (CanEdit)
+            {
+                <text>Click "Add Restriction" to define property constraints.</text>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="list-group">
+            @foreach (var restriction in Restrictions)
+            {
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge bg-primary me-2">@restriction.PropertyName</span>
+                                <span class="badge bg-secondary">@restriction.RestrictionType</span>
+                                @if (restriction.IsMandatory)
+                                {
+                                    <span class="badge bg-danger ms-2">Required</span>
+                                }
+                            </div>
+                            <div class="text-muted small">
+                                @GetRestrictionDescription(restriction)
+                            </div>
+                        </div>
+                        @if (CanEdit)
+                        {
+                            <div class="btn-group btn-group-sm ms-2">
+                                <button class="btn btn-outline-secondary" @onclick="() => EditRestriction(restriction)" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" @onclick="() => DeleteRestriction(restriction)" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IEnumerable<ConceptRestriction>? Restrictions { get; set; }
+
+    [Parameter]
+    public EventCallback OnAddRestrictionClick { get; set; }
+
+    [Parameter]
+    public EventCallback<ConceptRestriction> OnEditRestrictionClick { get; set; }
+
+    [Parameter]
+    public EventCallback<ConceptRestriction> OnDeleteRestrictionClick { get; set; }
+
+    [Parameter]
+    public bool CanEdit { get; set; } = false;
+
+    private async Task ShowAddRestrictionDialog()
+    {
+        await OnAddRestrictionClick.InvokeAsync();
+    }
+
+    private async Task EditRestriction(ConceptRestriction restriction)
+    {
+        await OnEditRestrictionClick.InvokeAsync(restriction);
+    }
+
+    private async Task DeleteRestriction(ConceptRestriction restriction)
+    {
+        await OnDeleteRestrictionClick.InvokeAsync(restriction);
+    }
+
+    private string GetRestrictionDescription(ConceptRestriction restriction)
+    {
+        return restriction.RestrictionType switch
+        {
+            RestrictionTypes.Required => "This property must have a value",
+
+            RestrictionTypes.ValueType =>
+                $"Value must be of type: {restriction.ValueType}",
+
+            RestrictionTypes.Range =>
+                $"Value must be between {restriction.MinValue ?? "any"} and {restriction.MaxValue ?? "any"}",
+
+            RestrictionTypes.Cardinality =>
+                $"Must have {GetCardinalityDescription(restriction.MinCardinality, restriction.MaxCardinality)} values",
+
+            RestrictionTypes.Enumeration =>
+                $"Value must be one of: {restriction.AllowedValues}",
+
+            RestrictionTypes.Pattern =>
+                $"Value must match pattern: {restriction.Pattern}",
+
+            RestrictionTypes.ConceptType =>
+                restriction.AllowedConcept != null
+                    ? $"Value must be of concept type: {restriction.AllowedConcept.Name}"
+                    : "Value must be of a specific concept type",
+
+            _ => "Unknown restriction type"
+        };
+    }
+
+    private string GetCardinalityDescription(int? min, int? max)
+    {
+        if (min.HasValue && max.HasValue)
+        {
+            if (min == max)
+                return $"exactly {min}";
+            return $"{min} to {max}";
+        }
+        else if (min.HasValue)
+        {
+            return $"at least {min}";
+        }
+        else if (max.HasValue)
+        {
+            return $"at most {max}";
+        }
+        return "any number of";
+    }
+}

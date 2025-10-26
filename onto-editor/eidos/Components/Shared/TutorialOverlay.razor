@@ -1,0 +1,156 @@
+@using Eidos.Services
+@inject IJSRuntime JSRuntime
+@inject TutorialService TutorialService
+@rendermode InteractiveServer
+
+@if (isVisible && currentStep < steps.Count)
+{
+    <div class="tutorial-overlay">
+        <div class="tutorial-backdrop" @onclick="SkipTutorial"></div>
+
+        <div class="tutorial-card @GetPositionClass()" style="@GetPositionStyle()">
+            <div class="tutorial-header">
+                <h5 class="tutorial-title">@steps[currentStep].Title</h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="SkipTutorial" aria-label="Close"></button>
+            </div>
+
+            <div class="tutorial-body">
+                <p>@steps[currentStep].Description</p>
+            </div>
+
+            <div class="tutorial-footer">
+                <div class="tutorial-progress">
+                    <small class="text-muted">Step @(currentStep + 1) of @steps.Count</small>
+                    <div class="progress mt-2" style="height: 4px;">
+                        <div class="progress-bar" role="progressbar"
+                             style="width: @(((currentStep + 1) * 100.0 / steps.Count))%"
+                             aria-valuenow="@(currentStep + 1)"
+                             aria-valuemin="0"
+                             aria-valuemax="@steps.Count">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutorial-actions mt-3">
+                    @if (currentStep > 0)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-light" @onclick="PreviousStep">
+                            <i class="bi bi-arrow-left"></i> Previous
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-light" @onclick="SkipTutorial">
+                            Skip Tutorial
+                        </button>
+                    }
+
+                    @if (currentStep < steps.Count - 1)
+                    {
+                        <button type="button" class="btn btn-sm btn-primary" @onclick="NextStep">
+                            Next <i class="bi bi-arrow-right"></i>
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-sm btn-success" @onclick="CompleteTutorial">
+                            <i class="bi bi-check-circle"></i> Got it!
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public List<TutorialStep> Steps { get; set; } = new();
+
+    [Parameter]
+    public EventCallback OnComplete { get; set; }
+
+    [Parameter]
+    public EventCallback OnSkip { get; set; }
+
+    private bool isVisible = false;
+    private int currentStep = 0;
+    private List<TutorialStep> steps = new();
+
+    protected override void OnParametersSet()
+    {
+        steps = Steps ?? new List<TutorialStep>();
+    }
+
+    public void Show()
+    {
+        if (!TutorialService.HasSeenTutorial && steps.Count > 0)
+        {
+            isVisible = true;
+            currentStep = 0;
+            StateHasChanged();
+        }
+    }
+
+    public void Hide()
+    {
+        isVisible = false;
+        StateHasChanged();
+    }
+
+    private void NextStep()
+    {
+        if (currentStep < steps.Count - 1)
+        {
+            currentStep++;
+            StateHasChanged();
+        }
+    }
+
+    private void PreviousStep()
+    {
+        if (currentStep > 0)
+        {
+            currentStep--;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CompleteTutorial()
+    {
+        await TutorialService.MarkTutorialAsCompleteAsync(JSRuntime);
+        Hide();
+        await OnComplete.InvokeAsync();
+    }
+
+    private async Task SkipTutorial()
+    {
+        await TutorialService.MarkTutorialAsCompleteAsync(JSRuntime);
+        Hide();
+        await OnSkip.InvokeAsync();
+    }
+
+    private string GetPositionClass()
+    {
+        if (steps.Count == 0 || currentStep >= steps.Count)
+            return "tutorial-position-center";
+
+        var position = steps[currentStep].Position?.ToLower() ?? "bottom";
+
+        return position switch
+        {
+            "top" => "tutorial-position-top",
+            "bottom" => "tutorial-position-bottom",
+            "left" => "tutorial-position-left",
+            "right" => "tutorial-position-right",
+            "center" => "tutorial-position-center",
+            _ => "tutorial-position-bottom"
+        };
+    }
+
+    private string GetPositionStyle()
+    {
+        // This could be enhanced with JavaScript to position near target elements
+        return "";
+    }
+}

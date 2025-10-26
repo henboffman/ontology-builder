@@ -1,0 +1,176 @@
+/* Fix overflow issue that prevents sticky */
+::deep main {
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+}
+
+::deep .content {
+    overflow: visible !important;
+}
+
+/* Sticky sidebar - using higher specificity */
+.col-lg-3 .sticky-top,
+div.sticky-top {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 20px !important;
+    align-self: flex-start;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    z-index: 100;
+}
+
+/* Ensure parent containers allow sticky positioning */
+.container-fluid,
+.row,
+.col-lg-3 {
+    position: relative;
+    overflow: visible;
+}
+
+/* Progress indicator */
+.progress {
+    height: 8px;
+    border-radius: 4px;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+/* Table of contents navigation */
+.nav-link {
+    padding: 0.5rem 0.75rem;
+    color: #6c757d;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+.nav-link:hover {
+    background-color: #f8f9fa;
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+.nav-link.active {
+    background-color: #e7f1ff;
+    color: #0d6efd;
+    font-weight: 500;
+}
+
+.nav-link i {
+    font-size: 1rem;
+}
+
+/* Accordion styling */
+.accordion-item {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.accordion-button {
+    width: 100%;
+    padding: 1rem;
+    background-color: #fff;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.accordion-button:hover {
+    background-color: #f8f9fa;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: #e7f1ff;
+    color: #0d6efd;
+}
+
+.accordion-button::after {
+    content: '\F282'; /* Bootstrap icon chevron-down */
+    font-family: 'bootstrap-icons';
+    margin-left: auto;
+    transition: transform 0.2s ease;
+}
+
+.accordion-button:not(.collapsed)::after {
+    transform: rotate(180deg);
+}
+
+.accordion-body {
+    padding: 1rem;
+    border-top: 1px solid #dee2e6;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Section styling */
+section {
+    scroll-margin-top: 20px;
+}
+
+section.visited {
+    position: relative;
+}
+
+/* Badge styling for concept categories */
+.badge {
+    font-size: 0.85rem;
+    padding: 0.35rem 0.65rem;
+    font-weight: 500;
+}
+
+/* Card hover effects */
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+/* Button group styling */
+.btn-group button {
+    margin: 0.25rem;
+}
+
+/* Domain selection buttons */
+.btn-outline-primary {
+    margin: 0.25rem;
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 8px;
+}
+
+/* Smooth scrolling for the whole page */
+html {
+    scroll-behavior: smooth;
+}

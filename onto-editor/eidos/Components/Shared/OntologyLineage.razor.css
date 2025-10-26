@@ -1,0 +1,37 @@
+.lineage-tree {
+    position: relative;
+}
+
+.lineage-item {
+    position: relative;
+}
+
+.lineage-connector {
+    color: #6c757d;
+    font-size: 1.2rem;
+    margin-bottom: 0.25rem;
+    margin-left: -5px;
+}
+
+.lineage-item .card {
+    transition: all 0.2s ease;
+}
+
+.lineage-item .card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform: translateX(2px);
+}
+
+.descendants-list .card {
+    transition: all 0.2s ease;
+}
+
+.descendants-list .card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform: translateX(2px);
+}
+
+.modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}

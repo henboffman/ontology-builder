@@ -1,0 +1,123 @@
+@using Eidos.Services
+@inject ConfirmService ConfirmService
+
+@if (isVisible)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header @GetHeaderClass()">
+                    <h5 class="modal-title">
+                        <i class="bi @GetIcon() me-2"></i>
+                        @title
+                    </h5>
+                    <button type="button" class="btn-close @GetCloseButtonClass()" @onclick="Cancel"></button>
+                </div>
+                <div class="modal-body">
+                    @message
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </button>
+                    <button type="button" class="btn @GetConfirmButtonClass()" @onclick="Confirm">
+                        <i class="bi @GetConfirmIcon()"></i> @confirmText
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isVisible = false;
+    private string title = string.Empty;
+    private string message = string.Empty;
+    private string confirmText = "Confirm";
+    private ConfirmType type = ConfirmType.Danger;
+    private TaskCompletionSource<bool>? tcs;
+
+    protected override void OnInitialized()
+    {
+        ConfirmService.OnShow += ShowDialog;
+    }
+
+    private void ShowDialog(string t, string m, string ct, ConfirmType confirmType, TaskCompletionSource<bool> taskCompletionSource)
+    {
+        title = t;
+        message = m;
+        confirmText = ct;
+        type = confirmType;
+        tcs = taskCompletionSource;
+        isVisible = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Confirm()
+    {
+        isVisible = false;
+        tcs?.TrySetResult(true);
+        StateHasChanged();
+    }
+
+    private void Cancel()
+    {
+        isVisible = false;
+        tcs?.TrySetResult(false);
+        StateHasChanged();
+    }
+
+    private string GetHeaderClass()
+    {
+        return type switch
+        {
+            ConfirmType.Danger => "bg-danger text-white",
+            ConfirmType.Warning => "bg-warning text-dark",
+            ConfirmType.Info => "bg-info text-white",
+            _ => "bg-danger text-white"
+        };
+    }
+
+    private string GetCloseButtonClass()
+    {
+        return type == ConfirmType.Warning ? "" : "btn-close-white";
+    }
+
+    private string GetIcon()
+    {
+        return type switch
+        {
+            ConfirmType.Danger => "bi-exclamation-triangle-fill",
+            ConfirmType.Warning => "bi-exclamation-circle-fill",
+            ConfirmType.Info => "bi-info-circle-fill",
+            _ => "bi-exclamation-triangle-fill"
+        };
+    }
+
+    private string GetConfirmButtonClass()
+    {
+        return type switch
+        {
+            ConfirmType.Danger => "btn-danger",
+            ConfirmType.Warning => "btn-warning",
+            ConfirmType.Info => "btn-primary",
+            _ => "btn-danger"
+        };
+    }
+
+    private string GetConfirmIcon()
+    {
+        return type switch
+        {
+            ConfirmType.Danger => "bi-trash",
+            ConfirmType.Warning => "bi-exclamation-triangle",
+            ConfirmType.Info => "bi-check-circle",
+            _ => "bi-check-circle"
+        };
+    }
+
+    public void Dispose()
+    {
+        ConfirmService.OnShow -= ShowDialog;
+    }
+}

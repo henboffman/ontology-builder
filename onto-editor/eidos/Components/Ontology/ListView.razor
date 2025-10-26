@@ -1,0 +1,371 @@
+@using Eidos.Models
+
+<!-- Concepts Card -->
+<div class="card mb-3">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+                <h5 class="mb-0">Concepts</h5>
+                @if (!string.IsNullOrWhiteSpace(searchQuery) && Concepts.Any())
+                {
+                    <small class="text-muted">Showing @FilteredConcepts.Count() of @Concepts.Count concepts</small>
+                }
+            </div>
+            <button class="btn btn-sm btn-primary" @onclick="OnAddConceptClick">
+                <i class="bi bi-plus-circle"></i> Add Concept
+            </button>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <div class="input-group input-group-sm flex-grow-1">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text"
+                       class="form-control form-control-sm"
+                       placeholder="Search concepts... (Ctrl+F)"
+                       @bind="searchQuery"
+                       @bind:event="oninput"
+                       @ref="searchInputRef" />
+                @if (!string.IsNullOrWhiteSpace(searchQuery))
+                {
+                    <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                        <i class="bi bi-x"></i>
+                    </button>
+                }
+            </div>
+            <div class="input-group input-group-sm" style="width: 200px;">
+                <span class="input-group-text"><i class="bi bi-sort-down"></i></span>
+                <select class="form-select form-select-sm" @bind="sortOption">
+                    <option value="name">Sort by Name</option>
+                    <option value="category">Sort by Category</option>
+                    <option value="created">Sort by Created</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (!Concepts.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-lightbulb"></i> No concepts yet. Click "Add Concept" to start building your ontology!
+            </div>
+        }
+        else if (!FilteredConcepts.Any())
+        {
+            <div class="alert alert-warning">
+                <i class="bi bi-search"></i> No concepts match your search query "@SearchQuery"
+            </div>
+        }
+        else
+        {
+            <div class="list-group" style="max-height: 600px; overflow-y: auto;">
+                @foreach (var concept in SortedConcepts)
+                {
+                    <div class="list-group-item list-group-item-action"
+                         @onclick="() => OnConceptSelect.InvokeAsync(concept)"
+                         style="cursor: pointer; border-left: 4px solid @(concept.Color ?? "#6c757d")">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2">
+                                    <h6 class="mb-1">@concept.Name</h6>
+                                    @if (!string.IsNullOrWhiteSpace(concept.Category))
+                                    {
+                                        <span class="badge bg-secondary">@concept.Category</span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(concept.SimpleExplanation))
+                                {
+                                    <p class="mb-1 text-muted small">@concept.SimpleExplanation</p>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(concept.Examples))
+                                {
+                                    <p class="mb-0 small">
+                                        <i class="bi bi-lightbulb text-warning"></i>
+                                        <em>Examples: @concept.Examples</em>
+                                    </p>
+                                }
+                                <!-- Show relationships -->
+                                @{
+                                    var outgoing = GetConceptRelationships(concept.Id, isOutgoing: true);
+                                    var incoming = GetConceptRelationships(concept.Id, isOutgoing: false);
+                                }
+                                @if (outgoing.Any() || incoming.Any())
+                                {
+                                    <div class="mt-2 small">
+                                        @foreach (var rel in outgoing)
+                                        {
+                                            <span class="badge bg-info me-1">
+                                                @rel.RelationType → @rel.TargetConcept.Name
+                                            </span>
+                                        }
+                                        @foreach (var rel in incoming)
+                                        {
+                                            <span class="badge bg-success me-1">
+                                                @rel.SourceConcept.Name → @rel.RelationType
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary"
+                                        @onclick:stopPropagation="true"
+                                        @onclick="() => OnConceptEdit.InvokeAsync(concept)"
+                                        title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        @onclick:stopPropagation="true"
+                                        @onclick="() => OnConceptDuplicate.InvokeAsync(concept)"
+                                        title="Create a copy of this concept">
+                                    <i class="bi bi-files"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @onclick:stopPropagation="true"
+                                        @onclick="() => OnConceptDelete.InvokeAsync(concept.Id)"
+                                        title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Relationships Card -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Relationships</h5>
+        <button class="btn btn-sm btn-primary" @onclick="OnAddRelationshipClick">
+            <i class="bi bi-plus-circle"></i> Add Relationship
+        </button>
+    </div>
+    <div class="card-body">
+        @if (Concepts.Count < 2)
+        {
+            <div class="alert alert-warning">
+                <i class="bi bi-info-circle"></i> You need at least 2 concepts before you can create relationships.
+            </div>
+        }
+        else if (!Relationships.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-lightbulb"></i> No relationships yet. Click "Add Relationship" to connect your concepts!
+            </div>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (var rel in Relationships.OrderBy(r => r.SourceConcept.Name))
+                {
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge" style="background-color: @rel.SourceConcept.Color">
+                                        @rel.SourceConcept.Name
+                                    </span>
+                                    <span class="badge bg-dark">@rel.RelationType</span>
+                                    <i class="bi bi-arrow-right"></i>
+                                    <span class="badge" style="background-color: @rel.TargetConcept.Color">
+                                        @rel.TargetConcept.Name
+                                    </span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(rel.Description))
+                                {
+                                    <p class="mb-0 mt-1 small text-muted">@rel.Description</p>
+                                }
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary"
+                                        @onclick="() => OnRelationshipEdit.InvokeAsync(rel)"
+                                        title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        @onclick="() => OnRelationshipDuplicate.InvokeAsync(rel)"
+                                        title="Create a copy of this relationship">
+                                    <i class="bi bi-files"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @onclick="() => OnRelationshipDelete.InvokeAsync(rel.Id)"
+                                        title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@inject IJSRuntime JSRuntime
+
+@code {
+    [Parameter, EditorRequired]
+    public ICollection<Concept> Concepts { get; set; } = new List<Concept>();
+
+    [Parameter, EditorRequired]
+    public ICollection<Relationship> Relationships { get; set; } = new List<Relationship>();
+
+    [Parameter]
+    public string SearchQuery { get; set; } = string.Empty;
+
+    private ElementReference searchInputRef;
+    private string searchQuery = string.Empty;
+
+    [Parameter]
+    public string SortOption { get; set; } = "name";
+
+    [Parameter]
+    public EventCallback<string> SortOptionChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnAddConceptClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnAddRelationshipClick { get; set; }
+
+    [Parameter]
+    public EventCallback<Concept> OnConceptSelect { get; set; }
+
+    [Parameter]
+    public EventCallback<Concept> OnConceptEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<Concept> OnConceptDuplicate { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnConceptDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<Relationship> OnRelationshipEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<Relationship> OnRelationshipDuplicate { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnRelationshipDelete { get; set; }
+
+    // Caching for relationship lookups
+    private Dictionary<int, List<Relationship>>? _outgoingRelationshipsCache;
+    private Dictionary<int, List<Relationship>>? _incomingRelationshipsCache;
+    private ICollection<Relationship>? _lastRelationshipsReference;
+    private ICollection<Concept>? _lastConceptsReference;
+
+    private string sortOption
+    {
+        get => SortOption;
+        set
+        {
+            if (SortOption != value)
+            {
+                SortOption = value;
+                SortOptionChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        searchQuery = SearchQuery;
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Invalidate cache when Relationships or Concepts parameters change
+        if (!ReferenceEquals(_lastRelationshipsReference, Relationships) ||
+            !ReferenceEquals(_lastConceptsReference, Concepts))
+        {
+            ClearRelationshipCaches();
+            _lastRelationshipsReference = Relationships;
+            _lastConceptsReference = Concepts;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                document.addEventListener('keyboardShortcut', (e) => {
+                    if (e.detail.action === 'focusSearch') {
+                        const searchInput = document.querySelector('input[placeholder*=""Search concepts""]');
+                        if (searchInput) {
+                            searchInput.focus();
+                            searchInput.select();
+                        }
+                    }
+                });
+            ");
+        }
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = string.Empty;
+    }
+
+    private void ClearRelationshipCaches()
+    {
+        _outgoingRelationshipsCache = null;
+        _incomingRelationshipsCache = null;
+    }
+
+    private List<Relationship> GetConceptRelationships(int conceptId, bool isOutgoing)
+    {
+        // Build caches if not already built
+        if (_outgoingRelationshipsCache == null || _incomingRelationshipsCache == null)
+        {
+            _outgoingRelationshipsCache = Relationships
+                .GroupBy(r => r.SourceConceptId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            _incomingRelationshipsCache = Relationships
+                .GroupBy(r => r.TargetConceptId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+        }
+
+        if (isOutgoing)
+        {
+            return _outgoingRelationshipsCache.TryGetValue(conceptId, out var rels) ? rels : new List<Relationship>();
+        }
+        else
+        {
+            return _incomingRelationshipsCache.TryGetValue(conceptId, out var rels) ? rels : new List<Relationship>();
+        }
+    }
+
+    private IEnumerable<Concept> FilteredConcepts
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(searchQuery))
+                return Concepts;
+
+            var query = searchQuery.ToLower();
+            return Concepts.Where(c =>
+                c.Name.ToLower().Contains(query) ||
+                (c.Definition?.ToLower().Contains(query) ?? false) ||
+                (c.SimpleExplanation?.ToLower().Contains(query) ?? false) ||
+                (c.Examples?.ToLower().Contains(query) ?? false) ||
+                (c.Category?.ToLower().Contains(query) ?? false)
+            );
+        }
+    }
+
+    private IEnumerable<Concept> SortedConcepts
+    {
+        get
+        {
+            return SortOption switch
+            {
+                "category" => FilteredConcepts.OrderBy(c => c.Category ?? "").ThenBy(c => c.Name),
+                "created" => FilteredConcepts.OrderByDescending(c => c.CreatedAt),
+                _ => FilteredConcepts.OrderBy(c => c.Name)
+            };
+        }
+    }
+}

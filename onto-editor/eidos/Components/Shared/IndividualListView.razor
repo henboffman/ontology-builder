@@ -1,0 +1,199 @@
+@using Eidos.Models
+@using Eidos.Services.Interfaces
+@inject IIndividualService IndividualService
+
+<div class="individual-list-view">
+    @if (Individuals == null)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading individuals...</span>
+            </div>
+            <p class="text-muted mt-2">Loading individuals...</p>
+        </div>
+    }
+    else if (!Individuals.Any())
+    {
+        <div class="empty-state text-center py-5">
+            <i class="bi bi-person fs-1 text-muted"></i>
+            <p class="text-muted mt-3">No individuals found in this ontology.</p>
+            <small class="text-muted">
+                Individuals are specific instances of concepts (e.g., "Socrates" is an individual of concept "Person").
+            </small>
+            @if (CanEdit)
+            {
+                <div class="mt-3">
+                    <button class="btn btn-primary" @onclick="OnAddIndividualClick">
+                        <i class="bi bi-plus-circle me-2"></i>Add Individual
+                    </button>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <!-- Action bar -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="mb-0">
+                    <i class="bi bi-person me-2"></i>Individuals
+                    <span class="badge bg-secondary ms-2">@Individuals.Count()</span>
+                </h5>
+            </div>
+            @if (CanEdit)
+            {
+                <button class="btn btn-primary btn-sm" @onclick="OnAddIndividualClick">
+                    <i class="bi bi-plus-circle me-2"></i>Add Individual
+                </button>
+            }
+        </div>
+
+        <!-- Group by concept -->
+        @foreach (var conceptGroup in GroupedIndividuals)
+        {
+            <div class="card mb-3">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-circle-fill me-2" style="color: @(conceptGroup.Concept.Color ?? "#4A90E2")"></i>
+                            <strong>@conceptGroup.Concept.Name</strong>
+                            <span class="badge bg-secondary ms-2">@conceptGroup.Individuals.Count individuals</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        @foreach (var individual in conceptGroup.Individuals)
+                        {
+                            <div class="list-group-item list-group-item-action @(SelectedIndividual?.Id == individual.Id ? "active" : "")"
+                                 @onclick="@(() => SelectIndividual(individual))"
+                                 style="cursor: pointer;">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <i class="bi bi-person-fill me-2"></i>@individual.Name
+                                            @if (!string.IsNullOrEmpty(individual.Label))
+                                            {
+                                                <small class="text-muted">(@individual.Label)</small>
+                                            }
+                                        </h6>
+                                        @if (!string.IsNullOrEmpty(individual.Description))
+                                        {
+                                            <p class="mb-1 small text-muted">@individual.Description</p>
+                                        }
+                                        @if (individual.Properties?.Any() == true)
+                                        {
+                                            <div class="mt-2">
+                                                @foreach (var prop in individual.Properties.Take(3))
+                                                {
+                                                    <span class="badge bg-info text-dark me-1">
+                                                        @prop.Name: @prop.Value
+                                                    </span>
+                                                }
+                                                @if (individual.Properties.Count > 3)
+                                                {
+                                                    <span class="badge bg-secondary">+@(individual.Properties.Count - 3) more</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                    @if (CanEdit)
+                                    {
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary"
+                                                    @onclick:stopPropagation="true"
+                                                    @onclick="@(() => OnEditIndividualClick.InvokeAsync(individual))"
+                                                    title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger"
+                                                    @onclick:stopPropagation="true"
+                                                    @onclick="@(() => OnDeleteIndividualClick.InvokeAsync(individual))"
+                                                    title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IEnumerable<Individual>? Individuals { get; set; }
+
+    [Parameter]
+    public Individual? SelectedIndividual { get; set; }
+
+    [Parameter]
+    public EventCallback<Individual> OnIndividualSelected { get; set; }
+
+    [Parameter]
+    public EventCallback OnAddIndividualClick { get; set; }
+
+    [Parameter]
+    public EventCallback<Individual> OnEditIndividualClick { get; set; }
+
+    [Parameter]
+    public EventCallback<Individual> OnDeleteIndividualClick { get; set; }
+
+    [Parameter]
+    public bool CanEdit { get; set; }
+
+    private List<IndividualConceptGroup> GroupedIndividuals { get; set; } = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Individuals != null)
+        {
+            GroupedIndividuals = Individuals
+                .GroupBy(i => i.Concept)
+                .Select(g => new IndividualConceptGroup
+                {
+                    Concept = g.Key,
+                    Individuals = g.OrderBy(i => i.Name).ToList()
+                })
+                .OrderBy(g => g.Concept.Name)
+                .ToList();
+        }
+    }
+
+    private void SelectIndividual(Individual individual)
+    {
+        OnIndividualSelected.InvokeAsync(individual);
+    }
+
+    private class IndividualConceptGroup
+    {
+        public Concept Concept { get; set; } = null!;
+        public List<Individual> Individuals { get; set; } = new();
+    }
+}
+
+<style>
+    .individual-list-view {
+        padding: 1rem;
+    }
+
+    .empty-state {
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        margin: 20px;
+    }
+
+    .list-group-item.active {
+        background-color: rgba(13, 110, 253, 0.1);
+        border-left: 3px solid #0d6efd;
+        color: inherit;
+    }
+
+    .list-group-item:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+</style>

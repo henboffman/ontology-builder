@@ -1,0 +1,269 @@
+@if (IsVisible)
+{
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card border-secondary">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-gear"></i> Ontology Settings</h5>
+                    <button class="btn btn-sm btn-outline-light" @onclick="OnCancelClick">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Name</label>
+                                <input type="text" class="form-control" @bind="name" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Description</label>
+                                <textarea class="form-control" rows="3" @bind="description"></textarea>
+                                <small class="text-muted">A brief description of what this ontology represents</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Author</label>
+                                <input type="text" class="form-control" @bind="author" placeholder="Your name or organization" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Version</label>
+                                <input type="text" class="form-control" @bind="version" placeholder="e.g., 1.0.0" />
+                                <small class="text-muted">Semantic versioning recommended (e.g., 1.0.0)</small>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Namespace</label>
+                                <input type="text" class="form-control" @bind="namespaceUri" placeholder="http://example.org/ontology/" />
+                                <small class="text-muted">URI namespace for TTL export (e.g., http://example.org/my-ontology/)</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Tags</label>
+                                <input type="text" class="form-control" @bind="tags" placeholder="medical, research, biology" />
+                                <small class="text-muted">Comma-separated tags for categorization</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">License</label>
+                                <input type="text" class="form-control" @bind="license" placeholder="e.g., CC-BY-4.0, MIT" />
+                                <small class="text-muted">License for this ontology (e.g., CC-BY-4.0, MIT, Apache-2.0)</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Ontology Frameworks</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="usesBFO" @bind="usesBFO" />
+                                    <label class="form-check-label" for="usesBFO">
+                                        Uses BFO (Basic Formal Ontology)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="usesProvO" @bind="usesProvO" />
+                                    <label class="form-check-label" for="usesProvO">
+                                        Uses PROV-O (Provenance Ontology)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-3">
+                        <button class="btn btn-primary" @onclick="OnSaveClick">
+                            <i class="bi bi-check-circle"></i> Save Settings
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="OnCancelClick">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public string Name { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public string? Author { get; set; }
+
+    [Parameter]
+    public string? Version { get; set; }
+
+    [Parameter]
+    public string? NamespaceUri { get; set; }
+
+    [Parameter]
+    public string? Tags { get; set; }
+
+    [Parameter]
+    public string? License { get; set; }
+
+    [Parameter]
+    public bool UsesBFO { get; set; }
+
+    [Parameter]
+    public bool UsesProvO { get; set; }
+
+    [Parameter]
+    public EventCallback OnSaveClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelClick { get; set; }
+
+    [Parameter]
+    public EventCallback<string> NameChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> DescriptionChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> AuthorChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> VersionChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> NamespaceUriChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> TagsChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> LicenseChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> UsesBFOChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> UsesProvOChanged { get; set; }
+
+    private string name
+    {
+        get => Name;
+        set
+        {
+            if (Name != value)
+            {
+                Name = value;
+                NameChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? description
+    {
+        get => Description;
+        set
+        {
+            if (Description != value)
+            {
+                Description = value;
+                DescriptionChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? author
+    {
+        get => Author;
+        set
+        {
+            if (Author != value)
+            {
+                Author = value;
+                AuthorChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? version
+    {
+        get => Version;
+        set
+        {
+            if (Version != value)
+            {
+                Version = value;
+                VersionChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? namespaceUri
+    {
+        get => NamespaceUri;
+        set
+        {
+            if (NamespaceUri != value)
+            {
+                NamespaceUri = value;
+                NamespaceUriChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? tags
+    {
+        get => Tags;
+        set
+        {
+            if (Tags != value)
+            {
+                Tags = value;
+                TagsChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? license
+    {
+        get => License;
+        set
+        {
+            if (License != value)
+            {
+                License = value;
+                LicenseChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private bool usesBFO
+    {
+        get => UsesBFO;
+        set
+        {
+            if (UsesBFO != value)
+            {
+                UsesBFO = value;
+                UsesBFOChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private bool usesProvO
+    {
+        get => UsesProvO;
+        set
+        {
+            if (UsesProvO != value)
+            {
+                UsesProvO = value;
+                UsesProvOChanged.InvokeAsync(value);
+            }
+        }
+    }
+}

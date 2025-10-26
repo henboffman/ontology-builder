@@ -1,0 +1,223 @@
+@page "/settings"
+@using Microsoft.AspNetCore.Identity
+@using Eidos.Models
+@using Eidos.Components.Settings
+@using Microsoft.AspNetCore.Components.Authorization
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Settings - Eidos</PageTitle>
+
+<div class="container-fluid h-100 d-flex flex-column">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>Settings</h2>
+            <p class="text-muted">Manage your account settings and preferences</p>
+        </div>
+    </div>
+
+    <div class="row flex-grow-1">
+        <div class="col-md-3">
+            <div class="list-group">
+                <button type="button" class="list-group-item list-group-item-action @(activeTab == "profile" ? "active" : "")"
+                        @onclick="@(() => SetActiveTab("profile"))">
+                    <i class="bi bi-person"></i> Profile
+                </button>
+                <button type="button" class="list-group-item list-group-item-action @(activeTab == "security" ? "active" : "")"
+                        @onclick="@(() => SetActiveTab("security"))">
+                    <i class="bi bi-shield-lock"></i> Security
+                </button>
+                <button type="button" class="list-group-item list-group-item-action @(activeTab == "accounts" ? "active" : "")"
+                        @onclick="@(() => SetActiveTab("accounts"))">
+                    <i class="bi bi-link-45deg"></i> Connected Accounts
+                </button>
+                <button type="button" class="list-group-item list-group-item-action @(activeTab == "preferences" ? "active" : "")"
+                        @onclick="@(() => SetActiveTab("preferences"))">
+                    <i class="bi bi-palette"></i> Preferences
+                </button>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-body">
+                    @if (activeTab == "profile")
+                    {
+                        <ProfileSettings @key="@activeTab" User="@currentUser" OnSave="@SaveProfile" />
+                    }
+                    else if (activeTab == "security")
+                    {
+                        <SecuritySettings @key="@activeTab" User="@currentUser" OnPasswordChange="@ChangePassword" />
+                    }
+                    else if (activeTab == "accounts")
+                    {
+                        <ConnectedAccounts @key="@activeTab" User="@currentUser" Logins="@externalLogins" OnUnlink="@UnlinkAccount" />
+                    }
+                    else if (activeTab == "preferences")
+                    {
+                        <PreferencesSettings @key="@activeTab" User="@currentUser" />
+                    }
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success mt-3" role="alert">
+                    <i class="bi bi-check-circle"></i> @successMessage
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger mt-3" role="alert">
+                    <i class="bi bi-exclamation-triangle"></i> @errorMessage
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string activeTab = "profile";
+    private ApplicationUser? currentUser;
+    private IList<UserLoginInfo>? externalLogins;
+    private string? successMessage;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUser();
+        await LoadExternalLogins();
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            currentUser = await UserManager.FindByNameAsync(user.Identity.Name!);
+        }
+    }
+
+    private async Task LoadExternalLogins()
+    {
+        if (currentUser != null)
+        {
+            externalLogins = await UserManager.GetLoginsAsync(currentUser);
+        }
+    }
+
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+        successMessage = null;
+        errorMessage = null;
+        StateHasChanged();
+    }
+
+    private async Task SaveProfile((string displayName, string email) data)
+    {
+        if (currentUser == null) return;
+
+        try
+        {
+            currentUser.DisplayName = data.displayName;
+
+            if (currentUser.Email != data.email)
+            {
+                var setEmailResult = await UserManager.SetEmailAsync(currentUser, data.email);
+                if (!setEmailResult.Succeeded)
+                {
+                    errorMessage = string.Join(", ", setEmailResult.Errors.Select(e => e.Description));
+                    return;
+                }
+
+                var setUserNameResult = await UserManager.SetUserNameAsync(currentUser, data.email);
+                if (!setUserNameResult.Succeeded)
+                {
+                    errorMessage = string.Join(", ", setUserNameResult.Errors.Select(e => e.Description));
+                    return;
+                }
+            }
+
+            var result = await UserManager.UpdateAsync(currentUser);
+            if (result.Succeeded)
+            {
+                successMessage = "Profile updated successfully!";
+                await SignInManager.RefreshSignInAsync(currentUser);
+            }
+            else
+            {
+                errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating profile: {ex.Message}";
+        }
+    }
+
+    private async Task ChangePassword((string currentPassword, string newPassword) data)
+    {
+        if (currentUser == null) return;
+
+        try
+        {
+            var result = await UserManager.ChangePasswordAsync(currentUser, data.currentPassword, data.newPassword);
+            if (result.Succeeded)
+            {
+                successMessage = "Password changed successfully!";
+                await SignInManager.RefreshSignInAsync(currentUser);
+            }
+            else
+            {
+                errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error changing password: {ex.Message}";
+        }
+    }
+
+    private async Task UnlinkAccount(string loginProvider)
+    {
+        if (currentUser == null) return;
+
+        try
+        {
+            // Check if user has a password or at least one other login method
+            var hasPassword = await UserManager.HasPasswordAsync(currentUser);
+            var loginCount = externalLogins?.Count ?? 0;
+
+            if (!hasPassword && loginCount <= 1)
+            {
+                errorMessage = "Cannot unlink your only login method. Please set a password first or link another account.";
+                return;
+            }
+
+            var result = await UserManager.RemoveLoginAsync(currentUser, loginProvider,
+                externalLogins!.First(l => l.LoginProvider == loginProvider).ProviderKey);
+
+            if (result.Succeeded)
+            {
+                successMessage = $"{loginProvider} account unlinked successfully!";
+                await LoadExternalLogins();
+            }
+            else
+            {
+                errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error unlinking account: {ex.Message}";
+        }
+    }
+}

@@ -1,0 +1,68 @@
+@using Eidos.Models
+
+<h4>Profile Information</h4>
+<p class="text-muted">Update your display name and email address</p>
+
+<EditForm Model="@this" OnValidSubmit="HandleSubmit" class="mt-4">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label">Display Name</label>
+        <input type="text" class="form-control" @bind="displayName" required />
+        <small class="form-text text-muted">This name will be displayed throughout the application.</small>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-control" @bind="email" required />
+        <small class="form-text text-muted">Used for login and account recovery.</small>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label text-muted">Account Created</label>
+        <div class="form-control-plaintext">@User?.CreatedAt.ToLocalTime().ToString("MMMM d, yyyy")</div>
+    </div>
+
+    @if (User?.LastLoginAt != null)
+    {
+        <div class="mb-3">
+            <label class="form-label text-muted">Last Login</label>
+            <div class="form-control-plaintext">@User.LastLoginAt.Value.ToLocalTime().ToString("MMMM d, yyyy 'at' h:mm tt")</div>
+        </div>
+    }
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+            @if (isSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            }
+            Save Changes
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public ApplicationUser? User { get; set; }
+    [Parameter] public EventCallback<(string displayName, string email)> OnSave { get; set; }
+
+    private string displayName = string.Empty;
+    private string email = string.Empty;
+    private bool isSaving = false;
+
+    protected override void OnParametersSet()
+    {
+        if (User != null)
+        {
+            displayName = User.DisplayName;
+            email = User.Email ?? string.Empty;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSaving = true;
+        await OnSave.InvokeAsync((displayName, email));
+        isSaving = false;
+    }
+}

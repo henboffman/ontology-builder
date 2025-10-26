@@ -1,0 +1,239 @@
+@using Eidos.Services
+@using Microsoft.AspNetCore.Components.Forms
+
+@if (IsVisible)
+{
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Import Ontology from TTL File</h5>
+                </div>
+                <div class="card-body">
+                    @if (CurrentStep == ImportStep.Upload)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Select TTL File</label>
+                            <InputFile OnChange="OnFileSelected" accept=".ttl,.turtle,.rdf" class="form-control" />
+                            <small class="text-muted">Upload a Turtle (TTL) or RDF file containing ontology data</small>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(ErrorMessage))
+                        {
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle"></i> @ErrorMessage
+                            </div>
+                        }
+
+                        @if (IsProcessing)
+                        {
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-success" role="status">
+                                    <span class="visually-hidden">Processing...</span>
+                                </div>
+                                <p class="mt-2">Parsing TTL file...</p>
+                            </div>
+                        }
+
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-secondary" @onclick="OnCancelClick">
+                                Cancel
+                            </button>
+                        </div>
+                    }
+                    else if (CurrentStep == ImportStep.Preview && ImportResult != null)
+                    {
+                        <div class="mb-3">
+                            <h6>File Summary</h6>
+                            <ul>
+                                <li><strong>Ontology:</strong> @ImportResult.OntologyName</li>
+                                @if (!string.IsNullOrEmpty(ImportResult.OntologyDescription))
+                                {
+                                    <li><strong>Description:</strong> @ImportResult.OntologyDescription</li>
+                                }
+                                <li><strong>Concepts:</strong> @ImportResult.ConceptCount</li>
+                                <li><strong>Relationships:</strong> @ImportResult.RelationshipCount</li>
+                            </ul>
+                        </div>
+
+                        @if (MergePreview != null)
+                        {
+                            <div class="alert alert-info">
+                                <h6>Merge Preview</h6>
+
+                                @if (MergePreview.NewConcepts.Any())
+                                {
+                                    <div class="mb-2">
+                                        <button class="btn btn-sm btn-outline-info px-2 py-1" @onclick="() => showNewConcepts = !showNewConcepts">
+                                            <i class="bi @(showNewConcepts ? "bi-chevron-down" : "bi-chevron-right") me-1"></i>
+                                            <strong>New concepts:</strong> @MergePreview.NewConcepts.Count
+                                        </button>
+                                        @if (showNewConcepts)
+                                        {
+                                            <div class="ms-3 mt-1" style="max-height: 150px; overflow-y: auto;">
+                                                <ul class="small mb-0">
+                                                    @foreach (var concept in MergePreview.NewConcepts.Take(50))
+                                                    {
+                                                        <li>@concept</li>
+                                                    }
+                                                    @if (MergePreview.NewConcepts.Count > 50)
+                                                    {
+                                                        <li class="text-muted">... and @(MergePreview.NewConcepts.Count - 50) more</li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                @if (MergePreview.ExistingConcepts.Any())
+                                {
+                                    <div class="mb-2">
+                                        <button class="btn btn-sm btn-outline-secondary px-2 py-1" @onclick="() => showExistingConcepts = !showExistingConcepts">
+                                            <i class="bi @(showExistingConcepts ? "bi-chevron-down" : "bi-chevron-right") me-1"></i>
+                                            <strong>Existing concepts:</strong> @MergePreview.ExistingConcepts.Count (will reuse)
+                                        </button>
+                                        @if (showExistingConcepts)
+                                        {
+                                            <div class="ms-3 mt-1" style="max-height: 150px; overflow-y: auto;">
+                                                <ul class="small mb-0">
+                                                    @foreach (var concept in MergePreview.ExistingConcepts.Take(50))
+                                                    {
+                                                        <li>@concept</li>
+                                                    }
+                                                    @if (MergePreview.ExistingConcepts.Count > 50)
+                                                    {
+                                                        <li class="text-muted">... and @(MergePreview.ExistingConcepts.Count - 50) more</li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                @if (MergePreview.ConflictingConcepts.Any())
+                                {
+                                    <div class="mb-2">
+                                        <button class="btn btn-sm btn-outline-warning px-2 py-1" @onclick="() => showConflictingConcepts = !showConflictingConcepts">
+                                            <i class="bi @(showConflictingConcepts ? "bi-chevron-down" : "bi-chevron-right") me-1"></i>
+                                            <strong>Conflicts:</strong> @MergePreview.ConflictingConcepts.Count (will skip)
+                                        </button>
+                                        @if (showConflictingConcepts)
+                                        {
+                                            <div class="ms-3 mt-1" style="max-height: 150px; overflow-y: auto;">
+                                                <ul class="small mb-0 text-warning">
+                                                    @foreach (var concept in MergePreview.ConflictingConcepts.Take(50))
+                                                    {
+                                                        <li>@concept</li>
+                                                    }
+                                                    @if (MergePreview.ConflictingConcepts.Count > 50)
+                                                    {
+                                                        <li class="text-muted">... and @(MergePreview.ConflictingConcepts.Count - 50) more</li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <div class="mb-3">
+                            <h6>Import Options</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="importOption" id="mergeOption"
+                                       checked="@(SelectedOption == ImportOption.Merge)"
+                                       @onchange="() => SelectedOptionChanged.InvokeAsync(ImportOption.Merge)" />
+                                <label class="form-check-label" for="mergeOption">
+                                    <strong>Merge into current ontology</strong>
+                                    <br />
+                                    <small class="text-muted">Add new concepts and relationships to "@OntologyName"</small>
+                                </label>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="radio" name="importOption" id="newOption"
+                                       checked="@(SelectedOption == ImportOption.CreateNew)"
+                                       @onchange="() => SelectedOptionChanged.InvokeAsync(ImportOption.CreateNew)" />
+                                <label class="form-check-label" for="newOption">
+                                    <strong>Create as new ontology</strong>
+                                    <br />
+                                    <small class="text-muted">Import as a separate ontology that you can view independently</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-success" @onclick="OnExecuteImport" disabled="@IsImporting">
+                                @if (IsImporting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                }
+                                <i class="bi bi-check-circle"></i> Import
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick="OnCancelClick">
+                                Cancel
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public ImportStep CurrentStep { get; set; } = ImportStep.Upload;
+
+    [Parameter]
+    public bool IsProcessing { get; set; }
+
+    [Parameter]
+    public bool IsImporting { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public TtlImportResult? ImportResult { get; set; }
+
+    [Parameter]
+    public MergePreview? MergePreview { get; set; }
+
+    [Parameter]
+    public ImportOption SelectedOption { get; set; } = ImportOption.Merge;
+
+    [Parameter]
+    public string OntologyName { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<InputFileChangeEventArgs> OnFileSelected { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnExecuteImport { get; set; }
+
+    [Parameter]
+    public EventCallback<ImportOption> SelectedOptionChanged { get; set; }
+
+    private bool showNewConcepts = false;
+    private bool showExistingConcepts = false;
+    private bool showConflictingConcepts = false;
+
+    public enum ImportStep
+    {
+        Upload,
+        Preview
+    }
+
+    public enum ImportOption
+    {
+        Merge,
+        CreateNew
+    }
+}

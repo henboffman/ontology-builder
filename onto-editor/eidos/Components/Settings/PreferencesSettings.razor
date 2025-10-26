@@ -1,0 +1,243 @@
+@using Eidos.Models
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@using Microsoft.JSInterop
+@inject IUserPreferencesService PreferencesService
+@inject ToastService ToastService
+@inject IJSRuntime JSRuntime
+
+<h4>Appearance Preferences</h4>
+<p class="text-muted">Customize default colors for concepts and relationships. These will be applied automatically when you create new items.</p>
+
+@if (preferences == null)
+{
+    <div class="text-center p-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row">
+        <!-- Concept Colors -->
+        <div class="col-md-6">
+            <h5 class="mt-3">
+                <i class="bi bi-circle-fill"></i> Concept Colors
+            </h5>
+            <p class="text-muted small">Default colors for different concept categories</p>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.EntityColor">Entity</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.EntityColor" />
+                <small class="text-muted">Physical or abstract things (e.g., Person, Organization)</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.ProcessColor">Process</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.ProcessColor" />
+                <small class="text-muted">Actions or procedures (e.g., Learning, Manufacturing)</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.QualityColor">Quality</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.QualityColor" />
+                <small class="text-muted">Attributes or properties (e.g., Temperature, Color)</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.RoleColor">Role</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.RoleColor" />
+                <small class="text-muted">Functions or responsibilities (e.g., Teacher, Manager)</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.FunctionColor">Function</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.FunctionColor" />
+                <small class="text-muted">Capabilities or purposes (e.g., Computation, Regulation)</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.InformationColor">Information</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.InformationColor" />
+                <small class="text-muted">Data or knowledge (e.g., Document, Dataset)</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.EventColor">Event</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.EventColor" />
+                <small class="text-muted">Occurrences or happenings (e.g., Meeting, Transaction)</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.DefaultConceptColor">Default/Other</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.DefaultConceptColor" />
+                <small class="text-muted">Uncategorized or custom concepts</small>
+            </div>
+        </div>
+
+        <!-- Relationship Colors -->
+        <div class="col-md-6">
+            <h5 class="mt-3">
+                <i class="bi bi-arrow-left-right"></i> Relationship Colors
+            </h5>
+            <p class="text-muted small">Default colors for different relationship types</p>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.IsARelationshipColor">Is-A / Subclass</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.IsARelationshipColor" />
+                <small class="text-muted">Taxonomic relationships (e.g., Dog is-a Mammal)</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.PartOfRelationshipColor">Part-Of</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.PartOfRelationshipColor" />
+                <small class="text-muted">Mereological relationships (e.g., Wheel part-of Car)</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.HasPartRelationshipColor">Has-Part</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.HasPartRelationshipColor" />
+                <small class="text-muted">Inverse of part-of (e.g., Car has-part Wheel)</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.RelatedToRelationshipColor">Related-To</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.RelatedToRelationshipColor" />
+                <small class="text-muted">General associations (e.g., Person related-to Organization)</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label"><span class="badge" style="background-color: @preferences.DefaultRelationshipColor">Default/Other</span></label>
+                <input type="color" class="form-control form-control-color" @bind="preferences.DefaultRelationshipColor" />
+                <small class="text-muted">Custom or uncommon relationship types</small>
+            </div>
+
+            <h5 class="mt-4">
+                <i class="bi bi-sliders"></i> Graph Display
+            </h5>
+            <p class="text-muted small">Customize graph visualization defaults</p>
+
+            <div class="mb-3">
+                <label class="form-label">Default Node Size: <strong>@preferences.DefaultNodeSize px</strong></label>
+                <input type="range" class="form-range" min="20" max="80" step="5" @bind="preferences.DefaultNodeSize" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Default Edge Thickness: <strong>@preferences.DefaultEdgeThickness px</strong></label>
+                <input type="range" class="form-range" min="1" max="5" step="1" @bind="preferences.DefaultEdgeThickness" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Text Size: <strong>@preferences.TextSizeScale%</strong></label>
+                <input type="range" class="form-range" min="50" max="150" step="10" @bind="preferences.TextSizeScale" />
+                <small class="text-muted">Adjust the size of text labels on nodes and edges</small>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input class="form-check-input" type="checkbox" id="showEdgeLabels" @bind="preferences.ShowEdgeLabels" />
+                <label class="form-check-label" for="showEdgeLabels">
+                    Show edge labels by default
+                </label>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input class="form-check-input" type="checkbox" id="autoColor" @bind="preferences.AutoColorByCategory" />
+                <label class="form-check-label" for="autoColor">
+                    Automatically color concepts by category
+                </label>
+                <small class="d-block text-muted">When enabled, concepts inherit colors from their category automatically</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+        <button class="btn btn-primary" @onclick="SavePreferences" disabled="@isSaving">
+            @if (isSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            }
+            else
+            {
+                <i class="bi bi-save"></i>
+            }
+            Save Preferences
+        </button>
+
+        <button class="btn btn-outline-secondary" @onclick="ResetToDefaults" disabled="@isSaving">
+            <i class="bi bi-arrow-counterclockwise"></i> Reset to Defaults
+        </button>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public ApplicationUser? User { get; set; }
+
+    private UserPreferences? preferences;
+    private bool isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPreferences();
+    }
+
+    private async Task LoadPreferences()
+    {
+        try
+        {
+            preferences = await PreferencesService.GetCurrentUserPreferencesAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load preferences: {ex.Message}");
+        }
+    }
+
+    private async Task SavePreferences()
+    {
+        if (preferences == null) return;
+
+        isSaving = true;
+
+        try
+        {
+            await PreferencesService.UpdatePreferencesAsync(preferences);
+            ToastService.ShowSuccess("Preferences saved successfully!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to save preferences: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task ResetToDefaults()
+    {
+        if (User == null) return;
+
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
+            "Are you sure you want to reset all preferences to default values? This cannot be undone.");
+
+        if (!confirmed) return;
+
+        isSaving = true;
+
+        try
+        {
+            preferences = await PreferencesService.ResetToDefaultsAsync(User.Id);
+            ToastService.ShowSuccess("Preferences reset to defaults!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to reset preferences: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

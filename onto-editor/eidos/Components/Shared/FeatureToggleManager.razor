@@ -1,0 +1,171 @@
+@using Eidos.Models
+@using Eidos.Services.Interfaces
+@inject IFeatureToggleService FeatureToggleService
+@inject ILogger<FeatureToggleManager> Logger
+
+<div class="feature-toggle-manager">
+    <button class="btn btn-sm btn-outline-secondary" @onclick="TogglePanel" title="Feature Toggles">
+        <i class="bi bi-toggles"></i> Features
+    </button>
+</div>
+
+@if (showPanel)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-toggles"></i> Feature Toggles
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="TogglePanel"></button>
+                </div>
+                <div class="modal-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (togglesByCategory != null && togglesByCategory.Any())
+                    {
+                        <p class="text-muted mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            Enable or disable features to customize your experience.
+                        </p>
+
+                        @foreach (var categoryGroup in togglesByCategory)
+                        {
+                            <div class="mb-4">
+                                <h6 class="text-primary border-bottom pb-2">
+                                    @(categoryGroup.Key ?? "General")
+                                </h6>
+                                <div class="list-group list-group-flush">
+                                    @foreach (var toggle in categoryGroup.Value)
+                                    {
+                                        <div class="list-group-item d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1 me-3">
+                                                <div class="d-flex align-items-center">
+                                                    <strong>@toggle.Name</strong>
+                                                    @if (toggle.IsEnabled)
+                                                    {
+                                                        <span class="badge bg-success ms-2">Enabled</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary ms-2">Disabled</span>
+                                                    }
+                                                </div>
+                                                @if (!string.IsNullOrEmpty(toggle.Description))
+                                                {
+                                                    <small class="text-muted d-block mt-1">@toggle.Description</small>
+                                                }
+                                                <small class="text-muted d-block mt-1">
+                                                    <code>@toggle.Key</code>
+                                                </small>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input"
+                                                       type="checkbox"
+                                                       role="switch"
+                                                       id="toggle-@toggle.Id"
+                                                       checked="@toggle.IsEnabled"
+                                                       @onchange="() => ToggleFeature(toggle)"
+                                                       style="cursor: pointer; width: 3em; height: 1.5em;">
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> No feature toggles available.
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="TogglePanel">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public EventCallback OnToggleChanged { get; set; }
+
+    private bool showPanel = false;
+    private bool isLoading = false;
+    private Dictionary<string?, List<FeatureToggle>>? togglesByCategory;
+
+    private async Task TogglePanel()
+    {
+        showPanel = !showPanel;
+        if (showPanel)
+        {
+            await LoadToggles();
+        }
+    }
+
+    private async Task LoadToggles()
+    {
+        isLoading = true;
+        try
+        {
+            var allToggles = await FeatureToggleService.GetAllAsync();
+            togglesByCategory = allToggles
+                .GroupBy(t => t.Category)
+                .ToDictionary(g => g.Key, g => g.ToList());
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ToggleFeature(FeatureToggle toggle)
+    {
+        try
+        {
+            await FeatureToggleService.ToggleAsync(toggle.Key);
+
+            // Update local state
+            toggle.IsEnabled = !toggle.IsEnabled;
+
+            // Notify parent component
+            await OnToggleChanged.InvokeAsync();
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error toggling feature {FeatureKey}", toggle.Key);
+        }
+    }
+}
+
+<style>
+    .feature-toggle-manager {
+        display: inline-block;
+    }
+
+    .form-check-input:checked {
+        background-color: #198754;
+        border-color: #198754;
+    }
+
+    .list-group-item {
+        border-left: none;
+        border-right: none;
+    }
+
+    .list-group-item:first-child {
+        border-top: none;
+    }
+</style>

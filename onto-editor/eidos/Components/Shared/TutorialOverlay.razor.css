@@ -1,0 +1,225 @@
+.tutorial-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2000;
+    pointer-events: none;
+}
+
+.tutorial-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    pointer-events: all;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.tutorial-card {
+    position: fixed;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    min-width: 350px;
+    pointer-events: all;
+    animation: slideIn 0.3s ease-out;
+    z-index: 2001;
+}
+
+.tutorial-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tutorial-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.tutorial-body {
+    padding: 1.5rem;
+}
+
+.tutorial-body p {
+    margin: 0;
+    line-height: 1.6;
+    font-size: 1rem;
+}
+
+.tutorial-footer {
+    padding: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tutorial-progress {
+    margin-bottom: 0;
+}
+
+.tutorial-progress small {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.tutorial-progress .progress {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.tutorial-progress .progress-bar {
+    background-color: rgba(255, 255, 255, 0.9);
+    transition: width 0.3s ease;
+}
+
+.tutorial-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tutorial-actions button {
+    flex: 1;
+}
+
+/* Position Classes */
+.tutorial-position-center {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.tutorial-position-top {
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.tutorial-position-bottom {
+    bottom: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.tutorial-position-left {
+    top: 50%;
+    left: 10%;
+    transform: translateY(-50%);
+}
+
+.tutorial-position-right {
+    top: 50%;
+    right: 10%;
+    transform: translateY(-50%);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.tutorial-position-top {
+    animation: slideInTop 0.3s ease-out;
+}
+
+.tutorial-position-bottom {
+    animation: slideInBottom 0.3s ease-out;
+}
+
+.tutorial-position-left {
+    animation: slideInLeft 0.3s ease-out;
+}
+
+.tutorial-position-right {
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInTop {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -20px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+@keyframes slideInBottom {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 20px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translate(-20px, -50%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(0, -50%);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translate(20px, -50%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(0, -50%);
+    }
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+    .tutorial-card {
+        max-width: 90%;
+        min-width: 90%;
+    }
+
+    .tutorial-position-center,
+    .tutorial-position-top,
+    .tutorial-position-bottom {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .tutorial-position-left,
+    .tutorial-position-right {
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+    }
+}

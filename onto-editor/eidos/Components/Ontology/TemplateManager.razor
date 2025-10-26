@@ -1,0 +1,194 @@
+@using Eidos.Models
+
+<div class="card">
+    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-journal-code"></i> Custom Concept Templates</h6>
+        <button class="btn btn-sm btn-light" @onclick="ToggleAddTemplate" disabled="@(!CanEdit)">
+            <i class="bi bi-plus-circle"></i> New Template
+        </button>
+    </div>
+    <div class="card-body">
+        @if (showAddForm)
+        {
+            <div class="border rounded p-3 mb-3 bg-light">
+                <h6 class="mb-3">@(editingTemplate != null ? "Edit Template" : "Create New Template")</h6>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label small">Category <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" @bind="newTemplate.Category"
+                               placeholder="e.g., Clinical Finding, Device" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Type <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" @bind="newTemplate.Type"
+                               placeholder="e.g., Diagnosis, Medical Equipment" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small">Description <span class="text-danger">*</span></label>
+                        <textarea class="form-control form-control-sm" rows="2" @bind="newTemplate.Description"
+                                  placeholder="Brief description of what this template represents"></textarea>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small">Examples</label>
+                        <input type="text" class="form-control form-control-sm" @bind="newTemplate.Examples"
+                               placeholder="e.g., Diabetes, Hypertension, Pneumonia" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Color</label>
+                        <input type="color" class="form-control form-control-sm form-control-color"
+                               @bind="newTemplate.Color" />
+                    </div>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                    <button class="btn btn-sm btn-primary" @onclick="SaveTemplate"
+                            disabled="@(!CanSaveTemplate())">
+                        <i class="bi bi-check-circle"></i> @(editingTemplate != null ? "Update" : "Create")
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="CancelTemplate">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        }
+
+        @if (!Templates.Any())
+        {
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i>
+                <strong>No custom templates yet.</strong>
+                Create templates tailored to your domain to speed up concept creation.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Examples</th>
+                            <th style="width: 80px;">Color</th>
+                            <th style="width: 100px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var template in Templates.OrderBy(t => t.Category))
+                        {
+                            <tr>
+                                <td><strong>@template.Category</strong></td>
+                                <td><small class="text-muted">@template.Type</small></td>
+                                <td><small>@template.Description</small></td>
+                                <td><small class="text-muted">@template.Examples</small></td>
+                                <td>
+                                    <div style="width: 30px; height: 30px; background-color: @template.Color; border: 1px solid #ccc; border-radius: 4px;"></div>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button class="btn btn-outline-primary" @onclick="() => EditTemplate(template)" title="Edit"
+                                                disabled="@(!CanEdit)">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" @onclick="() => DeleteTemplate(template)" title="Delete"
+                                                disabled="@(!CanEdit)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ICollection<CustomConceptTemplate> Templates { get; set; } = new List<CustomConceptTemplate>();
+
+    [Parameter]
+    public EventCallback<CustomConceptTemplate> OnTemplateAdded { get; set; }
+
+    [Parameter]
+    public EventCallback<CustomConceptTemplate> OnTemplateUpdated { get; set; }
+
+    [Parameter]
+    public EventCallback<CustomConceptTemplate> OnTemplateDeleted { get; set; }
+
+    [Parameter]
+    public bool CanEdit { get; set; } = true;
+
+    private bool showAddForm = false;
+    private CustomConceptTemplate? editingTemplate = null;
+    private CustomConceptTemplate newTemplate = new();
+
+    private void ToggleAddTemplate()
+    {
+        showAddForm = !showAddForm;
+        if (!showAddForm)
+        {
+            CancelTemplate();
+        }
+    }
+
+    private void EditTemplate(CustomConceptTemplate template)
+    {
+        editingTemplate = template;
+        newTemplate = new CustomConceptTemplate
+        {
+            Id = template.Id,
+            OntologyId = template.OntologyId,
+            Category = template.Category,
+            Type = template.Type,
+            Description = template.Description,
+            Examples = template.Examples,
+            Color = template.Color
+        };
+        showAddForm = true;
+    }
+
+    private async Task SaveTemplate()
+    {
+        if (editingTemplate != null)
+        {
+            // Update existing
+            editingTemplate.Category = newTemplate.Category;
+            editingTemplate.Type = newTemplate.Type;
+            editingTemplate.Description = newTemplate.Description;
+            editingTemplate.Examples = newTemplate.Examples;
+            editingTemplate.Color = newTemplate.Color;
+            editingTemplate.UpdatedAt = DateTime.UtcNow;
+
+            await OnTemplateUpdated.InvokeAsync(editingTemplate);
+        }
+        else
+        {
+            // Add new
+            await OnTemplateAdded.InvokeAsync(newTemplate);
+        }
+
+        CancelTemplate();
+    }
+
+    private async Task DeleteTemplate(CustomConceptTemplate template)
+    {
+        await OnTemplateDeleted.InvokeAsync(template);
+    }
+
+    private void CancelTemplate()
+    {
+        showAddForm = false;
+        editingTemplate = null;
+        newTemplate = new CustomConceptTemplate();
+    }
+
+    private bool CanSaveTemplate()
+    {
+        return !string.IsNullOrWhiteSpace(newTemplate.Category)
+            && !string.IsNullOrWhiteSpace(newTemplate.Type)
+            && !string.IsNullOrWhiteSpace(newTemplate.Description);
+    }
+}

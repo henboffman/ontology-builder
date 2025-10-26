@@ -1,0 +1,81 @@
+@using Microsoft.JSInterop
+@using Eidos.Services.Interfaces
+@inject IJSRuntime JSRuntime
+@inject IUserPreferencesService UserPreferencesService
+
+<button @onclick="ToggleTheme"
+        class="btn btn-sm btn-outline-secondary theme-toggle-btn"
+        title="@(isDarkMode ? "Switch to light mode" : "Switch to dark mode")">
+    @if (isDarkMode)
+    {
+        <i class="bi bi-sun-fill"></i>
+        @if (ShowLabel)
+        {
+            <span class="ms-2">Light</span>
+        }
+    }
+    else
+    {
+        <i class="bi bi-moon-fill"></i>
+        @if (ShowLabel)
+        {
+            <span class="ms-2">Dark</span>
+        }
+    }
+</button>
+
+@code {
+    [Parameter]
+    public bool ShowLabel { get; set; } = false;
+
+    private bool isDarkMode = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get current theme from JavaScript
+        try
+        {
+            var theme = await JSRuntime.InvokeAsync<string>("ThemeHandler.getTheme");
+            isDarkMode = theme == "dark";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting initial theme: {ex.Message}");
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        try
+        {
+            // Toggle theme in JavaScript
+            var newTheme = await JSRuntime.InvokeAsync<string>("ThemeHandler.toggleTheme");
+            isDarkMode = newTheme == "dark";
+
+            await JSRuntime.InvokeVoidAsync("console.log", $"ThemeToggle: Toggled to {newTheme}, isDarkMode={isDarkMode}");
+
+            // Save to user preferences (await to ensure database is updated before navigation)
+            await SaveThemePreference(newTheme);
+            await JSRuntime.InvokeVoidAsync("console.log", $"ThemeToggle: Successfully saved theme '{newTheme}' to database");
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"ThemeToggle ERROR: {ex.Message}");
+        }
+    }
+
+    private async Task SaveThemePreference(string theme)
+    {
+        try
+        {
+            await UserPreferencesService.UpdateThemeAsync(theme);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving theme preference: {ex.Message}");
+            // Don't throw - theme is already applied locally
+        }
+    }
+}

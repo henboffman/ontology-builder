@@ -1,0 +1,181 @@
+@using Eidos.Models
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@inject IOntologyService OntologyService
+@inject NavigationManager Navigation
+@inject ToastService ToastService
+@rendermode InteractiveServer
+
+@if (isVisible)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header @(derivationType == "fork" ? "bg-primary" : "bg-success") text-white">
+                    <h5 class="modal-title">
+                        <i class="bi @(derivationType == "fork" ? "bi-diagram-2" : "bi-files")"></i>
+                        @(derivationType == "fork" ? "Fork" : "Clone") Ontology
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="Hide" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if (isProcessing)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary mb-3" role="status">
+                                <span class="visually-hidden">Processing...</span>
+                            </div>
+                            <p class="text-muted">@(derivationType == "fork" ? "Forking" : "Cloning") ontology...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Source Ontology</label>
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <strong>@sourceOntology?.Name</strong>
+                                    <div class="text-muted small">
+                                        @sourceOntology?.Concepts.Count concepts, @sourceOntology?.Relationships.Count relationships
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert @(derivationType == "fork" ? "alert-primary" : "alert-success")">
+                            <i class="bi bi-info-circle"></i>
+                            @if (derivationType == "fork")
+                            {
+                                <text><strong>Fork:</strong> Creates a new ontology based on this one, intended to diverge and evolve independently over time.</text>
+                            }
+                            else
+                            {
+                                <text><strong>Clone:</strong> Creates an exact copy for experimentation or backup. Changes won't affect the original.</text>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">New Ontology Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" @bind="newName"
+                                   placeholder="@GetDefaultName()"
+                                   @bind:event="oninput"
+                                   autocomplete="off" />
+                            <small class="text-muted">Give your @derivationType a descriptive name</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Notes (Optional)</label>
+                            <textarea class="form-control" rows="3" @bind="notes"
+                                      placeholder="Why are you creating this @derivationType? What will you use it for?"></textarea>
+                            <small class="text-muted">These notes help track the purpose and history of this @derivationType</small>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    @if (!isProcessing)
+                    {
+                        <button type="button" class="btn btn-secondary" @onclick="Hide">Cancel</button>
+                        <button type="button"
+                                class="btn @(derivationType == "fork" ? "btn-primary" : "btn-success")"
+                                @onclick="ExecuteDerivation"
+                                disabled="@(string.IsNullOrWhiteSpace(newName))">
+                            <i class="bi @(derivationType == "fork" ? "bi-diagram-2" : "bi-files")"></i>
+                            @(derivationType == "fork" ? "Fork" : "Clone") Ontology
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private bool isVisible = false;
+    private bool isProcessing = false;
+    private string derivationType = "fork"; // "fork" or "clone"
+    private Ontology? sourceOntology;
+    private string newName = "";
+    private string notes = "";
+
+    public void ShowFork(Ontology ontology)
+    {
+        sourceOntology = ontology;
+        derivationType = "fork";
+        newName = "";
+        notes = "";
+        isVisible = true;
+        isProcessing = false;
+        StateHasChanged();
+    }
+
+    public void ShowClone(Ontology ontology)
+    {
+        sourceOntology = ontology;
+        derivationType = "clone";
+        newName = "";
+        notes = "";
+        isVisible = true;
+        isProcessing = false;
+        StateHasChanged();
+    }
+
+    public void Hide()
+    {
+        isVisible = false;
+        StateHasChanged();
+    }
+
+    private string GetDefaultName()
+    {
+        if (sourceOntology == null) return "";
+        return derivationType == "fork"
+            ? $"{sourceOntology.Name} (Fork)"
+            : $"{sourceOntology.Name} (Clone)";
+    }
+
+    private async Task ExecuteDerivation()
+    {
+        if (sourceOntology == null || string.IsNullOrWhiteSpace(newName))
+        {
+            ToastService.ShowError("Please provide a name for the new ontology");
+            return;
+        }
+
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            Ontology createdOntology;
+
+            if (derivationType == "fork")
+            {
+                createdOntology = await OntologyService.ForkOntologyAsync(
+                    sourceOntology.Id,
+                    newName.Trim(),
+                    string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
+                );
+                ToastService.ShowSuccess($"Successfully forked '{sourceOntology.Name}' as '{newName}'");
+            }
+            else
+            {
+                createdOntology = await OntologyService.CloneOntologyAsync(
+                    sourceOntology.Id,
+                    newName.Trim(),
+                    string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
+                );
+                ToastService.ShowSuccess($"Successfully cloned '{sourceOntology.Name}' as '{newName}'");
+            }
+
+            Hide();
+            Navigation.NavigateTo($"/ontology/{createdOntology.Id}");
+        }
+        catch (Exception ex)
+        {
+            isProcessing = false;
+            ToastService.ShowError($"Failed to {derivationType} ontology: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+}

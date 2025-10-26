@@ -1,0 +1,144 @@
+@using Eidos.Models
+@using Eidos.Components.Shared
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <button class="btn btn-sm btn-outline-secondary mb-2" @onclick="OnBackClick">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </button>
+                <h2>@Ontology.Name</h2>
+                @if (!string.IsNullOrWhiteSpace(Ontology.Description))
+                {
+                    <p class="text-muted">@Ontology.Description</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(Ontology.Tags))
+                {
+                    <div class="mb-2">
+                        @foreach (var tag in Ontology.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                        {
+                            <span class="badge bg-info me-1">@tag</span>
+                        }
+                    </div>
+                }
+                <div class="d-flex gap-3 text-muted small">
+                    <span><i class="bi bi-circle-fill"></i> @Ontology.Concepts.Count concepts</span>
+                    <span><i class="bi bi-arrow-left-right"></i> @Ontology.Relationships.Count relationships</span>
+                    @if (!string.IsNullOrWhiteSpace(Ontology.Author))
+                    {
+                        <span><i class="bi bi-person"></i> @Ontology.Author</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Ontology.Version))
+                    {
+                        <span><i class="bi bi-tag"></i> v@Ontology.Version</span>
+                    }
+                    @if (Ontology.ParentOntologyId != null)
+                    {
+                        <span class="badge bg-secondary">
+                            <i class="bi bi-diagram-3"></i> @Ontology.ProvenanceType
+                        </span>
+                    }
+                </div>
+            </div>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <button class="btn btn-outline-secondary"
+                        @onclick="ShowLineage">
+                    <i class="bi bi-diagram-3"></i> Lineage
+                </button>
+
+                <!-- Fork/Clone Buttons -->
+                <button class="btn btn-outline-primary"
+                        @onclick="ShowForkDialog">
+                    <i class="bi bi-diagram-2"></i> Fork
+                </button>
+                <button class="btn btn-outline-success"
+                        @onclick="ShowCloneDialog">
+                    <i class="bi bi-files"></i> Clone
+                </button>
+
+                <button class="btn btn-outline-info"
+                        @onclick="OpenShareModal"
+                        disabled="@(!CanShare)">
+                    <i class="bi bi-share"></i> Share
+                </button>
+                <button class="btn btn-outline-secondary"
+                        @onclick="OnSettingsClick"
+                        disabled="@(!CanShare)">
+                    <i class="bi bi-gear"></i> Settings
+                </button>
+                <button class="btn btn-outline-success"
+                        @onclick="OnImportClick"
+                        disabled="@(!CanEdit)">
+                    <i class="bi bi-upload"></i> Import TTL
+                </button>
+                <button class="btn btn-outline-primary" @onclick="OnExportClick">
+                    <i class="bi bi-download"></i> Export
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Share Modal -->
+<ShareModal Show="@showShareModal"
+            ShowChanged="@((bool show) => showShareModal = show)"
+            OntologyId="@Ontology.Id"
+            OntologyName="@Ontology.Name"
+            UserId="@Ontology.UserId" />
+
+<!-- Lineage Modal -->
+<OntologyLineage @ref="lineageComponent" ontology="@Ontology" />
+
+<!-- Fork/Clone Dialog -->
+<ForkCloneDialog @ref="forkCloneDialog" />
+
+@code {
+    [Parameter, EditorRequired]
+    public Ontology Ontology { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnBackClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnSettingsClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnImportClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnExportClick { get; set; }
+
+    [Parameter]
+    public bool CanShare { get; set; } = true;
+
+    [Parameter]
+    public bool CanEdit { get; set; } = true;
+
+    private bool showShareModal = false;
+    private OntologyLineage? lineageComponent;
+    private ForkCloneDialog? forkCloneDialog;
+
+    private void OpenShareModal()
+    {
+        showShareModal = true;
+    }
+
+    private async Task ShowLineage()
+    {
+        if (lineageComponent != null)
+        {
+            await lineageComponent.Show(Ontology);
+        }
+    }
+
+    private void ShowForkDialog()
+    {
+        forkCloneDialog?.ShowFork(Ontology);
+    }
+
+    private void ShowCloneDialog()
+    {
+        forkCloneDialog?.ShowClone(Ontology);
+    }
+}

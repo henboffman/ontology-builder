@@ -1,0 +1,129 @@
+@* Guide for using standard ontology frameworks *@
+
+<div class="card">
+    <div class="card-header bg-info text-white">
+        <h6 class="mb-0" style="color: white;">
+            <i class="bi bi-book"></i> Standard Ontology Frameworks Guide
+        </h6>
+    </div>
+    <div class="card-body">
+        @* BFO Guide *@
+        <div class="mb-3">
+            <div class="card">
+                <div class="card-header" style="cursor: pointer;" @onclick="() => showBFO = !showBFO">
+                    <strong>BFO (Basic Formal Ontology)</strong>
+                    <i class="bi @(showBFO ? "bi-chevron-up" : "bi-chevron-down") float-end"></i>
+                </div>
+                @if (showBFO)
+                {
+                    <div class="card-body small">
+                        <p><strong>Purpose:</strong> Foundation for scientific ontologies, especially in biomedicine</p>
+
+                        <p><strong>Key Concept Types:</strong></p>
+                        <ul>
+                            <li><strong>Continuant</strong> - Things that persist through time (e.g., Person, Cell)</li>
+                            <li><strong>Occurrent</strong> - Processes or events that unfold over time (e.g., Running, Life)</li>
+                            <li><strong>Material Entity</strong> - Physical objects (e.g., Rock, Organism)</li>
+                            <li><strong>Quality</strong> - Attributes that depend on entities (e.g., Mass, Color)</li>
+                            <li><strong>Role</strong> - Realizable functions (e.g., Student Role)</li>
+                            <li><strong>Disposition</strong> - Capabilities or tendencies (e.g., Fragility)</li>
+                        </ul>
+
+                        <p><strong>Common Relationships:</strong></p>
+                        <ul>
+                            <li><code>part-of</code> / <code>has-part</code> - Compositional relationships</li>
+                            <li><code>participates-in</code> / <code>has-participant</code> - Process participation</li>
+                            <li><code>realizes</code> / <code>realized-in</code> - Role/disposition realization</li>
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* RO Guide *@
+        <div class="mb-3">
+            <div class="card">
+                <div class="card-header" style="cursor: pointer;" @onclick="() => showRO = !showRO">
+                    <strong>RO (Relations Ontology)</strong>
+                    <i class="bi @(showRO ? "bi-chevron-up" : "bi-chevron-down") float-end"></i>
+                </div>
+                @if (showRO)
+                {
+                    <div class="card-body small">
+                        <p><strong>Purpose:</strong> Standard relationships for biological and biomedical ontologies</p>
+
+                        <p><strong>Common Relationships:</strong></p>
+                        <ul>
+                            <li><code>located-in</code> - Spatial containment (e.g., Paris located-in France)</li>
+                            <li><code>has-input</code> / <code>has-output</code> - Process inputs and outputs</li>
+                            <li><code>develops-from</code> - Developmental relationships</li>
+                            <li><code>overlaps</code> - Temporal or spatial overlap</li>
+                        </ul>
+
+                        <p><strong>Use Cases:</strong> Biology, anatomy, developmental processes</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* OWL/RDFS Guide *@
+        <div class="mb-3">
+            <div class="card">
+                <div class="card-header" style="cursor: pointer;" @onclick="() => showOWL = !showOWL">
+                    <strong>OWL & RDFS</strong>
+                    <i class="bi @(showOWL ? "bi-chevron-up" : "bi-chevron-down") float-end"></i>
+                </div>
+                @if (showOWL)
+                {
+                    <div class="card-body small">
+                        <p><strong>Purpose:</strong> Web Ontology Language standards from W3C</p>
+
+                        <p><strong>Core Relationships:</strong></p>
+                        <ul>
+                            <li><code>subclass-of</code> (rdfs:subClassOf) - Class hierarchies</li>
+                            <li><code>type</code> (rdf:type) - Instance membership</li>
+                            <li><code>equivalent-class</code> - Class equivalence</li>
+                            <li><code>disjoint-with</code> - Mutually exclusive classes</li>
+                        </ul>
+
+                        <p><strong>Best Practices:</strong></p>
+                        <ul>
+                            <li>Use <code>subclass-of</code> for taxonomic hierarchies</li>
+                            <li>Use <code>type</code> to relate instances to classes</li>
+                            <li>Mark disjoint classes to prevent logical contradictions</li>
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Quick Tips *@
+        <div class="mb-3">
+            <div class="card">
+                <div class="card-header" style="cursor: pointer;" @onclick="() => showTips = !showTips">
+                    <strong>Quick Tips</strong>
+                    <i class="bi @(showTips ? "bi-chevron-up" : "bi-chevron-down") float-end"></i>
+                </div>
+                @if (showTips)
+                {
+                    <div class="card-body small">
+                        <ul>
+                            <li><strong>When to use BFO:</strong> Scientific domains, biomedicine, rigorous upper ontology</li>
+                            <li><strong>When to use RO:</strong> Biological relationships, anatomical structures</li>
+                            <li><strong>When to use OWL/RDFS:</strong> Web compatibility, semantic web integration</li>
+                            <li><strong>Mix and match:</strong> You can combine frameworks - use BFO concepts with RO relationships</li>
+                            <li><strong>Start simple:</strong> Begin with basic relationships, add formal ones as needed</li>
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool showBFO = false;
+    private bool showRO = false;
+    private bool showOWL = false;
+    private bool showTips = false;
+}

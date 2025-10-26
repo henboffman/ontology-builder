@@ -1,0 +1,124 @@
+@using Eidos.Services
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+@if (isVisible)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-keyboard"></i> Keyboard Shortcuts
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="Hide" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="shortcuts-container">
+                        <div class="shortcut-section">
+                            <h6 class="shortcut-section-title">General</h6>
+                            <div class="shortcut-list">
+                                <div class="shortcut-item">
+                                    <span class="shortcut-keys">
+                                        <kbd>?</kbd>
+                                    </span>
+                                    <span class="shortcut-description">Show keyboard shortcuts</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span class="shortcut-keys">
+                                        <kbd>Esc</kbd>
+                                    </span>
+                                    <span class="shortcut-description">Close dialogs</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="shortcut-section">
+                            <h6 class="shortcut-section-title">Navigation</h6>
+                            <div class="shortcut-list">
+                                <div class="shortcut-item">
+                                    <span class="shortcut-keys">
+                                        <kbd>Alt/⌥</kbd> + <kbd>G</kbd>
+                                    </span>
+                                    <span class="shortcut-description">Switch to Graph view</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span class="shortcut-keys">
+                                        <kbd>Alt/⌥</kbd> + <kbd>L</kbd>
+                                    </span>
+                                    <span class="shortcut-description">Switch to List view</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span class="shortcut-keys">
+                                        <kbd>Alt/⌥</kbd> + <kbd>T</kbd>
+                                    </span>
+                                    <span class="shortcut-description">Switch to TTL view</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span class="shortcut-keys">
+                                        <kbd>Alt/⌥</kbd> + <kbd>N</kbd>
+                                    </span>
+                                    <span class="shortcut-description">Switch to Notes view</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span class="shortcut-keys">
+                                        <kbd>Alt/⌥</kbd> + <kbd>P</kbd>
+                                    </span>
+                                    <span class="shortcut-description">Switch to Templates view</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="shortcut-section">
+                            <h6 class="shortcut-section-title">Editing</h6>
+                            <div class="shortcut-list">
+                                <div class="shortcut-item">
+                                    <span class="shortcut-keys">
+                                        <kbd>Alt/⌥</kbd> + <kbd>C</kbd>
+                                    </span>
+                                    <span class="shortcut-description">Add new concept</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span class="shortcut-keys">
+                                        <kbd>Alt/⌥</kbd> + <kbd>R</kbd>
+                                    </span>
+                                    <span class="shortcut-description">Add new relationship</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Hide">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private bool isVisible = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("window.keyboardShortcuts.registerGlobalHandler",
+                DotNetObjectReference.Create(this));
+        }
+    }
+
+    [JSInvokable]
+    public void Show()
+    {
+        isVisible = true;
+        StateHasChanged();
+    }
+
+    public void Hide()
+    {
+        isVisible = false;
+        StateHasChanged();
+    }
+}

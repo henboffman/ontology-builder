@@ -1,0 +1,303 @@
+@page "/share/{shareToken}"
+@using Eidos.Models
+@using Eidos.Models.Enums
+@using Eidos.Services.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
+@inject IOntologyShareService ShareService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Access Shared Ontology</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            @if (isLoading)
+            {
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted">Validating share link...</p>
+                    </div>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-exclamation-triangle"></i> Invalid Share Link
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-3">@errorMessage</p>
+                        <a href="/" class="btn btn-primary">
+                            <i class="bi bi-house"></i> Go to Homepage
+                        </a>
+                    </div>
+                </div>
+            }
+            else if (share != null && !isAuthenticated)
+            {
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-share"></i> Access Shared Ontology
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="mb-3">@share.Ontology?.Name</h6>
+
+                        @if (!string.IsNullOrEmpty(share.Ontology?.Description))
+                        {
+                            <p class="text-muted small">@share.Ontology.Description</p>
+                        }
+
+                        <div class="alert alert-info mb-4">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-info-circle me-2 mt-1"></i>
+                                <div>
+                                    <strong>Permission Level:</strong> @share.PermissionLevel<br />
+                                    <small class="text-muted">@GetPermissionDescription(share.PermissionLevel)</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (share.AllowGuestAccess)
+                        {
+                            <div class="mb-4">
+                                <h6>Choose how to access:</h6>
+
+                                <div class="d-grid gap-2 mb-2">
+                                    <button class="btn btn-success btn-lg" @onclick="ContinueAsGuest">
+                                        <i class="bi bi-box-arrow-in-right"></i> Continue as Guest
+                                    </button>
+                                </div>
+
+                                <div class="text-center my-3">
+                                    <span class="text-muted">— or —</span>
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <a href="/Account/Login?returnUrl=@Uri.EscapeDataString($"/share/{ShareToken}")"
+                                       class="btn btn-outline-primary">
+                                        <i class="bi bi-person"></i> Sign In
+                                    </a>
+                                    <a href="/Account/Register?returnUrl=@Uri.EscapeDataString($"/share/{ShareToken}")"
+                                       class="btn btn-outline-secondary">
+                                        <i class="bi bi-person-plus"></i> Create Account
+                                    </a>
+                                </div>
+
+                                <div class="alert alert-warning mt-3 small">
+                                    <i class="bi bi-exclamation-circle"></i>
+                                    <strong>Guest users:</strong> Your session will be temporary and any changes may not be saved after you leave.
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning mb-4">
+                                <i class="bi bi-lock"></i> This share link requires you to sign in or create an account.
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <a href="/Account/Login?returnUrl=@Uri.EscapeDataString($"/share/{ShareToken}")"
+                                   class="btn btn-primary btn-lg">
+                                    <i class="bi bi-person"></i> Sign In
+                                </a>
+                                <a href="/Account/Register?returnUrl=@Uri.EscapeDataString($"/share/{ShareToken}")"
+                                   class="btn btn-outline-secondary">
+                                    <i class="bi bi-person-plus"></i> Create Account
+                                </a>
+                            </div>
+                        }
+
+                        @if (share.ExpiresAt.HasValue)
+                        {
+                            var timeRemaining = share.ExpiresAt.Value - DateTime.UtcNow;
+                            if (timeRemaining.TotalHours > 0)
+                            {
+                                <div class="mt-3 small text-muted">
+                                    <i class="bi bi-clock"></i> This link expires in @FormatTimeRemaining(timeRemaining)
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string ShareToken { get; set; } = string.Empty;
+
+    private OntologyShare? share;
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+    private string? errorMessage;
+    private string? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if user is already authenticated
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+
+        // Get current user ID if authenticated
+        if (isAuthenticated)
+        {
+            currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        // Always validate the share link first
+        await ValidateShareLink();
+
+        // If authenticated and share is valid, we'll redirect in OnAfterRenderAsync
+        // to avoid NavigationException during render
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && isAuthenticated && share != null && string.IsNullOrEmpty(errorMessage))
+        {
+            // User is authenticated and share is valid, redirect to ontology
+            try
+            {
+                // Record the share access with user ID for tracking
+                await ShareService.RecordShareAccessAsync(ShareToken, currentUserId);
+
+                // Store the share token in session storage so the ontology page can validate access
+                await JS.InvokeVoidAsync("sessionStorage.setItem", $"share_access_{share.OntologyId}", ShareToken);
+
+                // Direct navigation with forceLoad
+                Navigation.NavigateTo($"/ontology/{share.OntologyId}", forceLoad: true);
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"An error occurred while accessing the ontology: {ex.Message}";
+                isLoading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task ValidateShareLink()
+    {
+        isLoading = true;
+
+        try
+        {
+            // Get the share by token
+            share = await ShareService.GetShareByTokenAsync(ShareToken);
+
+            if (share == null)
+            {
+                errorMessage = "This share link is invalid or has been revoked.";
+            }
+            else
+            {
+                // Validate the share access
+                var (isValid, validationError) = await ShareService.ValidateShareAccessAsync(ShareToken);
+                if (!isValid)
+                {
+                    errorMessage = validationError ?? "This share link is not accessible.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred while validating the share link: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ValidateAndRedirect(bool isGuest)
+    {
+        isLoading = true;
+
+        try
+        {
+            // Get the share by token
+            share = await ShareService.GetShareByTokenAsync(ShareToken);
+
+            if (share == null)
+            {
+                errorMessage = "This share link is invalid or has been revoked.";
+                isLoading = false;
+                return;
+            }
+
+            // Validate the share access
+            var (isValid, validationError) = await ShareService.ValidateShareAccessAsync(ShareToken);
+            if (!isValid)
+            {
+                errorMessage = validationError ?? "This share link is not accessible.";
+                isLoading = false;
+                return;
+            }
+
+            // Record the access
+            await ShareService.RecordShareAccessAsync(ShareToken);
+
+            // Create guest session if needed
+            if (isGuest)
+            {
+                var guestSession = await ShareService.CreateGuestSessionAsync(share.Id);
+                // Store guest session token in session storage or cookies
+                // For now, we'll just redirect with the session token in query string
+                Navigation.NavigateTo($"/ontology/{share.OntologyId}?guestSession={guestSession.SessionToken}", forceLoad: true);
+            }
+            else
+            {
+                // Redirect authenticated user to the ontology
+                Navigation.NavigateTo($"/ontology/{share.OntologyId}", forceLoad: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+            isLoading = false;
+        }
+    }
+
+    private async Task ContinueAsGuest()
+    {
+        if (share != null && share.AllowGuestAccess)
+        {
+            await ValidateAndRedirect(isGuest: true);
+        }
+    }
+
+    private string GetPermissionDescription(PermissionLevel level)
+    {
+        return level switch
+        {
+            PermissionLevel.View => "You can view the ontology but cannot make changes",
+            PermissionLevel.ViewAndAdd => "You can view and add new concepts/relationships",
+            PermissionLevel.ViewAddEdit => "You can view, add, and edit concepts/relationships",
+            PermissionLevel.FullAccess => "You have complete access to this ontology",
+            _ => ""
+        };
+    }
+
+    private string FormatTimeRemaining(TimeSpan timeRemaining)
+    {
+        if (timeRemaining.TotalDays >= 1)
+            return $"{(int)timeRemaining.TotalDays} day{(timeRemaining.TotalDays >= 2 ? "s" : "")}";
+        else if (timeRemaining.TotalHours >= 1)
+            return $"{(int)timeRemaining.TotalHours} hour{(timeRemaining.TotalHours >= 2 ? "s" : "")}";
+        else
+            return $"{(int)timeRemaining.TotalMinutes} minute{(timeRemaining.TotalMinutes >= 2 ? "s" : "")}";
+    }
+}

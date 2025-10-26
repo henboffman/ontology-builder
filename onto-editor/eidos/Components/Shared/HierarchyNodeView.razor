@@ -1,0 +1,162 @@
+@using Eidos.Models
+
+<div class="hierarchy-node" style="margin-left: @(Node.Level * 20)px">
+    <div class="node-content @(IsSelected ? "selected" : "")"
+         @onclick="@(() => HandleNodeClick())">
+
+        <!-- Expand/Collapse Icon -->
+        @if (Node.HasChildren)
+        {
+            <button class="btn btn-sm btn-link expand-button p-0 me-1"
+                    @onclick="@(() => HandleToggle())"
+                    @onclick:stopPropagation="true"
+                    aria-label="@(Node.IsExpanded ? "Collapse" : "Expand")">
+                <i class="bi bi-chevron-@(Node.IsExpanded ? "down" : "right")"></i>
+            </button>
+        }
+        else
+        {
+            <span class="expand-placeholder me-1"></span>
+        }
+
+        <!-- Concept Icon with Color -->
+        <span class="concept-icon me-2"
+              style="@GetConceptStyle()"
+              title="@Node.Concept.Category">
+            <i class="bi bi-circle-fill"></i>
+        </span>
+
+        <!-- Concept Name -->
+        <span class="concept-name">@Node.Concept.Name</span>
+
+        <!-- Child Count Badge -->
+        @if (Node.Children.Count > 0)
+        {
+            <span class="badge bg-secondary ms-2" title="@Node.DescendantCount total descendants">
+                @Node.Children.Count
+            </span>
+        }
+
+        <!-- Category Badge -->
+        @if (!string.IsNullOrEmpty(Node.Concept.Category))
+        {
+            <span class="badge bg-secondary ms-2">
+                @Node.Concept.Category
+            </span>
+        }
+    </div>
+
+    <!-- Children (if expanded) -->
+    @if (Node.IsExpanded && Node.HasChildren)
+    {
+        <div class="node-children">
+            @foreach (var childNode in Node.Children)
+            {
+                <HierarchyNodeView Node="@childNode"
+                                  SelectedConceptId="@SelectedConceptId"
+                                  OnConceptSelected="@OnConceptSelected"
+                                  OnToggleExpand="@OnToggleExpand" />
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public ConceptHierarchyNode Node { get; set; } = null!;
+
+    [Parameter]
+    public int? SelectedConceptId { get; set; }
+
+    [Parameter]
+    public EventCallback<Concept> OnConceptSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<ConceptHierarchyNode> OnToggleExpand { get; set; }
+
+    private bool IsSelected => SelectedConceptId == Node.Concept.Id;
+
+    private void HandleNodeClick()
+    {
+        OnConceptSelected.InvokeAsync(Node.Concept);
+    }
+
+    private void HandleToggle()
+    {
+        OnToggleExpand.InvokeAsync(Node);
+    }
+
+    private string GetConceptStyle()
+    {
+        var color = !string.IsNullOrEmpty(Node.Concept.Color)
+            ? Node.Concept.Color
+            : "#4A90E2"; // Default blue
+
+        return $"color: {color};";
+    }
+}
+
+<style>
+    .hierarchy-node {
+        margin-bottom: 2px;
+    }
+
+    .node-content {
+        padding: 6px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        display: flex;
+        align-items: center;
+    }
+
+    .node-content:hover {
+        background-color: var(--bg-hover);
+    }
+
+    .node-content.selected {
+        background-color: var(--list-active-bg);
+        border-left: 3px solid var(--primary-color);
+        padding-left: 5px;
+    }
+
+    .expand-button {
+        color: var(--text-secondary);
+        text-decoration: none;
+        width: 20px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .expand-button:hover {
+        color: var(--primary-color);
+    }
+
+    .expand-placeholder {
+        width: 20px;
+        display: inline-block;
+    }
+
+    .concept-icon {
+        font-size: 0.875rem;
+        line-height: 1;
+    }
+
+    .concept-name {
+        font-weight: 500;
+        color: var(--text-primary);
+        flex-grow: 1;
+    }
+
+    .node-children {
+        margin-left: 0;
+    }
+
+    .empty-state {
+        border: 2px dashed var(--border-color);
+        border-radius: 8px;
+        margin: 20px;
+    }
+</style>

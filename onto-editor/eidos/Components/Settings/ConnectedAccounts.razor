@@ -1,0 +1,107 @@
+@using Microsoft.AspNetCore.Identity
+@using Eidos.Models
+
+<h4>Connected Accounts</h4>
+<p class="text-muted">Manage your linked OAuth providers</p>
+
+<div class="mt-4">
+    @if (Logins == null || !Logins.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            No external accounts connected. You can link GitHub, Google, or Microsoft accounts to enable quick login.
+        </div>
+    }
+    else
+    {
+        <div class="list-group">
+            @foreach (var login in Logins)
+            {
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">
+                                @if (login.LoginProvider == "GitHub")
+                                {
+                                    <i class="bi bi-github"></i>
+                                }
+                                else if (login.LoginProvider == "Google")
+                                {
+                                    <i class="bi bi-google"></i>
+                                }
+                                else if (login.LoginProvider == "Microsoft")
+                                {
+                                    <i class="bi bi-microsoft"></i>
+                                }
+                                @login.LoginProvider
+                            </h6>
+                            <small class="text-muted">Connected @login.ProviderDisplayName</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => HandleUnlink(login.LoginProvider)">
+                            <i class="bi bi-x-circle"></i> Unlink
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="mt-4">
+        <h5>Link New Account</h5>
+        <p class="text-muted small">Add another way to sign in to your account</p>
+
+        <div class="d-grid gap-2">
+            @if (!IsProviderLinked("GitHub"))
+            {
+                <a href="/Account/ExternalLogin?provider=GitHub" class="btn btn-outline-secondary">
+                    <i class="bi bi-github"></i> Link GitHub
+                </a>
+            }
+
+            @if (!IsProviderLinked("Google"))
+            {
+                <a href="/Account/ExternalLogin?provider=Google" class="btn btn-outline-secondary">
+                    <i class="bi bi-google"></i> Link Google
+                </a>
+            }
+
+            @if (!IsProviderLinked("Microsoft"))
+            {
+                <a href="/Account/ExternalLogin?provider=Microsoft" class="btn btn-outline-secondary">
+                    <i class="bi bi-microsoft"></i> Link Microsoft
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="alert alert-warning mt-4">
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>Important:</strong> Make sure you have at least one way to sign in. If you unlink all external accounts, ensure you have a password set.
+    </div>
+</div>
+
+@code {
+    [Parameter] public ApplicationUser? User { get; set; }
+    [Parameter] public IList<UserLoginInfo>? Logins { get; set; }
+    [Parameter] public EventCallback<string> OnUnlink { get; set; }
+
+    private bool IsProviderLinked(string provider)
+    {
+        return Logins?.Any(l => l.LoginProvider == provider) ?? false;
+    }
+
+    private async Task HandleUnlink(string provider)
+    {
+        if (await ConfirmUnlink(provider))
+        {
+            await OnUnlink.InvokeAsync(provider);
+        }
+    }
+
+    private Task<bool> ConfirmUnlink(string provider)
+    {
+        // In a real app, you'd show a proper confirmation dialog
+        // For now, we'll just return true
+        return Task.FromResult(true);
+    }
+}

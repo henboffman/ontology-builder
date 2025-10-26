@@ -1,0 +1,301 @@
+@using Eidos.Models
+
+<div class="card border-primary">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">@(IsEditing ? "Edit Individual" : "Add New Individual")</h6>
+        <button class="btn btn-sm text-white" style="background: none; border: none;" title="What is an individual?" @onclick="() => showHelp = !showHelp">
+            <i class="bi bi-question-circle"></i>
+        </button>
+    </div>
+    <div class="card-body">
+        @if (showHelp)
+        {
+            <div class="alert alert-info small mb-3">
+                <strong>What is an individual?</strong>
+                <p class="mb-1">An individual (or instance) is a specific example of a concept. Examples:</p>
+                <ul class="mb-0 small">
+                    <li><strong>Fido</strong> - an individual of concept "Dog"</li>
+                    <li><strong>Albert Einstein</strong> - an individual of concept "Scientist"</li>
+                    <li><strong>Toyota Camry 2024</strong> - an individual of concept "Car"</li>
+                </ul>
+            </div>
+        }
+
+        <div class="mb-2">
+            <label class="form-label small">
+                Concept Type <span class="text-danger">*</span>
+                <i class="bi bi-info-circle" title="What type of thing is this individual?"></i>
+            </label>
+            <select class="form-select form-select-sm" @bind="conceptId" disabled="@IsEditing">
+                <option value="0">-- Select a concept --</option>
+                @foreach (var concept in Concepts)
+                {
+                    <option value="@concept.Id">@concept.Name</option>
+                }
+            </select>
+            <small class="text-muted">The concept this individual belongs to</small>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label small">Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-control-sm" @bind="individualName"
+                   placeholder="e.g., Fido" />
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label small">
+                Description
+                <i class="bi bi-info-circle" title="A brief description of this specific individual"></i>
+            </label>
+            <textarea class="form-control form-control-sm" rows="2" @bind="individualDescription"
+                      placeholder="Describe this individual"></textarea>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label small">
+                Label
+                <i class="bi bi-info-circle" title="A human-readable label (optional)"></i>
+            </label>
+            <input type="text" class="form-control form-control-sm" @bind="individualLabel"
+                   placeholder="e.g., Friendly Golden Retriever" />
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label small">
+                URI
+                <i class="bi bi-info-circle" title="Unique identifier URI (optional)"></i>
+            </label>
+            <input type="text" class="form-control form-control-sm" @bind="individualUri"
+                   placeholder="e.g., http://example.org/individuals/fido" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label small">
+                Properties
+                <i class="bi bi-info-circle" title="Specific attributes of this individual"></i>
+            </label>
+
+            @if (properties.Any())
+            {
+                <div class="list-group mb-2">
+                    @foreach (var prop in properties)
+                    {
+                        <div class="list-group-item p-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <strong class="small">@prop.Name:</strong>
+                                    <span class="small text-muted">@prop.Value</span>
+                                    @if (!string.IsNullOrWhiteSpace(prop.DataType))
+                                    {
+                                        <span class="badge bg-secondary ms-1">@prop.DataType</span>
+                                    }
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveProperty(prop)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="card bg-light">
+                <div class="card-body p-2">
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <input type="text" class="form-control form-control-sm" @bind="newPropertyName"
+                                   placeholder="Property name" />
+                        </div>
+                        <div class="col-5">
+                            <input type="text" class="form-control form-control-sm" @bind="newPropertyValue"
+                                   placeholder="Value" />
+                        </div>
+                        <div class="col-3">
+                            <select class="form-select form-select-sm" @bind="newPropertyDataType">
+                                <option value="">Type</option>
+                                <option value="string">String</option>
+                                <option value="integer">Integer</option>
+                                <option value="decimal">Decimal</option>
+                                <option value="boolean">Boolean</option>
+                                <option value="date">Date</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-success mt-2 w-100" @onclick="AddProperty"
+                            disabled="@(string.IsNullOrWhiteSpace(newPropertyName) || string.IsNullOrWhiteSpace(newPropertyValue))">
+                        <i class="bi bi-plus-circle"></i> Add Property
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2">
+            <button class="btn btn-sm btn-primary" @onclick="OnSaveClick"
+                    disabled="@(ConceptId == 0 || string.IsNullOrWhiteSpace(IndividualName))">
+                <i class="bi bi-check-circle"></i> @(IsEditing ? "Save" : "Add")
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="OnCancelClick">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public bool IsEditing { get; set; }
+
+    [Parameter]
+    public ICollection<Concept> Concepts { get; set; } = new List<Concept>();
+
+    [Parameter]
+    public int ConceptId { get; set; }
+
+    [Parameter]
+    public string IndividualName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? IndividualDescription { get; set; }
+
+    [Parameter]
+    public string? IndividualLabel { get; set; }
+
+    [Parameter]
+    public string? IndividualUri { get; set; }
+
+    [Parameter]
+    public List<IndividualProperty> Properties { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<int> ConceptIdChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string> IndividualNameChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> IndividualDescriptionChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> IndividualLabelChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> IndividualUriChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<List<IndividualProperty>> PropertiesChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnSaveClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelClick { get; set; }
+
+    private bool showHelp = false;
+
+    private int conceptId
+    {
+        get => ConceptId;
+        set
+        {
+            if (ConceptId != value)
+            {
+                ConceptId = value;
+                ConceptIdChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string individualName
+    {
+        get => IndividualName;
+        set
+        {
+            if (IndividualName != value)
+            {
+                IndividualName = value;
+                IndividualNameChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? individualDescription
+    {
+        get => IndividualDescription;
+        set
+        {
+            if (IndividualDescription != value)
+            {
+                IndividualDescription = value;
+                IndividualDescriptionChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? individualLabel
+    {
+        get => IndividualLabel;
+        set
+        {
+            if (IndividualLabel != value)
+            {
+                IndividualLabel = value;
+                IndividualLabelChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? individualUri
+    {
+        get => IndividualUri;
+        set
+        {
+            if (IndividualUri != value)
+            {
+                IndividualUri = value;
+                IndividualUriChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private List<IndividualProperty> properties
+    {
+        get => Properties;
+        set
+        {
+            Properties = value;
+            PropertiesChanged.InvokeAsync(value);
+        }
+    }
+
+    // New property state
+    private string newPropertyName = string.Empty;
+    private string newPropertyValue = string.Empty;
+    private string newPropertyDataType = "string";
+
+    private void AddProperty()
+    {
+        if (!string.IsNullOrWhiteSpace(newPropertyName) && !string.IsNullOrWhiteSpace(newPropertyValue))
+        {
+            var prop = new IndividualProperty
+            {
+                Name = newPropertyName,
+                Value = newPropertyValue,
+                DataType = string.IsNullOrWhiteSpace(newPropertyDataType) ? "string" : newPropertyDataType
+            };
+
+            properties.Add(prop);
+            PropertiesChanged.InvokeAsync(properties);
+
+            // Reset input fields
+            newPropertyName = string.Empty;
+            newPropertyValue = string.Empty;
+            newPropertyDataType = "string";
+        }
+    }
+
+    private void RemoveProperty(IndividualProperty property)
+    {
+        properties.Remove(property);
+        PropertiesChanged.InvokeAsync(properties);
+    }
+}

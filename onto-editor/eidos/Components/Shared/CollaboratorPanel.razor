@@ -1,0 +1,309 @@
+@using Eidos.Models.DTOs
+@using Eidos.Models.Enums
+@using Eidos.Services.Interfaces
+@inject IOntologyShareService ShareService
+@inject ILogger<CollaboratorPanel> Logger
+
+<div class="collaborator-panel">
+    <h5 class="mb-3">
+        <i class="bi bi-people-fill me-2"></i>
+        Collaborators
+        @if (Collaborators?.Count > 0)
+        {
+            <span class="badge bg-secondary">@Collaborators.Count</span>
+        }
+    </h5>
+
+    @if (IsLoading)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted small mt-2">Loading collaborators...</p>
+        </div>
+    }
+    else if (ErrorMessage != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            @ErrorMessage
+        </div>
+    }
+    else if (Collaborators == null || !Collaborators.Any())
+    {
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-person-x fs-3 d-block mb-2"></i>
+            <p class="mb-0">No collaborators have accessed this ontology yet.</p>
+            <p class="small">Share the ontology to invite collaborators.</p>
+        </div>
+    }
+    else
+    {
+        <div class="collaborator-list">
+            @foreach (var collaborator in Collaborators)
+            {
+                <div class="collaborator-card mb-3">
+                    <div class="collaborator-header">
+                        <div class="d-flex align-items-center">
+                            <div class="collaborator-avatar me-3">
+                                @if (collaborator.IsGuest)
+                                {
+                                    <i class="bi bi-person-circle fs-2 text-secondary"></i>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-person-fill-check fs-2 text-primary"></i>
+                                }
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center">
+                                    <strong>@collaborator.Name</strong>
+                                    @if (collaborator.IsGuest)
+                                    {
+                                        <span class="badge bg-info ms-2">Guest</span>
+                                    }
+                                    <span class="badge bg-@GetPermissionBadgeColor(collaborator.PermissionLevel) ms-2">
+                                        @GetPermissionLabel(collaborator.PermissionLevel)
+                                    </span>
+                                </div>
+                                @if (!collaborator.IsGuest && !string.IsNullOrEmpty(collaborator.Email))
+                                {
+                                    <small class="text-muted d-block">@collaborator.Email</small>
+                                }
+                                <small class="text-muted">
+                                    Last active: @FormatRelativeTime(collaborator.LastAccessedAt)
+                                </small>
+                            </div>
+                            @if (ShowDetails)
+                            {
+                                <button class="btn btn-sm btn-outline-primary"
+                                        @onclick="() => ToggleDetails(GetCollaboratorId(collaborator))">
+                                    <i class="bi bi-@(IsDetailsExpanded(GetCollaboratorId(collaborator)) ? "chevron-up" : "chevron-down")"></i>
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    @if (ShowDetails && IsDetailsExpanded(GetCollaboratorId(collaborator)))
+                    {
+                        <div class="collaborator-details mt-3">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="stat-card">
+                                        <div class="stat-label">Total Edits</div>
+                                        <div class="stat-value">@collaborator.EditStats.TotalEdits</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="stat-card">
+                                        <div class="stat-label">Access Count</div>
+                                        <div class="stat-value">@collaborator.AccessCount</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (collaborator.EditStats.TotalEdits > 0)
+                            {
+                                <div class="mt-3">
+                                    <h6 class="text-muted small mb-2">Edit Summary</h6>
+                                    <div class="edit-stats">
+                                        @if (collaborator.EditStats.ConceptsCreated + collaborator.EditStats.ConceptsUpdated + collaborator.EditStats.ConceptsDeleted > 0)
+                                        {
+                                            <div class="edit-stat-item">
+                                                <i class="bi bi-diagram-3 me-2"></i>
+                                                <strong>Concepts:</strong>
+                                                <span class="text-success">+@collaborator.EditStats.ConceptsCreated</span>
+                                                <span class="text-warning">~@collaborator.EditStats.ConceptsUpdated</span>
+                                                <span class="text-danger">-@collaborator.EditStats.ConceptsDeleted</span>
+                                            </div>
+                                        }
+                                        @if (collaborator.EditStats.RelationshipsCreated + collaborator.EditStats.RelationshipsUpdated + collaborator.EditStats.RelationshipsDeleted > 0)
+                                        {
+                                            <div class="edit-stat-item">
+                                                <i class="bi bi-arrow-left-right me-2"></i>
+                                                <strong>Relationships:</strong>
+                                                <span class="text-success">+@collaborator.EditStats.RelationshipsCreated</span>
+                                                <span class="text-warning">~@collaborator.EditStats.RelationshipsUpdated</span>
+                                                <span class="text-danger">-@collaborator.EditStats.RelationshipsDeleted</span>
+                                            </div>
+                                        }
+                                        @if (collaborator.EditStats.PropertiesCreated + collaborator.EditStats.PropertiesUpdated + collaborator.EditStats.PropertiesDeleted > 0)
+                                        {
+                                            <div class="edit-stat-item">
+                                                <i class="bi bi-tag me-2"></i>
+                                                <strong>Properties:</strong>
+                                                <span class="text-success">+@collaborator.EditStats.PropertiesCreated</span>
+                                                <span class="text-warning">~@collaborator.EditStats.PropertiesUpdated</span>
+                                                <span class="text-danger">-@collaborator.EditStats.PropertiesDeleted</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (ShowActivity && collaborator.RecentActivities.Any())
+                            {
+                                <div class="mt-3">
+                                    <h6 class="text-muted small mb-2">Recent Activity</h6>
+                                    <div class="activity-timeline">
+                                        @foreach (var activity in collaborator.RecentActivities.Take(5))
+                                        {
+                                            <div class="activity-item">
+                                                <div class="activity-icon">
+                                                    <i class="bi bi-@GetActivityIcon(activity.ActivityType)"></i>
+                                                </div>
+                                                <div class="activity-content">
+                                                    <div class="activity-description">@activity.Description</div>
+                                                    <small class="text-muted">@FormatRelativeTime(activity.CreatedAt)</small>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int OntologyId { get; set; }
+
+    [Parameter]
+    public bool ShowDetails { get; set; } = true;
+
+    [Parameter]
+    public bool ShowActivity { get; set; } = true;
+
+    [Parameter]
+    public int RecentActivityLimit { get; set; } = 10;
+
+    private List<CollaboratorInfo>? Collaborators { get; set; }
+    private bool IsLoading { get; set; } = true;
+    private string? ErrorMessage { get; set; }
+    private HashSet<string> ExpandedCollaborators { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCollaboratorsAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Reload if OntologyId changes
+        if (OntologyId > 0)
+        {
+            await LoadCollaboratorsAsync();
+        }
+    }
+
+    private async Task LoadCollaboratorsAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+            Collaborators = await ShareService.GetCollaboratorsAsync(OntologyId, RecentActivityLimit);
+            Logger.LogInformation("Loaded {Count} collaborators for ontology {OntologyId}",
+                Collaborators.Count, OntologyId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading collaborators for ontology {OntologyId}", OntologyId);
+            ErrorMessage = "Failed to load collaborators. Please try again.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    public async Task RefreshAsync()
+    {
+        await LoadCollaboratorsAsync();
+    }
+
+    private void ToggleDetails(string collaboratorId)
+    {
+        if (ExpandedCollaborators.Contains(collaboratorId))
+        {
+            ExpandedCollaborators.Remove(collaboratorId);
+        }
+        else
+        {
+            ExpandedCollaborators.Add(collaboratorId);
+        }
+    }
+
+    private bool IsDetailsExpanded(string collaboratorId)
+    {
+        return ExpandedCollaborators.Contains(collaboratorId);
+    }
+
+    private string GetCollaboratorId(CollaboratorInfo collaborator)
+    {
+        return collaborator.UserId ?? $"guest-{collaborator.Name}";
+    }
+
+    private string GetPermissionBadgeColor(PermissionLevel level)
+    {
+        return level switch
+        {
+            PermissionLevel.View => "secondary",
+            PermissionLevel.ViewAndAdd => "info",
+            PermissionLevel.ViewAddEdit => "primary",
+            PermissionLevel.FullAccess => "success",
+            _ => "secondary"
+        };
+    }
+
+    private string GetPermissionLabel(PermissionLevel level)
+    {
+        return level switch
+        {
+            PermissionLevel.View => "View Only",
+            PermissionLevel.ViewAndAdd => "View & Add",
+            PermissionLevel.ViewAddEdit => "Can Edit",
+            PermissionLevel.FullAccess => "Full Access",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetActivityIcon(string activityType)
+    {
+        return activityType.ToLower() switch
+        {
+            "create" => "plus-circle-fill",
+            "update" => "pencil-fill",
+            "delete" => "trash-fill",
+            "import" => "download",
+            "export" => "upload",
+            _ => "dot"
+        };
+    }
+
+    private string FormatRelativeTime(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalMinutes < 1)
+            return "just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)}w ago";
+        if (timeSpan.TotalDays < 365)
+            return $"{(int)(timeSpan.TotalDays / 30)}mo ago";
+
+        return $"{(int)(timeSpan.TotalDays / 365)}y ago";
+    }
+}

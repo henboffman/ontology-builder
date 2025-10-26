@@ -1,0 +1,51 @@
+@using Eidos.Models
+@using Eidos.Services.Interfaces
+@inject IUserService UserService
+@inject NavigationManager Navigation
+
+<div class="user-display">
+    @if (currentUser != null)
+    {
+        <div class="user-info">
+            <i class="bi bi-person-circle"></i> @currentUser.DisplayName
+        </div>
+    }
+</div>
+
+@code {
+    private ApplicationUser? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await UserService.GetCurrentUserAsync();
+    }
+}
+
+<style>
+    .user-display {
+        display: inline-block;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .user-info {
+        padding: 4px 12px;
+        color: #6c757d;
+        font-size: 0.9rem;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 6px;
+    }
+
+    .user-info:hover {
+        background: rgba(108, 117, 125, 0.1);
+        transform: scale(1.02);
+    }
+
+    .user-info i {
+        margin-right: 4px;
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .user-info:hover i {
+        transform: scale(1.1);
+    }
+</style>

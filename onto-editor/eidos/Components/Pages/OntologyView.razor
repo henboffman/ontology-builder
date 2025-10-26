@@ -1,0 +1,1927 @@
+@page "/ontology/{id:int}"
+@using Eidos.Models
+@using Eidos.Models.Enums
+@using Eidos.Models.Events
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@using Eidos.Components.Shared
+@using Eidos.Components.Ontology
+@using VDS.RDF
+@using Microsoft.JSInterop
+@using static Eidos.Services.TtlExportService
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject IOntologyService OntologyService
+@inject IOntologyShareService ShareService
+@inject IUserPreferencesService PreferencesService
+@inject IConceptService ConceptService
+@inject IIndividualService IndividualService
+@inject IRestrictionService RestrictionService
+@inject ITtlImportService TtlImportService
+@inject ITtlExportService TtlExportService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ConfirmService ConfirmService
+@inject ToastService ToastService
+@inject ILogger<OntologyView> Logger
+@rendermode InteractiveServer
+
+<PageTitle>@(ontology?.Name ?? "Ontology")</PageTitle>
+
+@if (loadError != null)
+{
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-exclamation-triangle"></i> Error Loading Ontology
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p>@loadError</p>
+                        <a href="/" class="btn btn-primary">
+                            <i class="bi bi-house"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else if (ontology == null)
+{
+    <div class="loading-overlay">
+        <div class="loading-content">
+            <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h4>Loading Ontology</h4>
+            <p class="text-muted">Please wait...</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container-fluid mt-3">
+        <!-- Permission Level Banner -->
+        @if (userPermissionLevel.HasValue && userPermissionLevel.Value != PermissionLevel.FullAccess)
+        {
+            <div class="alert @GetPermissionBannerClass() mb-3" role="alert">
+                <i class="bi bi-shield-lock"></i>
+                <strong>@GetPermissionLevelDisplayName()</strong> - @GetPermissionDescription()
+            </div>
+        }
+
+        <!-- Header -->
+        <OntologyHeader Ontology="@ontology"
+                       OnBackClick="@GoBack"
+                       OnSettingsClick="@GetConditionalCallback(CanFullAccess(), ShowSettingsDialog)"
+                       OnImportClick="@GetConditionalCallback(CanEdit(), ShowImportDialog)"
+                       OnExportClick="@ShowExportDialog"
+                       CanShare="@CanFullAccess()"
+                       CanEdit="@CanEdit()" />
+
+        <!-- View Mode Selector -->
+        <ViewModeSelector CurrentViewMode="@viewMode"
+                         OnViewModeChanged="@SwitchViewMode"
+                         CanUndo="@OntologyService.CanUndo()"
+                         CanRedo="@OntologyService.CanRedo()"
+                         OnUndoClick="@HandleUndo"
+                         OnRedoClick="@HandleRedo" />
+
+        <!-- TTL Import Dialog -->
+        <TtlImportDialog IsVisible="@showImportDialog"
+                        CurrentStep="@importStep"
+                        IsProcessing="@isProcessingFile"
+                        IsImporting="@isImporting"
+                        ErrorMessage="@importError"
+                        ImportResult="@importResult"
+                        MergePreview="@mergePreview"
+                        SelectedOption="@importOption"
+                        SelectedOptionChanged="@((value) => importOption = value)"
+                        OntologyName="@ontology.Name"
+                        OnFileSelected="@HandleFileSelected"
+                        OnCancelClick="@CancelImport"
+                        OnExecuteImport="@ExecuteImport" />
+
+        <!-- Ontology Settings Dialog -->
+        <OntologySettingsDialog IsVisible="@showSettingsDialog"
+                               Name="@editingOntologyName"
+                               NameChanged="@((value) => editingOntologyName = value)"
+                               Description="@editingOntologyDescription"
+                               DescriptionChanged="@((value) => editingOntologyDescription = value)"
+                               Author="@editingOntologyAuthor"
+                               AuthorChanged="@((value) => editingOntologyAuthor = value)"
+                               Version="@editingOntologyVersion"
+                               VersionChanged="@((value) => editingOntologyVersion = value)"
+                               NamespaceUri="@editingOntologyNamespace"
+                               NamespaceUriChanged="@((value) => editingOntologyNamespace = value)"
+                               Tags="@editingOntologyTags"
+                               TagsChanged="@((value) => editingOntologyTags = value)"
+                               License="@editingOntologyLicense"
+                               LicenseChanged="@((value) => editingOntologyLicense = value)"
+                               UsesBFO="@editingOntologyUsesBFO"
+                               UsesBFOChanged="@((value) => editingOntologyUsesBFO = value)"
+                               UsesProvO="@editingOntologyUsesProvO"
+                               UsesProvOChanged="@((value) => editingOntologyUsesProvO = value)"
+                               OnSaveClick="@SaveSettings"
+                               OnCancelClick="@CancelSettings" />
+
+        <!-- Export Dialog -->
+        <ExportDialog @ref="exportDialog" Ontology="@ontology" />
+
+        <div class="row" style="height: calc(100vh - 200px);">
+            <!-- Main Content Area -->
+            <div class="col-md-9" style="height: 100%; overflow-y: auto;">
+                @if (viewMode == ViewMode.Ttl)
+                {
+                    <TtlView TtlContent="@ttlContent"
+                            SelectedFormat="@selectedRdfFormat"
+                            SelectedFormatChanged="@((value) => selectedRdfFormat = value)"
+                            OnCopyClick="@CopyTtlToClipboard"
+                            OnDownloadClick="@DownloadTtl"
+                            OnFormatChange="@OnRdfFormatChanged" />
+                }
+                else if (viewMode == ViewMode.Notes)
+                {
+                    <NotesView Notes="@editingNotes"
+                              NotesChanged="@((value) => editingNotes = value)"
+                              OnSaveClick="@GetConditionalCallback(CanEdit(), SaveNotes)"
+                              CanEdit="@CanEdit()" />
+                }
+                else if (viewMode == ViewMode.Templates)
+                {
+                    <TemplateManager Templates="@ontology.CustomTemplates"
+                                    OnTemplateAdded="@GetConditionalCallback(CanEdit(), SaveCustomTemplate)"
+                                    OnTemplateUpdated="@GetConditionalCallback(CanEdit(), UpdateCustomTemplate)"
+                                    OnTemplateDeleted="@GetConditionalCallback(CanEdit(), DeleteCustomTemplate)"
+                                    CanEdit="@CanEdit()" />
+                }
+                else if (viewMode == ViewMode.Links)
+                {
+                    <LinkedOntologiesManager LinkedOntologies="@ontology.LinkedOntologies" />
+                }
+                else if (viewMode == ViewMode.Collaborators)
+                {
+                    <CollaboratorPanel OntologyId="@ontology.Id"
+                                      ShowDetails="true"
+                                      ShowActivity="true"
+                                      RecentActivityLimit="10" />
+                }
+                else if (viewMode == ViewMode.Help)
+                {
+                    <OntologyFrameworkGuide />
+                }
+                else if (viewMode == ViewMode.List)
+                {
+                    <ListView @key="@($"listview-{ontology.Id}-{ontology.UpdatedAt.Ticks}")"
+                             Concepts="@ontology.Concepts"
+                             Relationships="@ontology.Relationships"
+                             SortOption="@sortOption"
+                             SortOptionChanged="@((value) => sortOption = value)"
+                             OnAddConceptClick="@GetConditionalCallback(CanAdd(), ShowAddConceptDialog)"
+                             OnAddRelationshipClick="@GetConditionalCallback(CanAdd(), ShowAddRelationshipDialog)"
+                             OnConceptSelect="@SelectConcept"
+                             OnConceptEdit="@GetConditionalCallback(CanEdit(), EditConcept)"
+                             OnConceptDuplicate="@DuplicateConcept"
+                             OnConceptDelete="@GetConditionalCallback(CanEdit(), DeleteConcept)"
+                             OnRelationshipEdit="@GetConditionalCallback(CanEdit(), EditRelationship)"
+                             OnRelationshipDuplicate="@DuplicateRelationship"
+                             OnRelationshipDelete="@GetConditionalCallback(CanEdit(), DeleteRelationship)" />
+                }
+                else if (viewMode == ViewMode.Hierarchy)
+                {
+                    <div class="card h-100">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-diagram-2 me-2"></i>Concept Hierarchy
+                            </h5>
+                            <small class="text-muted">
+                                Showing subclass-of and is-a relationships
+                            </small>
+                        </div>
+                        <div class="card-body" style="overflow-y: auto;">
+                            <ConceptHierarchyTree HierarchyNodes="@hierarchyNodes"
+                                                SelectedConceptId="@selectedConceptId"
+                                                OnConceptSelected="@SelectConcept" />
+                        </div>
+                    </div>
+                }
+                else if (viewMode == ViewMode.Instances)
+                {
+                    <div class="card h-100">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-person me-2"></i>Individuals & Instances
+                            </h5>
+                            <small class="text-muted">
+                                Specific instances of concepts
+                            </small>
+                        </div>
+                        <div class="card-body" style="overflow-y: auto;">
+                            <IndividualListView Individuals="@individuals"
+                                              SelectedIndividual="@selectedIndividual"
+                                              OnIndividualSelected="@SelectIndividual"
+                                              OnAddIndividualClick="@GetConditionalCallback(CanAdd(), () => ShowAddIndividualDialog())"
+                                              OnEditIndividualClick="@(async (ind) => { if (CanEdit()) EditIndividual(ind); await Task.CompletedTask; })"
+                                              OnDeleteIndividualClick="@(async (ind) => { if (CanEdit()) await DeleteIndividual(ind); })"
+                                              CanEdit="@CanEdit()" />
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <GraphView @key="@($"graphview-{ontology.Id}-{ontology.UpdatedAt.Ticks}")"
+                              FilteredOntology="@ontology"
+                              ColorMode="@graphColorMode"
+                              SourceOntologies="@GetSourceOntologies()"
+                              OnAddConceptClick="@GetConditionalCallback(CanAdd(), ShowAddConceptDialog)"
+                              OnAddRelationshipClick="@GetConditionalCallback(CanAdd(), ShowAddRelationshipDialog)"
+                              OnColorModeChanged="@SetColorMode"
+                              OnNodeCtrlClicked="@GetConditionalCallback(CanAdd(), HandleNodeCtrlClick)"
+                              CanAdd="@CanAdd()"
+                              @ref="graphView" />
+                }
+            </div>
+
+            <!-- Sidebar - Concept/Relationship Editors and Details -->
+            <div class="col-md-3" style="height: 100%; overflow-y: auto;">
+                @if (showAddConcept || editingConcept != null)
+                {
+                    <ConceptEditor IsEditing="@(editingConcept != null)"
+                                  ShouldPulse="@shouldPulseSidebar"
+                                  CustomTemplates="@ontology.CustomTemplates"
+                                  ConceptName="@newConcept.Name"
+                                  ConceptNameChanged="@((value) => newConcept.Name = value)"
+                                  ConceptCategory="@newConcept.Category"
+                                  ConceptCategoryChanged="@OnConceptCategoryChanged"
+                                  ConceptExplanation="@newConcept.SimpleExplanation"
+                                  ConceptExplanationChanged="@((value) => newConcept.SimpleExplanation = value)"
+                                  ConceptExamples="@newConcept.Examples"
+                                  ConceptExamplesChanged="@((value) => newConcept.Examples = value)"
+                                  ConceptColor="@newConcept.Color"
+                                  ConceptColorChanged="@((value) => newConcept.Color = value)"
+                                  OnSaveClick="@SaveConcept"
+                                  OnCancelClick="@CancelEditConcept"
+                                  OnTemplateSelected="@ApplyConceptTemplate" />
+                }
+                else if (showAddRelationship)
+                {
+                    <RelationshipEditor IsEditing="@(editingRelationship != null)"
+                                       ShouldPulse="@shouldPulseSidebar"
+                                       Concepts="@ontology.Concepts"
+                                       SourceConceptId="@newRelationship.SourceConceptId"
+                                       SourceConceptIdChanged="@((value) => newRelationship.SourceConceptId = value)"
+                                       TargetConceptId="@newRelationship.TargetConceptId"
+                                       TargetConceptIdChanged="@((value) => newRelationship.TargetConceptId = value)"
+                                       RelationType="@newRelationship.RelationType"
+                                       RelationTypeChanged="@((value) => newRelationship.RelationType = value)"
+                                       CustomType="@customRelationType"
+                                       CustomTypeChanged="@((value) => customRelationType = value)"
+                                       Label="@newRelationship.Label"
+                                       LabelChanged="@((value) => newRelationship.Label = value)"
+                                       Description="@newRelationship.Description"
+                                       DescriptionChanged="@((value) => newRelationship.Description = value)"
+                                       OnSaveClick="@SaveRelationship"
+                                       OnCancelClick="@CancelEditRelationship" />
+                }
+                else if (showAddIndividual || editingIndividual != null)
+                {
+                    <IndividualEditor IsEditing="@(editingIndividual != null)"
+                                     Concepts="@ontology.Concepts"
+                                     ConceptId="@newIndividual.ConceptId"
+                                     ConceptIdChanged="@((value) => newIndividual.ConceptId = value)"
+                                     IndividualName="@newIndividual.Name"
+                                     IndividualNameChanged="@((value) => newIndividual.Name = value)"
+                                     IndividualDescription="@newIndividual.Description"
+                                     IndividualDescriptionChanged="@((value) => newIndividual.Description = value)"
+                                     IndividualLabel="@newIndividual.Label"
+                                     IndividualLabelChanged="@((value) => newIndividual.Label = value)"
+                                     IndividualUri="@newIndividual.Uri"
+                                     IndividualUriChanged="@((value) => newIndividual.Uri = value)"
+                                     Properties="@newIndividualProperties"
+                                     PropertiesChanged="@((value) => newIndividualProperties = value)"
+                                     OnSaveClick="@SaveIndividual"
+                                     OnCancelClick="@CancelEditIndividual" />
+                }
+                else if (selectedConcept != null)
+                {
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Concept Details</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <div style="width: 30px; height: 30px; background-color: @selectedConcept.Color; border-radius: 4px;"></div>
+                                <h5 class="mb-0">@selectedConcept.Name</h5>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(selectedConcept.Category))
+                            {
+                                <p class="mb-2"><strong>Category:</strong> @selectedConcept.Category</p>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(selectedConcept.SimpleExplanation))
+                            {
+                                <p class="mb-2"><strong>Explanation:</strong> @selectedConcept.SimpleExplanation</p>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(selectedConcept.Definition))
+                            {
+                                <p class="mb-2"><strong>Definition:</strong> @selectedConcept.Definition</p>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(selectedConcept.Examples))
+                            {
+                                <p class="mb-2">
+                                    <strong>Examples:</strong><br/>
+                                    <em>@selectedConcept.Examples</em>
+                                </p>
+                            }
+
+                            <hr class="my-3" />
+
+                            <ConceptRestrictionsEditor Restrictions="@selectedConceptRestrictions"
+                                                      OnAddRestrictionClick="@(() => ShowAddRestrictionDialog())"
+                                                      OnEditRestrictionClick="@((r) => EditRestriction(r))"
+                                                      OnDeleteRestrictionClick="@((r) => DeleteRestriction(r))"
+                                                      CanEdit="@CanEdit()" />
+
+                            <hr class="my-3" />
+
+                            <button class="btn btn-sm btn-outline-secondary w-100" @onclick="() => selectedConcept = null">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <!-- Action Buttons -->
+                    <div class="card border-success mb-3">
+                        <div class="card-body p-2">
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-success btn-sm"
+                                        @onclick="ShowAddConceptDialog"
+                                        disabled="@(!CanAdd())">
+                                    <i class="bi bi-plus-circle"></i> Add Concept
+                                </button>
+                                <button class="btn btn-info btn-sm"
+                                        @onclick="ShowAddRelationshipDialog"
+                                        disabled="@(!CanAdd())">
+                                    <i class="bi bi-arrow-left-right"></i> Add Relationship
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (ontology.Concepts.Count == 0)
+                    {
+                        <!-- Example Cards for Empty Ontologies -->
+                        <div class="card border-secondary mb-3">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="mb-0">Example Concept</h6>
+                            </div>
+                            <div class="card-body small">
+                                <div class="mb-2">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <div style="width: 20px; height: 20px; background-color: #4A90E2; border-radius: 3px;"></div>
+                                        <strong>Animal</strong>
+                                        <span class="badge bg-secondary">Root</span>
+                                    </div>
+                                    <p class="mb-1 text-muted">
+                                        <strong>Explanation:</strong> Any living creature that needs to eat food to survive
+                                    </p>
+                                    <p class="mb-0">
+                                        <i class="bi bi-lightbulb text-warning"></i>
+                                        <em>Examples: Dogs, cats, birds, fish</em>
+                                    </p>
+                                </div>
+                                <hr />
+                                <p class="mb-0 text-muted"><strong>Try creating concepts like:</strong></p>
+                                <ul class="mb-0">
+                                    <li>Broad categories first (e.g., "Vehicle", "Food")</li>
+                                    <li>Then more specific types (e.g., "Car", "Fruit")</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="card border-secondary">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="mb-0">Example Relationship</h6>
+                            </div>
+                            <div class="card-body small">
+                                <div class="mb-2">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <span class="badge bg-primary">Dog</span>
+                                        <span class="badge bg-dark">is-a</span>
+                                        <i class="bi bi-arrow-right"></i>
+                                        <span class="badge bg-primary">Animal</span>
+                                    </div>
+                                    <p class="mb-0 text-muted">
+                                        <strong>Meaning:</strong> Dogs are a type of animal
+                                    </p>
+                                </div>
+                                <hr />
+                                <p class="mb-0 text-muted"><strong>Common patterns:</strong></p>
+                                <ul class="mb-0">
+                                    <li><strong>is-a:</strong> Type/subtype (Car is-a Vehicle)</li>
+                                    <li><strong>part-of:</strong> Components (Wheel part-of Car)</li>
+                                    <li><strong>has-a:</strong> Attributes (Person has-a Name)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Tips Card -->
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6>💡 Tips</h6>
+                                <ul class="small mb-0">
+                                    <li>Start by adding <strong>concepts</strong> (the building blocks)</li>
+                                    <li>Then connect them with <strong>relationships</strong></li>
+                                    <li>Use colors to visually group related concepts</li>
+                                    <li>Add examples to help others understand</li>
+                                    <li>Click a concept to see its details</li>
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Ontology? ontology;
+    private string? loadError;
+    private ViewMode viewMode = ViewMode.List;
+    private string graphColorMode = "concept";
+    private bool showAddConcept = false;
+    private bool showAddRelationship = false;
+    private bool showAddIndividual = false;
+    private Concept? selectedConcept = null;
+    private Concept? editingConcept = null;
+    private Relationship? editingRelationship = null;
+    private Individual? editingIndividual = null;
+
+    // Permission management
+    private PermissionLevel? userPermissionLevel;
+    private string? currentUserId;
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "guestSession")]
+    public string? GuestSessionToken { get; set; }
+
+    private Concept newConcept = new();
+    private Relationship newRelationship = new();
+    private Individual newIndividual = new();
+    private List<IndividualProperty> newIndividualProperties = new();
+    private string customRelationType = string.Empty;
+    private GraphView? graphView;
+
+    private string ttlContent = string.Empty;
+    private string selectedRdfFormat = "Turtle";
+    private string editingNotes = string.Empty;
+    private string sortOption = "category";
+    private bool shouldPulseSidebar = false;
+    private int? firstSelectedConceptId = null;
+
+    // Hierarchy view state
+    private IEnumerable<ConceptHierarchyNode>? hierarchyNodes;
+    private int? selectedConceptId => selectedConcept?.Id;
+
+    // Individuals view state
+    private IEnumerable<Individual>? individuals;
+    private Individual? selectedIndividual;
+
+    // Restrictions view state
+    private IEnumerable<ConceptRestriction>? selectedConceptRestrictions;
+
+    // Settings dialog state
+    private bool showSettingsDialog = false;
+    private string editingOntologyName = string.Empty;
+    private string? editingOntologyDescription;
+    private string? editingOntologyAuthor;
+    private string? editingOntologyVersion;
+    private string? editingOntologyNamespace;
+    private string? editingOntologyTags;
+    private string? editingOntologyLicense;
+    private bool editingOntologyUsesBFO;
+    private bool editingOntologyUsesProvO;
+
+    // TTL Import state
+    private bool showImportDialog = false;
+    private TtlImportDialog.ImportStep importStep = TtlImportDialog.ImportStep.Upload;
+    private bool isProcessingFile = false;
+    private bool isImporting = false;
+    private string? importError = null;
+    private TtlImportResult? importResult = null;
+    private MergePreview? mergePreview = null;
+    private TtlImportDialog.ImportOption importOption = TtlImportDialog.ImportOption.Merge;
+
+    // Export Dialog
+    private ExportDialog? exportDialog;
+
+    // SignalR real-time collaboration
+    private DotNetObjectReference<OntologyView>? dotNetRef;
+    private bool hasRendered = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Get current user ID
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            ontology = await OntologyService.GetOntologyAsync(Id);
+
+            if (ontology == null)
+            {
+                loadError = $"Ontology with ID {Id} was not found. You may not have permission to access this ontology, or it may have been deleted.";
+                return;
+            }
+
+            // Check user's permission level for this ontology
+            // For authenticated users: tracked in UserShareAccess table by userId
+            // For guest users: tracked via GuestSessionToken query parameter
+            userPermissionLevel = await ShareService.GetPermissionLevelAsync(ontology.Id, currentUserId, GuestSessionToken);
+
+            // If no explicit permission is set, assume FullAccess (owner or default)
+            if (!userPermissionLevel.HasValue)
+            {
+                userPermissionLevel = PermissionLevel.FullAccess;
+            }
+        }
+        catch (Exception ex)
+        {
+            loadError = $"An error occurred while loading the ontology: {ex.Message}";
+        }
+    }
+
+    private async Task LoadOntology()
+    {
+        ontology = await OntologyService.GetOntologyAsync(Id);
+
+        if (graphView != null && viewMode == ViewMode.Graph)
+        {
+            await Task.Delay(100);
+            await graphView.RefreshGraph();
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task HandleUndo()
+    {
+        var success = await OntologyService.UndoAsync();
+        if (success)
+        {
+            await LoadOntology();
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleRedo()
+    {
+        var success = await OntologyService.RedoAsync();
+        if (success)
+        {
+            await LoadOntology();
+            StateHasChanged();
+        }
+    }
+
+    private List<string> GetSourceOntologies()
+    {
+        if (ontology == null) return new List<string>();
+
+        return ontology.Concepts
+            .Select(c => c.SourceOntology ?? "Original")
+            .Distinct()
+            .ToList();
+    }
+
+    private async Task SetColorMode(string mode)
+    {
+        graphColorMode = mode;
+        if (graphView != null)
+        {
+            await Task.Delay(100);
+            await graphView.RefreshGraph();
+        }
+    }
+
+    private async Task SwitchViewMode(ViewMode mode)
+    {
+        viewMode = mode;
+        showAddConcept = false;
+        showAddRelationship = false;
+        editingConcept = null;
+        editingRelationship = null;
+        selectedConcept = null;
+
+        if (mode == ViewMode.Ttl)
+        {
+            await GenerateRdfContent();
+        }
+        else if (mode == ViewMode.Notes)
+        {
+            editingNotes = ontology?.Notes ?? string.Empty;
+        }
+        else if (mode == ViewMode.Hierarchy)
+        {
+            if (ontology != null)
+            {
+                hierarchyNodes = await ConceptService.GetHierarchyAsync(ontology.Id);
+            }
+        }
+        else if (mode == ViewMode.Instances)
+        {
+            if (ontology != null)
+            {
+                individuals = await IndividualService.GetByOntologyIdAsync(ontology.Id);
+            }
+        }
+    }
+
+    private async Task ShowAddConceptDialog()
+    {
+        try
+        {
+            var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+
+            newConcept = new Concept
+            {
+                OntologyId = Id,
+                Color = prefs.DefaultConceptColor
+            };
+
+            Logger.LogInformation("Applied default color {Color} from preferences", prefs.DefaultConceptColor);
+        }
+        catch (Exception ex)
+        {
+            // Fallback to random color if preferences fail to load
+            Logger.LogError(ex, "Failed to load user preferences for concept creation, using random color");
+            newConcept = new Concept
+            {
+                OntologyId = Id,
+                Color = "#" + Random.Shared.Next(0x1000000).ToString("X6")
+            };
+        }
+
+        showAddConcept = true;
+        showAddRelationship = false;
+        selectedConcept = null;
+    }
+
+    private async Task OnConceptCategoryChanged(string? category)
+    {
+        newConcept.Category = category;
+
+        // Auto-apply color based on category if preferences allow
+        try
+        {
+            var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+
+            if (prefs.AutoColorByCategory)
+            {
+                newConcept.Color = prefs.GetColorForCategory(category);
+                Logger.LogInformation("Auto-applied color {Color} for category {Category}", newConcept.Color, category);
+            }
+            else
+            {
+                Logger.LogInformation("AutoColorByCategory is disabled, not changing color for category {Category}", category);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to auto-apply color for category {Category}", category);
+        }
+    }
+
+    private async Task ShowAddRelationshipDialog()
+    {
+        newRelationship = new Relationship { OntologyId = Id };
+        customRelationType = string.Empty;
+        showAddRelationship = true;
+        showAddConcept = false;
+        selectedConcept = null;
+
+        // Note: Relationship colors could be added here in the future
+        // Currently relationships don't have a Color property in the model
+        // If you add it, uncomment the code below:
+        /*
+        try
+        {
+            var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+            newRelationship.Color = prefs.DefaultRelationshipColor;
+        }
+        catch
+        {
+            // Fallback if preferences fail to load
+        }
+        */
+
+        await Task.CompletedTask; // Keep method async for future use
+    }
+
+    private async Task SaveConcept()
+    {
+        if (string.IsNullOrWhiteSpace(newConcept.Name))
+            return;
+
+        // Check permissions
+        if (editingConcept != null && !CanEdit())
+        {
+            ToastService.ShowError("You do not have permission to edit concepts");
+            return;
+        }
+        else if (editingConcept == null && !CanAdd())
+        {
+            ToastService.ShowError("You do not have permission to add concepts");
+            return;
+        }
+
+        try
+        {
+            if (editingConcept != null)
+            {
+                await OntologyService.UpdateConceptAsync(newConcept);
+                ToastService.ShowSuccess($"Updated concept \"{newConcept.Name}\"");
+                editingConcept = null;
+            }
+            else
+            {
+                await OntologyService.CreateConceptAsync(newConcept);
+                ToastService.ShowSuccess($"Created concept \"{newConcept.Name}\"");
+            }
+
+            showAddConcept = false;
+            await LoadOntology();
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = ex.InnerException != null
+                ? $"{ex.Message} - {ex.InnerException.Message}"
+                : ex.Message;
+            ToastService.ShowError($"Failed to save concept: {errorMessage}", 8000);
+        }
+    }
+
+    private void EditConcept(Concept concept)
+    {
+        editingConcept = concept;
+        newConcept = new Concept
+        {
+            Id = concept.Id,
+            OntologyId = concept.OntologyId,
+            Name = concept.Name,
+            Category = concept.Category,
+            SimpleExplanation = concept.SimpleExplanation,
+            Definition = concept.Definition,
+            Examples = concept.Examples,
+            Color = concept.Color,
+            SourceOntology = concept.SourceOntology
+        };
+        showAddConcept = true;
+        showAddRelationship = false;
+        selectedConcept = null;
+    }
+
+    private async Task DuplicateConcept(Concept concept)
+    {
+        newConcept = new Concept
+        {
+            OntologyId = Id,
+            Name = $"{concept.Name} (Copy)",
+            Category = concept.Category,
+            SimpleExplanation = concept.SimpleExplanation,
+            Definition = concept.Definition,
+            Examples = concept.Examples,
+            Color = concept.Color,
+            SourceOntology = concept.SourceOntology
+        };
+        editingConcept = null;
+        showAddConcept = true;
+        showAddRelationship = false;
+        selectedConcept = null;
+
+        shouldPulseSidebar = true;
+        StateHasChanged();
+        await Task.Delay(3600);
+        shouldPulseSidebar = false;
+
+        ToastService.ShowInfo($"Ready to create copy of \"{concept.Name}\". Click 'Add' to save or 'Cancel' to discard.", 5000);
+    }
+
+    private void ApplyConceptTemplate(string templateValue)
+    {
+        if (string.IsNullOrWhiteSpace(templateValue))
+            return;
+
+        // Check if it's a custom template (format: "custom:123") or default (format: "default:Entity")
+        if (templateValue.StartsWith("custom:"))
+        {
+            var templateIdStr = templateValue.Substring(7); // Remove "custom:" prefix
+            if (int.TryParse(templateIdStr, out var templateId))
+            {
+                var customTemplate = ontology.CustomTemplates.FirstOrDefault(t => t.Id == templateId);
+                if (customTemplate != null)
+                {
+                    newConcept.Category = customTemplate.Category;
+                    newConcept.SimpleExplanation = customTemplate.Description;
+                    newConcept.Examples = customTemplate.Examples;
+                    newConcept.Color = customTemplate.Color;
+                    ToastService.ShowInfo($"Applied custom template '{customTemplate.Category}' - customize as needed");
+                }
+            }
+        }
+        else if (templateValue.StartsWith("default:"))
+        {
+            var templateCategory = templateValue.Substring(8); // Remove "default:" prefix
+            var template = CommonConceptTemplates.Templates.FirstOrDefault(t => t.Category == templateCategory);
+            if (template != null)
+            {
+                newConcept.Category = template.Category;
+                newConcept.SimpleExplanation = template.Description;
+                newConcept.Examples = template.Examples;
+                newConcept.Color = template.Color;
+                ToastService.ShowInfo($"Applied {template.Category} template - customize as needed");
+            }
+        }
+    }
+
+    private void CancelEditConcept()
+    {
+        showAddConcept = false;
+        editingConcept = null;
+        newConcept = new Concept();
+    }
+
+    private void HandleNodeCtrlClick(int conceptId)
+    {
+        if (firstSelectedConceptId == null)
+        {
+            firstSelectedConceptId = conceptId;
+            var concept = ontology?.Concepts.FirstOrDefault(c => c.Id == conceptId);
+            if (concept != null)
+            {
+                ToastService.ShowInfo($"First node selected: \"{concept.Name}\". Cmd/Ctrl+click another node to create relationship.", 5000);
+            }
+        }
+        else if (firstSelectedConceptId == conceptId)
+        {
+            firstSelectedConceptId = null;
+            ToastService.ShowInfo("Selection cancelled");
+        }
+        else
+        {
+            var sourceConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == firstSelectedConceptId.Value);
+            var targetConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == conceptId);
+
+            if (sourceConcept != null && targetConcept != null)
+            {
+                newRelationship = new Relationship
+                {
+                    OntologyId = Id,
+                    SourceConceptId = firstSelectedConceptId.Value,
+                    TargetConceptId = conceptId
+                };
+                customRelationType = string.Empty;
+                showAddRelationship = true;
+                showAddConcept = false;
+                selectedConcept = null;
+                editingRelationship = null;
+
+                ToastService.ShowInfo($"Creating relationship: \"{sourceConcept.Name}\" → \"{targetConcept.Name}\"", 3000);
+            }
+
+            firstSelectedConceptId = null;
+        }
+    }
+
+    private void EditRelationship(Relationship relationship)
+    {
+        editingRelationship = relationship;
+        newRelationship = new Relationship
+        {
+            Id = relationship.Id,
+            OntologyId = relationship.OntologyId,
+            SourceConceptId = relationship.SourceConceptId,
+            TargetConceptId = relationship.TargetConceptId,
+            RelationType = relationship.RelationType,
+            Description = relationship.Description
+        };
+        customRelationType = string.Empty;
+        showAddRelationship = true;
+        showAddConcept = false;
+        selectedConcept = null;
+    }
+
+    private async Task DuplicateRelationship(Relationship relationship)
+    {
+        newRelationship = new Relationship
+        {
+            OntologyId = Id,
+            SourceConceptId = relationship.SourceConceptId,
+            TargetConceptId = relationship.TargetConceptId,
+            RelationType = relationship.RelationType,
+            Description = relationship.Description
+        };
+        customRelationType = string.Empty;
+        editingRelationship = null;
+        showAddRelationship = true;
+        showAddConcept = false;
+        selectedConcept = null;
+
+        shouldPulseSidebar = true;
+        StateHasChanged();
+        await Task.Delay(3600);
+        shouldPulseSidebar = false;
+
+        ToastService.ShowInfo($"Ready to create copy of relationship. Click 'Add' to save or 'Cancel' to discard.", 5000);
+    }
+
+    private void CancelEditRelationship()
+    {
+        showAddRelationship = false;
+        editingRelationship = null;
+        newRelationship = new Relationship();
+        customRelationType = string.Empty;
+    }
+
+    private async Task SaveRelationship()
+    {
+        // Check permissions
+        if (editingRelationship != null && !CanEdit())
+        {
+            ToastService.ShowError("You do not have permission to edit relationships");
+            return;
+        }
+        else if (editingRelationship == null && !CanAdd())
+        {
+            ToastService.ShowError("You do not have permission to add relationships");
+            return;
+        }
+
+        var sourceConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == newRelationship.SourceConceptId);
+        var targetConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == newRelationship.TargetConceptId);
+
+        if (sourceConcept == null || targetConcept == null)
+        {
+            ToastService.ShowError("Source or target concept not found");
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(customRelationType))
+        {
+            newRelationship.RelationType = customRelationType;
+        }
+
+        if (string.IsNullOrWhiteSpace(newRelationship.RelationType))
+        {
+            ToastService.ShowError("Please select or enter a relationship type");
+            return;
+        }
+
+        try
+        {
+            if (editingRelationship != null)
+            {
+                await OntologyService.UpdateRelationshipAsync(newRelationship);
+                ToastService.ShowSuccess("Updated relationship");
+                editingRelationship = null;
+            }
+            else
+            {
+                await OntologyService.CreateRelationshipAsync(newRelationship);
+                ToastService.ShowSuccess($"Created relationship: {sourceConcept.Name} → {targetConcept.Name}");
+            }
+
+            showAddRelationship = false;
+            customRelationType = string.Empty;
+            await LoadOntology();
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = ex.InnerException != null
+                ? $"{ex.Message} - {ex.InnerException.Message}"
+                : ex.Message;
+            ToastService.ShowError($"Failed to save relationship: {errorMessage}");
+        }
+    }
+
+    private async Task DeleteConcept(int conceptId)
+    {
+        if (!CanEdit())
+        {
+            ToastService.ShowError("You do not have permission to delete concepts");
+            return;
+        }
+
+        var concept = ontology?.Concepts.FirstOrDefault(c => c.Id == conceptId);
+        if (concept == null) return;
+
+        var confirmed = await ConfirmService.ShowAsync(
+            "Delete Concept",
+            $"Are you sure you want to delete \"{concept.Name}\"? This will also delete all related relationships.",
+            "Delete",
+            ConfirmType.Danger
+        );
+
+        if (confirmed)
+        {
+            try
+            {
+                await OntologyService.DeleteConceptAsync(conceptId);
+                selectedConcept = null;
+                await LoadOntology();
+                ToastService.ShowSuccess($"Deleted concept \"{concept.Name}\"");
+            }
+            catch (Exception ex)
+            {
+                ToastService.ShowError($"Failed to delete concept: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task DeleteRelationship(int relationshipId)
+    {
+        if (!CanEdit())
+        {
+            ToastService.ShowError("You do not have permission to delete relationships");
+            return;
+        }
+
+        var relationship = ontology?.Relationships.FirstOrDefault(r => r.Id == relationshipId);
+        if (relationship == null) return;
+
+        var confirmed = await ConfirmService.ShowAsync(
+            "Delete Relationship",
+            $"Are you sure you want to delete the relationship from \"{relationship.SourceConcept.Name}\" to \"{relationship.TargetConcept.Name}\"?",
+            "Delete",
+            ConfirmType.Danger
+        );
+
+        if (confirmed)
+        {
+            try
+            {
+                await OntologyService.DeleteRelationshipAsync(relationshipId);
+                await LoadOntology();
+                ToastService.ShowSuccess("Deleted relationship");
+            }
+            catch (Exception ex)
+            {
+                ToastService.ShowError($"Failed to delete relationship: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task SelectConcept(Concept concept)
+    {
+        selectedConcept = concept;
+        showAddConcept = false;
+        showAddRelationship = false;
+
+        // Load restrictions for the selected concept
+        if (concept != null)
+        {
+            selectedConceptRestrictions = await RestrictionService.GetByConceptIdAsync(concept.Id);
+        }
+    }
+
+    private void ShowImportDialog()
+    {
+        showImportDialog = true;
+        importStep = TtlImportDialog.ImportStep.Upload;
+        importError = null;
+        importResult = null;
+        mergePreview = null;
+        importOption = TtlImportDialog.ImportOption.Merge;
+    }
+
+    private void CancelImport()
+    {
+        showImportDialog = false;
+        importStep = TtlImportDialog.ImportStep.Upload;
+        importError = null;
+        importResult = null;
+        mergePreview = null;
+    }
+
+    private void ShowSettingsDialog()
+    {
+        if (ontology == null) return;
+
+        editingOntologyName = ontology.Name;
+        editingOntologyDescription = ontology.Description;
+        editingOntologyAuthor = ontology.Author;
+        editingOntologyVersion = ontology.Version;
+        editingOntologyNamespace = ontology.Namespace;
+        editingOntologyTags = ontology.Tags;
+        editingOntologyLicense = ontology.License;
+        editingOntologyUsesBFO = ontology.UsesBFO;
+        editingOntologyUsesProvO = ontology.UsesProvO;
+
+        showSettingsDialog = true;
+    }
+
+    private void ShowExportDialog()
+    {
+        exportDialog?.Show();
+    }
+
+    private async Task SaveSettings()
+    {
+        if (ontology == null) return;
+
+        if (!CanFullAccess())
+        {
+            ToastService.ShowError("You do not have permission to modify ontology settings");
+            return;
+        }
+
+        try
+        {
+            ontology.Name = editingOntologyName;
+            ontology.Description = editingOntologyDescription;
+            ontology.Author = editingOntologyAuthor;
+            ontology.Version = editingOntologyVersion;
+            ontology.Namespace = editingOntologyNamespace;
+            ontology.Tags = editingOntologyTags;
+            ontology.License = editingOntologyLicense;
+            ontology.UsesBFO = editingOntologyUsesBFO;
+            ontology.UsesProvO = editingOntologyUsesProvO;
+            ontology.UpdatedAt = DateTime.UtcNow;
+
+            await OntologyService.UpdateOntologyAsync(ontology);
+            showSettingsDialog = false;
+
+            ToastService.ShowSuccess("Ontology settings updated successfully");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to save settings: {ex.Message}");
+        }
+    }
+
+    private void CancelSettings()
+    {
+        showSettingsDialog = false;
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        importError = null;
+        isProcessingFile = true;
+
+        try
+        {
+            var file = e.File;
+
+            // Sanitize filename for logging/display purposes
+            var sanitizedFilename = SanitizeFilename(file.Name);
+
+            // Validate file size
+            if (file.Size > 10 * 1024 * 1024)
+            {
+                importError = "File size exceeds 10MB limit";
+                isProcessingFile = false;
+                return;
+            }
+
+            // Validate MIME type - allow common RDF/TTL content types
+            // Note: Different browsers may report different MIME types for .ttl files
+            var allowedContentTypes = new[]
+            {
+                "text/turtle",           // Standard TTL MIME type
+                "application/x-turtle",  // Alternative TTL MIME type
+                "application/rdf+xml",   // RDF/XML MIME type
+                "text/plain",            // Browsers often send text/plain for .ttl files
+                "application/octet-stream" // Generic binary, check extension
+            };
+
+            if (!allowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+            {
+                // If MIME type is not recognized, check file extension as fallback
+                var allowedExtensions = new[] { ".ttl", ".turtle", ".rdf" };
+                var fileExtension = Path.GetExtension(sanitizedFilename).ToLowerInvariant();
+
+                if (!allowedExtensions.Contains(fileExtension))
+                {
+                    importError = $"Invalid file type. Only TTL/RDF files are allowed. (Content-Type: {file.ContentType})";
+                    isProcessingFile = false;
+                    return;
+                }
+            }
+
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            importResult = await TtlImportService.ParseTtlFileAsync(memoryStream);
+
+            if (!importResult.Success)
+            {
+                importError = importResult.ErrorMessage;
+                isProcessingFile = false;
+                return;
+            }
+
+            if (importResult.ParsedGraph != null)
+            {
+                mergePreview = await TtlImportService.PreviewMergeAsync(Id, importResult.ParsedGraph);
+            }
+
+            importStep = TtlImportDialog.ImportStep.Preview;
+        }
+        catch (Exception ex)
+        {
+            importError = $"Error processing file: {ex.Message}";
+        }
+        finally
+        {
+            isProcessingFile = false;
+        }
+    }
+
+    private async Task ExecuteImport()
+    {
+        if (importResult?.ParsedGraph == null)
+            return;
+
+        isImporting = true;
+        importError = null;
+
+        try
+        {
+            if (importOption == TtlImportDialog.ImportOption.Merge)
+            {
+                await TtlImportService.MergeIntoExistingAsync(Id, importResult.ParsedGraph);
+                await LoadOntology();
+                showImportDialog = false;
+                ToastService.ShowSuccess($"Imported {importResult.ConceptCount} concepts successfully");
+            }
+            else
+            {
+                var newOntology = await TtlImportService.ImportAsNewOntologyAsync(importResult.ParsedGraph);
+                ToastService.ShowSuccess($"Created new ontology \"{newOntology.Name}\"");
+                Navigation.NavigateTo($"/ontology/{newOntology.Id}");
+            }
+        }
+        catch (Exception ex)
+        {
+            importError = $"Import failed: {ex.Message}";
+            ToastService.ShowError($"Import failed: {ex.Message}");
+        }
+        finally
+        {
+            isImporting = false;
+        }
+    }
+
+    private async Task SaveNotes()
+    {
+        if (ontology == null) return;
+
+        if (!CanEdit())
+        {
+            ToastService.ShowError("You do not have permission to edit notes");
+            return;
+        }
+
+        try
+        {
+            ontology.Notes = editingNotes;
+            ontology.UpdatedAt = DateTime.UtcNow;
+            await OntologyService.UpdateOntologyAsync(ontology);
+            ToastService.ShowSuccess("Notes saved successfully");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to save notes: {ex.Message}");
+        }
+    }
+
+    private async Task GenerateRdfContent()
+    {
+        ttlContent = string.Empty;
+        StateHasChanged();
+        await Task.Run(() =>
+        {
+            if (ontology != null)
+            {
+                var format = Enum.Parse<RdfFormat>(selectedRdfFormat);
+                ttlContent = TtlExportService.ExportToFormat(ontology, format);
+            }
+        });
+        StateHasChanged();
+    }
+
+    private async Task OnRdfFormatChanged()
+    {
+        await GenerateRdfContent();
+    }
+
+    private async Task CopyTtlToClipboard()
+    {
+        if (string.IsNullOrWhiteSpace(ttlContent))
+            return;
+
+        try
+        {
+            var success = await JS.InvokeAsync<bool>("copyToClipboard", ttlContent);
+            if (success)
+            {
+                ToastService.ShowSuccess("Copied TTL to clipboard");
+            }
+            else
+            {
+                ToastService.ShowError("Failed to copy to clipboard");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to copy to clipboard: {ex.Message}");
+        }
+    }
+
+    private async Task DownloadTtl()
+    {
+        if (ontology == null || string.IsNullOrWhiteSpace(ttlContent))
+            return;
+
+        try
+        {
+            var fileExtension = selectedRdfFormat switch
+            {
+                "RdfXml" => ".rdf",
+                "NTriples" => ".nt",
+                "JsonLd" => ".jsonld",
+                _ => ".ttl"
+            };
+            var fileName = $"{ontology.Name.Replace(" ", "_").ToLower()}{fileExtension}";
+            await JS.InvokeVoidAsync("downloadTextFile", fileName, ttlContent);
+            ToastService.ShowSuccess($"Downloaded {fileName}");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to download RDF file: {ex.Message}");
+        }
+    }
+
+    // Permission checking methods
+    private bool CanAdd()
+    {
+        return userPermissionLevel >= PermissionLevel.ViewAndAdd;
+    }
+
+    private bool CanEdit()
+    {
+        return userPermissionLevel >= PermissionLevel.ViewAddEdit;
+    }
+
+    private bool CanFullAccess()
+    {
+        return userPermissionLevel >= PermissionLevel.FullAccess;
+    }
+
+    private string GetPermissionBannerClass()
+    {
+        return userPermissionLevel switch
+        {
+            PermissionLevel.View => "alert-info",
+            PermissionLevel.ViewAndAdd => "alert-warning",
+            PermissionLevel.ViewAddEdit => "alert-primary",
+            _ => "alert-secondary"
+        };
+    }
+
+    private string GetPermissionLevelDisplayName()
+    {
+        return userPermissionLevel switch
+        {
+            PermissionLevel.View => "View-Only Access",
+            PermissionLevel.ViewAndAdd => "View & Add Access",
+            PermissionLevel.ViewAddEdit => "View, Add & Edit Access",
+            PermissionLevel.FullAccess => "Full Access",
+            _ => "Unknown Access"
+        };
+    }
+
+    private string GetPermissionDescription()
+    {
+        return userPermissionLevel switch
+        {
+            PermissionLevel.View => "You can view this ontology but cannot make changes",
+            PermissionLevel.ViewAndAdd => "You can view and add new concepts and relationships",
+            PermissionLevel.ViewAddEdit => "You can view, add, and edit concepts and relationships",
+            PermissionLevel.FullAccess => "You have full access to this ontology",
+            _ => ""
+        };
+    }
+
+    // EventCallback helper method for conditional callbacks
+    private EventCallback<T> GetConditionalCallback<T>(bool condition, Func<T, Task> callback)
+    {
+        return condition ? EventCallback.Factory.Create(this, callback) : EventCallback<T>.Empty;
+    }
+
+    // Overload for parameterless callbacks (async)
+    private EventCallback GetConditionalCallback(bool condition, Func<Task> callback)
+    {
+        return condition ? EventCallback.Factory.Create(this, callback) : EventCallback.Empty;
+    }
+
+    // Overload for parameterless callbacks (void)
+    private EventCallback GetConditionalCallback(bool condition, Action callback)
+    {
+        return condition ? EventCallback.Factory.Create(this, callback) : EventCallback.Empty;
+    }
+
+    // Overload for Action<T> callbacks (void)
+    private EventCallback<T> GetConditionalCallback<T>(bool condition, Action<T> callback)
+    {
+        return condition ? EventCallback.Factory.Create(this, callback) : EventCallback<T>.Empty;
+    }
+
+    private EventCallback<CustomConceptTemplate> GetConditionalCallback(bool condition, Action<CustomConceptTemplate> callback)
+    {
+        return condition ? EventCallback.Factory.Create(this, callback) : EventCallback<CustomConceptTemplate>.Empty;
+    }
+
+    private EventCallback<CustomConceptTemplate> GetConditionalCallback(bool condition, Func<CustomConceptTemplate, Task> callback)
+    {
+        return condition ? EventCallback.Factory.Create(this, callback) : EventCallback<CustomConceptTemplate>.Empty;
+    }
+
+    private EventCallback<Concept> GetConditionalCallback(bool condition, Action<Concept> callback)
+    {
+        return condition ? EventCallback.Factory.Create(this, callback) : EventCallback<Concept>.Empty;
+    }
+
+    private EventCallback<Concept> GetConditionalCallback(bool condition, Func<Concept, Task> callback)
+    {
+        return condition ? EventCallback.Factory.Create(this, callback) : EventCallback<Concept>.Empty;
+    }
+
+    private EventCallback<Relationship> GetConditionalCallback(bool condition, Action<Relationship> callback)
+    {
+        return condition ? EventCallback.Factory.Create(this, callback) : EventCallback<Relationship>.Empty;
+    }
+
+    private EventCallback<Relationship> GetConditionalCallback(bool condition, Func<Relationship, Task> callback)
+    {
+        return condition ? EventCallback.Factory.Create(this, callback) : EventCallback<Relationship>.Empty;
+    }
+
+    private EventCallback<int> GetConditionalCallback(bool condition, Action<int> callback)
+    {
+        return condition ? EventCallback.Factory.Create(this, callback) : EventCallback<int>.Empty;
+    }
+
+    private EventCallback<int> GetConditionalCallback(bool condition, Func<int, Task> callback)
+    {
+        return condition ? EventCallback.Factory.Create(this, callback) : EventCallback<int>.Empty;
+    }
+
+    // Custom Template CRUD Operations
+    private async Task SaveCustomTemplate(CustomConceptTemplate template)
+    {
+        if (ontology == null)
+            return;
+
+        if (!CanEdit())
+        {
+            ToastService.ShowError("You do not have permission to create templates");
+            return;
+        }
+
+        try
+        {
+            template.OntologyId = ontology.Id;
+            template.CreatedAt = DateTime.UtcNow;
+            template.UpdatedAt = DateTime.UtcNow;
+            ontology.CustomTemplates.Add(template);
+            await OntologyService.UpdateOntologyAsync(ontology);
+            ToastService.ShowSuccess($"Template '{template.Category}' created successfully");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to create template: {ex.Message}");
+        }
+    }
+
+    private async Task UpdateCustomTemplate(CustomConceptTemplate template)
+    {
+        if (ontology == null)
+            return;
+
+        if (!CanEdit())
+        {
+            ToastService.ShowError("You do not have permission to update templates");
+            return;
+        }
+
+        try
+        {
+            template.UpdatedAt = DateTime.UtcNow;
+            await OntologyService.UpdateOntologyAsync(ontology);
+            ToastService.ShowSuccess($"Template '{template.Category}' updated successfully");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to update template: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteCustomTemplate(CustomConceptTemplate template)
+    {
+        if (ontology == null)
+            return;
+
+        if (!CanEdit())
+        {
+            ToastService.ShowError("You do not have permission to delete templates");
+            return;
+        }
+
+        try
+        {
+            ontology.CustomTemplates.Remove(template);
+            await OntologyService.UpdateOntologyAsync(ontology);
+            ToastService.ShowSuccess($"Template '{template.Category}' deleted successfully");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to delete template: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Sanitizes a filename by removing path traversal attempts and dangerous characters.
+    /// This prevents security issues when logging or displaying filenames.
+    /// </summary>
+    private string SanitizeFilename(string filename)
+    {
+        if (string.IsNullOrWhiteSpace(filename))
+            return "unknown";
+
+        // Remove any path components (directory traversal protection)
+        filename = Path.GetFileName(filename);
+
+        // Define characters that should be removed for security
+        var invalidChars = Path.GetInvalidFileNameChars()
+            .Concat(new[] { '<', '>', ':', '"', '/', '\\', '|', '?', '*', '\0' })
+            .ToHashSet();
+
+        // Filter out invalid characters
+        var sanitized = string.Concat(filename.Where(c => !invalidChars.Contains(c)));
+
+        // Ensure we don't return an empty string
+        return string.IsNullOrWhiteSpace(sanitized) ? "sanitized_file" : sanitized;
+    }
+
+    // ===== SignalR Real-Time Collaboration =====
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Initialize SignalR once the ontology is loaded (may not happen on firstRender if data is loading async)
+        if (ontology != null && !hasRendered)
+        {
+            hasRendered = true;
+            dotNetRef = DotNetObjectReference.Create(this);
+
+            try
+            {
+                await JS.InvokeVoidAsync("ontologyHub.init", dotNetRef, ontology.Id);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail - real-time updates are optional
+                Console.WriteLine($"Error initializing SignalR: {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleConceptChanged(ConceptChangedEvent changeEvent)
+    {
+        try
+        {
+            if (ontology == null || changeEvent.OntologyId != ontology.Id)
+            {
+                return;
+            }
+
+            // Reload the ontology to get the latest data and replace the entire object reference
+            var freshOntology = await OntologyService.GetOntologyAsync(Id);
+
+            if (freshOntology != null)
+            {
+                // Replace the entire ontology object to trigger Blazor change detection
+                ontology = freshOntology;
+
+                // Force UI update
+                await InvokeAsync(() =>
+                {
+                    StateHasChanged();
+
+                    // Refresh the graph view if it's visible
+                    if (viewMode == ViewMode.Graph && graphView != null)
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(100);
+                            await graphView.RefreshGraph();
+                        });
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error handling concept change: {ex.Message}");
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleRelationshipChanged(RelationshipChangedEvent changeEvent)
+    {
+        try
+        {
+            if (ontology == null || changeEvent.OntologyId != ontology.Id)
+                return;
+
+            // Reload the ontology to get the latest data and replace the entire object reference
+            var freshOntology = await OntologyService.GetOntologyAsync(Id);
+
+            if (freshOntology != null)
+            {
+                // Replace the entire ontology object to trigger Blazor change detection
+                ontology = freshOntology;
+
+                // Force UI update
+                await InvokeAsync(() =>
+                {
+                    StateHasChanged();
+
+                    // Refresh the graph view if it's visible
+                    if (viewMode == ViewMode.Graph && graphView != null)
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(100);
+                            await graphView.RefreshGraph();
+                        });
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error handling relationship change: {ex.Message}");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (ontology != null)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("ontologyHub.disconnect", ontology.Id);
+            }
+            catch
+            {
+                // Ignore errors during cleanup
+            }
+        }
+
+        dotNetRef?.Dispose();
+    }
+
+    // Individual/Instance management methods
+    private void SelectIndividual(Individual individual)
+    {
+        selectedIndividual = individual;
+        StateHasChanged();
+    }
+
+    private void ShowAddIndividualDialog()
+    {
+        if (ontology == null) return;
+
+        newIndividual = new Individual
+        {
+            OntologyId = ontology.Id
+        };
+        newIndividualProperties = new List<IndividualProperty>();
+        editingIndividual = null;
+        showAddIndividual = true;
+        showAddConcept = false;
+        showAddRelationship = false;
+        selectedConcept = null;
+    }
+
+    private void EditIndividual(Individual individual)
+    {
+        editingIndividual = individual;
+        newIndividual = new Individual
+        {
+            Id = individual.Id,
+            OntologyId = individual.OntologyId,
+            ConceptId = individual.ConceptId,
+            Name = individual.Name,
+            Description = individual.Description,
+            Label = individual.Label,
+            Uri = individual.Uri
+        };
+
+        // Clone properties
+        newIndividualProperties = individual.Properties
+            .Select(p => new IndividualProperty
+            {
+                Id = p.Id,
+                IndividualId = p.IndividualId,
+                Name = p.Name,
+                Value = p.Value,
+                DataType = p.DataType
+            })
+            .ToList();
+
+        showAddIndividual = true;
+        showAddConcept = false;
+        showAddRelationship = false;
+        selectedConcept = null;
+    }
+
+    private async Task SaveIndividual()
+    {
+        if (string.IsNullOrWhiteSpace(newIndividual.Name) || newIndividual.ConceptId == 0)
+            return;
+
+        // Check permissions
+        if (editingIndividual != null && !CanEdit())
+        {
+            ToastService.ShowError("You do not have permission to edit individuals");
+            return;
+        }
+        else if (editingIndividual == null && !CanAdd())
+        {
+            ToastService.ShowError("You do not have permission to add individuals");
+            return;
+        }
+
+        try
+        {
+            if (editingIndividual != null)
+            {
+                // Update existing individual
+                newIndividual.Properties = newIndividualProperties;
+                await IndividualService.UpdateAsync(newIndividual);
+                ToastService.ShowSuccess($"Updated individual \"{newIndividual.Name}\"");
+                editingIndividual = null;
+            }
+            else
+            {
+                // Create new individual
+                newIndividual.Properties = newIndividualProperties;
+                await IndividualService.CreateAsync(newIndividual);
+                ToastService.ShowSuccess($"Created individual \"{newIndividual.Name}\"");
+            }
+
+            showAddIndividual = false;
+            newIndividual = new Individual();
+            newIndividualProperties = new List<IndividualProperty>();
+
+            // Reload individuals list
+            if (ontology != null)
+            {
+                individuals = await IndividualService.GetByOntologyIdAsync(ontology.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = ex.InnerException != null
+                ? $"{ex.Message} - {ex.InnerException.Message}"
+                : ex.Message;
+            ToastService.ShowError($"Failed to save individual: {errorMessage}", 8000);
+        }
+    }
+
+    private void CancelEditIndividual()
+    {
+        showAddIndividual = false;
+        editingIndividual = null;
+        newIndividual = new Individual();
+        newIndividualProperties = new List<IndividualProperty>();
+    }
+
+    private async Task DeleteIndividual(Individual individual)
+    {
+        var confirmed = await ConfirmService.ShowAsync(
+            "Delete Individual",
+            $"Are you sure you want to delete the individual \"{individual.Name}\"?",
+            "Delete",
+            ConfirmType.Danger
+        );
+
+        if (confirmed)
+        {
+            try
+            {
+                await IndividualService.DeleteAsync(individual.Id);
+                ToastService.ShowSuccess($"Individual \"{individual.Name}\" deleted successfully.");
+
+                // Reload individuals list
+                if (ontology != null)
+                {
+                    individuals = await IndividualService.GetByOntologyIdAsync(ontology.Id);
+                }
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting individual {IndividualId}", individual.Id);
+                ToastService.ShowError($"Failed to delete individual: {ex.Message}");
+            }
+        }
+    }
+
+    // Restriction management methods
+    private void ShowAddRestrictionDialog()
+    {
+        ToastService.ShowInfo("Restriction creation dialog will be implemented in the next phase.");
+    }
+
+    private void EditRestriction(ConceptRestriction restriction)
+    {
+        ToastService.ShowInfo("Restriction editing will be implemented in the next phase.");
+    }
+
+    private async Task DeleteRestriction(ConceptRestriction restriction)
+    {
+        var confirmed = await ConfirmService.ShowAsync(
+            "Delete Restriction",
+            $"Are you sure you want to delete this restriction on property \"{restriction.PropertyName}\"?",
+            "Delete",
+            ConfirmType.Danger
+        );
+
+        if (confirmed)
+        {
+            try
+            {
+                await RestrictionService.DeleteAsync(restriction.Id);
+                ToastService.ShowSuccess($"Restriction on \"{restriction.PropertyName}\" deleted successfully.");
+
+                // Reload restrictions for the selected concept
+                if (selectedConcept != null)
+                {
+                    selectedConceptRestrictions = await RestrictionService.GetByConceptIdAsync(selectedConcept.Id);
+                }
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting restriction {RestrictionId}", restriction.Id);
+                ToastService.ShowError($"Failed to delete restriction: {ex.Message}");
+            }
+        }
+    }
+
+}
+
+<style>
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.95);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+
+    .loading-content {
+        text-align: center;
+        padding: 2rem;
+    }
+</style>

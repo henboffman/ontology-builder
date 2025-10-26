@@ -1,0 +1,105 @@
+@using Eidos.Services
+@inject ToastService ToastService
+@implements IDisposable
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11000;">
+    @foreach (var toast in toasts)
+    {
+        <div class="toast show align-items-center text-white @GetToastClass(toast.Type) border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi @GetToastIcon(toast.Type) me-2"></i>
+                    @toast.Message
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => RemoveToast(toast)"></button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ToastMessage> toasts = new();
+    private System.Timers.Timer? cleanupTimer;
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnShow += ShowToast;
+
+        // Set up cleanup timer to remove old toasts
+        cleanupTimer = new System.Timers.Timer(1000);
+        cleanupTimer.Elapsed += (s, e) => CleanupExpiredToasts();
+        cleanupTimer.Start();
+    }
+
+    private void ShowToast(string message, ToastType type, int duration)
+    {
+        var toast = new ToastMessage
+        {
+            Message = message,
+            Type = type,
+            ExpiresAt = DateTime.Now.AddMilliseconds(duration)
+        };
+
+        toasts.Add(toast);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void CleanupExpiredToasts()
+    {
+        var now = DateTime.Now;
+        var expiredToasts = toasts.Where(t => t.ExpiresAt <= now).ToList();
+
+        if (expiredToasts.Any())
+        {
+            foreach (var toast in expiredToasts)
+            {
+                toasts.Remove(toast);
+            }
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void RemoveToast(ToastMessage toast)
+    {
+        toasts.Remove(toast);
+        StateHasChanged();
+    }
+
+    private string GetToastClass(ToastType type)
+    {
+        return type switch
+        {
+            ToastType.Success => "bg-success",
+            ToastType.Error => "bg-danger",
+            ToastType.Warning => "bg-warning",
+            ToastType.Info => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetToastIcon(ToastType type)
+    {
+        return type switch
+        {
+            ToastType.Success => "bi-check-circle-fill",
+            ToastType.Error => "bi-exclamation-circle-fill",
+            ToastType.Warning => "bi-exclamation-triangle-fill",
+            ToastType.Info => "bi-info-circle-fill",
+            _ => "bi-info-circle-fill"
+        };
+    }
+
+    public void Dispose()
+    {
+        ToastService.OnShow -= ShowToast;
+        cleanupTimer?.Stop();
+        cleanupTimer?.Dispose();
+    }
+
+    private class ToastMessage
+    {
+        public string Message { get; set; } = string.Empty;
+        public ToastType Type { get; set; }
+        public DateTime ExpiresAt { get; set; }
+    }
+}

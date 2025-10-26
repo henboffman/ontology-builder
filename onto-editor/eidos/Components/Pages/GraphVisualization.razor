@@ -1,0 +1,230 @@
+@using Eidos.Models
+@using Eidos.Services.Interfaces
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@inject IUserPreferencesService PreferencesService
+
+<div style="position: relative; width: 100%; height: @Height;">
+    <div id="@GraphId" style="width: 100%; height: 100%; border: 1px solid #dee2e6; border-radius: 0.375rem; background-color: #f8f9fa;"></div>
+
+    <!-- Text Size Control Overlay -->
+    <div style="position: absolute; top: 10px; right: 10px; background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; min-width: 180px;">
+        <div class="d-flex flex-column gap-1">
+            <label class="form-label small mb-1" style="font-weight: 600;">
+                <i class="bi bi-fonts"></i> Text Size: @(textSizeScale)%
+            </label>
+            <input type="range" class="form-range" min="50" max="150" step="10"
+                   value="@textSizeScale"
+                   @oninput="OnTextSizeChanged"
+                   style="cursor: pointer;" />
+            <div class="d-flex justify-content-between">
+                <small class="text-muted">50%</small>
+                <small class="text-muted">150%</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Ontology? Ontology { get; set; }
+
+    [Parameter]
+    public string Height { get; set; } = "600px";
+
+    [Parameter]
+    public string ColorMode { get; set; } = "concept"; // "concept" or "source"
+
+    [Parameter]
+    public EventCallback<int> OnNodeCtrlClicked { get; set; }
+
+    private string GraphId = $"graph-{Guid.NewGuid():N}";
+    private bool hasRendered = false;
+    private int lastConceptCount = 0;
+    private int lastRelationshipCount = 0;
+    private int textSizeScale = 100; // Percentage scale for text size (50-150%)
+    private bool preferencesLoaded = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load text size preference when component is created
+        await LoadTextSizePreference();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Ontology != null)
+        {
+            hasRendered = true;
+            lastConceptCount = Ontology.Concepts.Count;
+            lastRelationshipCount = Ontology.Relationships.Count;
+            await RenderGraph();
+        }
+        else if (!firstRender && Ontology != null && hasRendered)
+        {
+            // Only re-render if the data has actually changed
+            var currentConceptCount = Ontology.Concepts.Count;
+            var currentRelationshipCount = Ontology.Relationships.Count;
+
+            if (currentConceptCount != lastConceptCount || currentRelationshipCount != lastRelationshipCount)
+            {
+                lastConceptCount = currentConceptCount;
+                lastRelationshipCount = currentRelationshipCount;
+                await RenderGraph();
+            }
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Don't call RenderGraph here - it will be called in OnAfterRenderAsync
+        // This avoids the JavaScript interop issue during pre-rendering
+    }
+
+    private async Task LoadTextSizePreference()
+    {
+        if (preferencesLoaded)
+            return;
+
+        try
+        {
+            var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+            textSizeScale = prefs.TextSizeScale;
+            if (textSizeScale == 0) // Handle old records that have default 0
+            {
+                textSizeScale = 100;
+            }
+            preferencesLoaded = true;
+        }
+        catch
+        {
+            // Use default 100 if preferences fail to load
+            textSizeScale = 100;
+            preferencesLoaded = true;
+        }
+    }
+
+    private async Task RenderGraph()
+    {
+        if (Ontology == null || Ontology.Concepts.Count == 0)
+            return;
+
+        // Load user preferences for graph display
+        UserPreferences? prefs = null;
+        try
+        {
+            prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+        }
+        catch
+        {
+            // Use defaults if preferences fail to load
+        }
+
+        // Get unique source ontologies and assign colors
+        var sourceOntologies = Ontology.Concepts
+            .Select(c => c.SourceOntology ?? "Original")
+            .Distinct()
+            .ToList();
+
+        var sourceColorMap = new Dictionary<string, string>();
+        var predefinedColors = new[] { "#4A90E2", "#E94B3C", "#6BCF7F", "#F4A261", "#9B59B6", "#E67E22", "#1ABC9C", "#3498DB" };
+
+        for (int i = 0; i < sourceOntologies.Count; i++)
+        {
+            sourceColorMap[sourceOntologies[i]] = predefinedColors[i % predefinedColors.Length];
+        }
+
+        // Build nodes from concepts
+        var nodes = Ontology.Concepts.Select(c =>
+        {
+            var nodeColor = ColorMode == "source"
+                ? sourceColorMap[c.SourceOntology ?? "Original"]
+                : (c.Color ?? "#4A90E2");
+
+            return new
+            {
+                data = new
+                {
+                    id = $"concept-{c.Id}",
+                    label = c.Name,
+                    color = nodeColor,
+                    definition = c.Definition ?? "",
+                    explanation = c.SimpleExplanation ?? "",
+                    examples = c.Examples ?? "",
+                    category = c.Category ?? "",
+                    sourceOntology = c.SourceOntology ?? "Original"
+                }
+            };
+        }).ToList();
+
+        // Build edges from relationships
+        var edges = Ontology.Relationships.Select(r => new
+        {
+            data = new
+            {
+                id = $"rel-{r.Id}",
+                source = $"concept-{r.SourceConceptId}",
+                target = $"concept-{r.TargetConceptId}",
+                label = r.RelationType,
+                description = r.Description ?? ""
+            }
+        }).ToList();
+
+        var elements = new
+        {
+            nodes,
+            edges
+        };
+
+        // Create display options from user preferences
+        // Explicitly type to avoid vararg calling convention issues
+        int nodeSize = prefs?.DefaultNodeSize ?? 40;
+        int edgeThickness = prefs?.DefaultEdgeThickness ?? 2;
+        bool showEdgeLabels = prefs?.ShowEdgeLabels ?? true;
+        double textScale = textSizeScale / 100.0; // Convert percentage to decimal (e.g., 100% = 1.0)
+
+        var displayOptions = new
+        {
+            nodeSize = nodeSize,
+            edgeThickness = edgeThickness,
+            showEdgeLabels = showEdgeLabels,
+            textSizeScale = textScale
+        };
+
+        var dotNetHelper = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("renderOntologyGraph", GraphId, elements, dotNetHelper, displayOptions);
+    }
+
+    [JSInvokable]
+    public async Task OnNodeCtrlClick(int conceptId)
+    {
+        await OnNodeCtrlClicked.InvokeAsync(conceptId);
+    }
+
+    public async Task RefreshGraph()
+    {
+        await RenderGraph();
+    }
+
+    private async Task OnTextSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            textSizeScale = newSize;
+
+            // Save to user preferences
+            try
+            {
+                var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+                prefs.TextSizeScale = textSizeScale;
+                await PreferencesService.UpdatePreferencesAsync(prefs);
+            }
+            catch
+            {
+                // Silently fail - text size will still work for this session
+            }
+
+            await RenderGraph();
+        }
+    }
+}

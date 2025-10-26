@@ -1,0 +1,245 @@
+@using Eidos.Models
+
+<div class="card border-primary @(ShouldPulse ? "pulse-attention" : "")">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">@(IsEditing ? "Edit Relationship" : "Add New Relationship")</h6>
+        <button class="btn btn-sm text-white" style="background: none; border: none;" title="What is a relationship?" @onclick="() => showRelationshipHelp = !showRelationshipHelp">
+            <i class="bi bi-question-circle"></i>
+        </button>
+    </div>
+    <div class="card-body">
+        @if (showRelationshipHelp)
+        {
+            <div class="alert alert-info small mb-3">
+                <strong>What is a relationship?</strong>
+                <p class="mb-1">A relationship connects two concepts and describes how they relate. Format:</p>
+                <p class="mb-1"><strong>[From Concept] → [Type] → [To Concept]</strong></p>
+                <p class="mb-0 small">Example: <em>Dog → is-a → Mammal</em></p>
+            </div>
+        }
+        <div class="mb-2">
+            <label class="form-label small">
+                From Concept <span class="text-danger">*</span>
+                <i class="bi bi-info-circle" title="The source concept - what the relationship starts from"></i>
+            </label>
+            <select class="form-select form-select-sm" @bind="sourceConceptId">
+                <option value="0">-- Select --</option>
+                @foreach (var concept in Concepts.OrderBy(c => c.Name))
+                {
+                    <option value="@concept.Id">@concept.Name</option>
+                }
+            </select>
+        </div>
+        <div class="mb-2">
+            <label class="form-label small">
+                Relationship Type <span class="text-danger">*</span>
+                <i class="bi bi-info-circle" title="The type of connection between concepts (e.g., 'is-a', 'part-of', 'causes')"></i>
+            </label>
+            <select class="form-select form-select-sm" @bind="relationType">
+                <option value="">-- Select or type below --</option>
+                @foreach (var template in CommonRelationshipTypes.Templates)
+                {
+                    <option value="@template.Type">@template.Type (@template.Category)</option>
+                }
+            </select>
+            <input type="text" class="form-control form-control-sm mt-1"
+                   @bind="customType"
+                   placeholder="Or enter custom type (e.g., manages, creates, influences)" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label small">
+                To Concept <span class="text-danger">*</span>
+                <i class="bi bi-info-circle" title="The target concept - where the relationship points to"></i>
+            </label>
+            <select class="form-select form-select-sm" @bind="targetConceptId">
+                <option value="0">-- Select --</option>
+                @foreach (var concept in Concepts.OrderBy(c => c.Name))
+                {
+                    <option value="@concept.Id">@concept.Name</option>
+                }
+            </select>
+        </div>
+
+        <!-- Show helpful pattern -->
+        @if (!string.IsNullOrWhiteSpace(RelationType))
+        {
+            var template = CommonRelationshipTypes.Templates.FirstOrDefault(t => t.Type == RelationType);
+            if (template != null)
+            {
+                <div class="alert alert-info py-2 small">
+                    <strong>Pattern:</strong> @template.Pattern<br/>
+                    <strong>Example:</strong> @template.Example
+                </div>
+            }
+        }
+
+        <div class="mb-2">
+            <label class="form-label small">
+                Custom Label (optional)
+                <i class="bi bi-info-circle" title="Custom text to display on the graph edge (defaults to relationship type if not specified)"></i>
+            </label>
+            <input type="text" class="form-control form-control-sm" @bind="label"
+                   placeholder="e.g., 'belongs to', 'created by', 'depends on'" />
+            <small class="text-muted">Leave blank to use the relationship type as the label</small>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label small">
+                Description
+                <i class="bi bi-info-circle" title="Optional explanation of why this relationship exists or what it means"></i>
+            </label>
+            <textarea class="form-control form-control-sm" rows="2" @bind="description"
+                      placeholder="Optional explanation of this relationship"></textarea>
+        </div>
+        <div class="d-grid gap-2">
+            <button class="btn btn-sm btn-primary" @onclick="OnSaveClick"
+                    disabled="@(!CanSave())">
+                <i class="bi bi-check-circle"></i> @(IsEditing ? "Save" : "Add")
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="OnCancelClick">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public bool IsEditing { get; set; }
+
+    [Parameter]
+    public bool ShouldPulse { get; set; }
+
+    private bool showRelationshipHelp = false;
+
+    [Parameter, EditorRequired]
+    public ICollection<Concept> Concepts { get; set; } = new List<Concept>();
+
+    [Parameter]
+    public int SourceConceptId { get; set; }
+
+    [Parameter]
+    public int TargetConceptId { get; set; }
+
+    [Parameter]
+    public string RelationType { get; set; } = string.Empty;
+
+    [Parameter]
+    public string CustomType { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public EventCallback<int> SourceConceptIdChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<int> TargetConceptIdChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string> RelationTypeChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string> CustomTypeChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> LabelChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> DescriptionChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnSaveClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelClick { get; set; }
+
+    private int sourceConceptId
+    {
+        get => SourceConceptId;
+        set
+        {
+            if (SourceConceptId != value)
+            {
+                SourceConceptId = value;
+                SourceConceptIdChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private int targetConceptId
+    {
+        get => TargetConceptId;
+        set
+        {
+            if (TargetConceptId != value)
+            {
+                TargetConceptId = value;
+                TargetConceptIdChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string relationType
+    {
+        get => RelationType;
+        set
+        {
+            if (RelationType != value)
+            {
+                RelationType = value;
+                RelationTypeChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string customType
+    {
+        get => CustomType;
+        set
+        {
+            if (CustomType != value)
+            {
+                CustomType = value;
+                CustomTypeChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? label
+    {
+        get => Label;
+        set
+        {
+            if (Label != value)
+            {
+                Label = value;
+                LabelChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string? description
+    {
+        get => Description;
+        set
+        {
+            if (Description != value)
+            {
+                Description = value;
+                DescriptionChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private bool CanSave()
+    {
+        return SourceConceptId > 0
+            && TargetConceptId > 0
+            && SourceConceptId != TargetConceptId
+            && (!string.IsNullOrWhiteSpace(RelationType) || !string.IsNullOrWhiteSpace(CustomType));
+    }
+}

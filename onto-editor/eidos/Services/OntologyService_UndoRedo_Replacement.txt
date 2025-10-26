@@ -1,0 +1,10 @@
+        // Undo/Redo operations - delegate to CommandInvoker
+        public async Task<bool> UndoAsync()
+        {
+            return await _commandInvoker.UndoAsync();
+        }
+
+        public async Task<bool> RedoAsync()
+        {
+            return await _commandInvoker.RedoAsync();
+        }

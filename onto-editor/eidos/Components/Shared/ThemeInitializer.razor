@@ -1,0 +1,111 @@
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Routing
+@using Eidos.Services.Interfaces
+@inject IJSRuntime JSRuntime
+@inject IUserPreferencesService UserPreferencesService
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+@code {
+    private bool _initialized = false;
+
+    protected override Task OnInitializedAsync()
+    {
+        // Subscribe to navigation events to trigger re-render
+        Navigation.LocationChanged += OnLocationChanged;
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await LogToBrowser($"ThemeInitializer.OnAfterRenderAsync called - firstRender: {firstRender}, initialized: {_initialized}");
+
+        // Always apply theme after render
+        // The MutationObserver will automatically fix if Blazor removes it
+        try
+        {
+            var theme = await JSRuntime.InvokeAsync<string>("ThemeHandler.getTheme");
+            await LogToBrowser($"ThemeInitializer: Applying theme '{theme}' (MutationObserver will auto-fix if Blazor removes it)");
+            await JSRuntime.InvokeVoidAsync("ThemeHandler.setTheme", theme);
+        }
+        catch (Exception ex)
+        {
+            await LogToBrowser($"ThemeInitializer ERROR in OnAfterRenderAsync: {ex.Message}");
+        }
+
+        if (firstRender && !_initialized)
+        {
+            _initialized = true;
+        }
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // Trigger re-render which will call OnAfterRenderAsync
+        StateHasChanged();
+    }
+
+    private async Task LogToBrowser(string message)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("console.log", message);
+        }
+        catch
+        {
+            // Ignore if JS not available yet
+        }
+    }
+
+    private async Task ApplyTheme()
+    {
+        try
+        {
+            // Check if user is authenticated
+            var currentUser = await UserService.GetCurrentUserAsync();
+
+            string theme = "light"; // default
+
+            if (currentUser != null)
+            {
+                // Load theme from database
+                var preferences = await UserPreferencesService.GetCurrentUserPreferencesAsync();
+                var dbTheme = preferences.Theme;
+                theme = string.IsNullOrWhiteSpace(dbTheme) ? "light" : dbTheme;
+
+                await LogToBrowser($"ThemeInitializer: User {currentUser.UserName} - Database theme value: '{dbTheme}', Using: '{theme}'");
+            }
+            else
+            {
+                // For non-authenticated users, try to get from localStorage
+                theme = await JSRuntime.InvokeAsync<string>("ThemeHandler.getTheme");
+                await LogToBrowser($"ThemeInitializer: No authenticated user, loaded theme '{theme}' from localStorage");
+            }
+
+            // Apply the theme
+            await LogToBrowser($"ThemeInitializer: Applying theme '{theme}' to page");
+            await JSRuntime.InvokeVoidAsync("ThemeHandler.setTheme", theme);
+        }
+        catch (Exception ex)
+        {
+            await LogToBrowser($"ThemeInitializer ERROR in ApplyTheme: {ex.Message}");
+            // Fallback to system preference or light mode
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("ThemeHandler.init");
+            }
+            catch
+            {
+                // Ignore errors in fallback
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Unsubscribe from navigation events
+        Navigation.LocationChanged -= OnLocationChanged;
+        await Task.CompletedTask;
+    }
+}

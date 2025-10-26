@@ -1,0 +1,175 @@
+@using Microsoft.AspNetCore.Identity
+@using Eidos.Models
+@inject UserManager<ApplicationUser> UserManager
+
+<h4>Security Settings</h4>
+<p class="text-muted">Manage your password and security options</p>
+
+@if (hasPassword)
+{
+    <div class="mt-4">
+        <h5>Change Password</h5>
+        <EditForm Model="@this" OnValidSubmit="HandlePasswordChange" class="mt-3">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-control" @bind="currentPassword" required autocomplete="current-password" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" @bind="newPassword" required autocomplete="new-password" />
+                <small class="form-text text-muted">
+                    Must be at least 8 characters with uppercase, lowercase, number, and special character.
+                </small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" class="form-control" @bind="confirmPassword" required autocomplete="new-password" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(passwordError))
+            {
+                <div class="alert alert-danger">@passwordError</div>
+            }
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary" disabled="@isChangingPassword">
+                    @if (isChangingPassword)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    }
+                    Change Password
+                </button>
+            </div>
+        </EditForm>
+    </div>
+}
+else
+{
+    <div class="alert alert-info mt-4">
+        <i class="bi bi-info-circle"></i>
+        <strong>Password not set</strong>
+        <p class="mb-0 mt-2">You're currently signing in with an OAuth provider (GitHub, Google, or Microsoft).
+        You can set a password below to enable email/password login as well.</p>
+    </div>
+
+    <div class="mt-4">
+        <h5>Set Password</h5>
+        <EditForm Model="@this" OnValidSubmit="HandleSetPassword" class="mt-3">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" @bind="newPassword" required autocomplete="new-password" />
+                <small class="form-text text-muted">
+                    Must be at least 8 characters with uppercase, lowercase, number, and special character.
+                </small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Confirm Password</label>
+                <input type="password" class="form-control" @bind="confirmPassword" required autocomplete="new-password" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(passwordError))
+            {
+                <div class="alert alert-danger">@passwordError</div>
+            }
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary" disabled="@isChangingPassword">
+                    @if (isChangingPassword)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    }
+                    Set Password
+                </button>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter] public ApplicationUser? User { get; set; }
+    [Parameter] public EventCallback<(string currentPassword, string newPassword)> OnPasswordChange { get; set; }
+
+    private string currentPassword = string.Empty;
+    private string newPassword = string.Empty;
+    private string confirmPassword = string.Empty;
+    private string? passwordError;
+    private bool isChangingPassword = false;
+    private bool hasPassword = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (User != null)
+        {
+            hasPassword = await UserManager.HasPasswordAsync(User);
+        }
+    }
+
+    private async Task HandlePasswordChange()
+    {
+        passwordError = null;
+
+        if (newPassword != confirmPassword)
+        {
+            passwordError = "New password and confirmation do not match.";
+            return;
+        }
+
+        if (newPassword.Length < 8)
+        {
+            passwordError = "Password must be at least 8 characters long.";
+            return;
+        }
+
+        isChangingPassword = true;
+        await OnPasswordChange.InvokeAsync((currentPassword, newPassword));
+        isChangingPassword = false;
+
+        // Clear form on success
+        currentPassword = string.Empty;
+        newPassword = string.Empty;
+        confirmPassword = string.Empty;
+    }
+
+    private async Task HandleSetPassword()
+    {
+        passwordError = null;
+
+        if (newPassword != confirmPassword)
+        {
+            passwordError = "Password and confirmation do not match.";
+            return;
+        }
+
+        if (newPassword.Length < 8)
+        {
+            passwordError = "Password must be at least 8 characters long.";
+            return;
+        }
+
+        if (User != null)
+        {
+            isChangingPassword = true;
+            var result = await UserManager.AddPasswordAsync(User, newPassword);
+            isChangingPassword = false;
+
+            if (result.Succeeded)
+            {
+                hasPassword = true;
+                newPassword = string.Empty;
+                confirmPassword = string.Empty;
+                StateHasChanged();
+            }
+            else
+            {
+                passwordError = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+        }
+    }
+}

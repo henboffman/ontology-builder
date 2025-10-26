@@ -1,0 +1,388 @@
+@using Eidos.Models
+@using Eidos.Models.Enums
+@using Eidos.Services.Interfaces
+@inject IOntologyShareService ShareService
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject ILogger<ShareModal> Logger
+
+@if (Show)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-share"></i> Share "@OntologyName"
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Create New Share Section -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0">Create New Share Link</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Permission Level</label>
+                                        <select class="form-select" @bind="newPermissionLevel">
+                                            <option value="@PermissionLevel.View">View Only</option>
+                                            <option value="@PermissionLevel.ViewAndAdd">View & Add</option>
+                                            <option value="@PermissionLevel.ViewAddEdit">View, Add & Edit</option>
+                                        </select>
+                                        <small class="text-muted">
+                                            @GetPermissionDescription(newPermissionLevel)
+                                        </small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Expiration (Optional)</label>
+                                        <input type="datetime-local" class="form-control"
+                                               @bind="newExpiresAt"
+                                               min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" />
+                                        <small class="text-muted">Leave empty for no expiration</small>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   id="allowGuests" @bind="newAllowGuests">
+                                            <label class="form-check-label" for="allowGuests">
+                                                Allow guest access (no login required)
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Note (Optional)</label>
+                                        <input type="text" class="form-control"
+                                               @bind="newNote"
+                                               placeholder="Add a note about this share link..." />
+                                    </div>
+                                    <div class="col-12">
+                                        <button class="btn btn-primary" @onclick="CreateShareLink" disabled="@creatingShare">
+                                            @if (creatingShare)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                            }
+                                            <i class="bi bi-plus-circle"></i> Create Share Link
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Active Shares List -->
+                        @if (activeShares.Any())
+                        {
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Active Share Links</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="list-group">
+                                        @foreach (var share in activeShares)
+                                        {
+                                            <div class="list-group-item">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div class="flex-grow-1">
+                                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                                            <span class="badge bg-@GetPermissionBadgeColor(share.PermissionLevel)">
+                                                                @share.PermissionLevel
+                                                            </span>
+                                                            @if (share.AllowGuestAccess)
+                                                            {
+                                                                <span class="badge bg-info">Guest Access</span>
+                                                            }
+                                                            @if (share.ExpiresAt.HasValue)
+                                                            {
+                                                                var isExpired = share.ExpiresAt.Value < DateTime.UtcNow;
+                                                                <span class="badge bg-@(isExpired ? "danger" : "warning")">
+                                                                    @(isExpired ? "Expired" : $"Expires {share.ExpiresAt.Value:g}")
+                                                                </span>
+                                                            }
+                                                        </div>
+                                                        <div class="input-group input-group-sm mb-2">
+                                                            <input type="text" class="form-control font-monospace"
+                                                                   value="@GetShareUrl(share.ShareToken)"
+                                                                   readonly
+                                                                   id="share-url-@share.Id">
+                                                            <button class="btn btn-outline-primary"
+                                                                    @onclick="() => CopyToClipboard(share.Id, share.ShareToken)">
+                                                                <i class="bi bi-clipboard"></i> Copy
+                                                            </button>
+                                                        </div>
+                                                        @if (copyStatusMessage.ContainsKey(share.Id))
+                                                        {
+                                                            <div class="small @(copyStatusMessage[share.Id].IsSuccess ? "text-success" : "text-info") mb-2">
+                                                                <i class="bi @(copyStatusMessage[share.Id].IsSuccess ? "bi-check-circle" : "bi-info-circle")"></i>
+                                                                @copyStatusMessage[share.Id].Message
+                                                            </div>
+                                                        }
+                                                        <div class="small text-muted">
+                                                            <div>Created: @share.CreatedAt.ToLocalTime().ToString("g")</div>
+                                                            <div>Accessed: @share.AccessCount times</div>
+                                                            @if (!string.IsNullOrEmpty(share.Note))
+                                                            {
+                                                                <div>Note: @share.Note</div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                    <div class="ms-3">
+                                                        <button class="btn btn-sm btn-outline-danger"
+                                                                @onclick="() => DeleteShare(share.Id)">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else if (!isLoading)
+                        {
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> No active share links yet. Create one above to get started!
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool Show { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ShowChanged { get; set; }
+
+    [Parameter]
+    public int OntologyId { get; set; }
+
+    [Parameter]
+    public string OntologyName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string UserId { get; set; } = string.Empty;
+
+    private List<OntologyShare> activeShares = new();
+    private bool isLoading = false;
+    private bool creatingShare = false;
+    private Dictionary<int, CopyStatus> copyStatusMessage = new();
+
+    // New share form fields
+    private PermissionLevel newPermissionLevel = PermissionLevel.View;
+    private DateTime? newExpiresAt = null;
+    private bool newAllowGuests = true;
+    private string newNote = string.Empty;
+
+    private class CopyStatus
+    {
+        public string Message { get; set; } = string.Empty;
+        public bool IsSuccess { get; set; }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Show && OntologyId > 0)
+        {
+            await LoadActiveShares();
+        }
+    }
+
+    private async Task LoadActiveShares()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var shares = await ShareService.GetSharesForOntologyAsync(OntologyId);
+            activeShares = shares.Where(s => s.IsActive).OrderByDescending(s => s.CreatedAt).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading shares for ontology {OntologyId}", OntologyId);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CreateShareLink()
+    {
+        creatingShare = true;
+        StateHasChanged();
+
+        try
+        {
+            var share = await ShareService.CreateShareAsync(
+                OntologyId,
+                UserId,
+                newPermissionLevel,
+                newAllowGuests,
+                newExpiresAt?.ToUniversalTime(),
+                string.IsNullOrWhiteSpace(newNote) ? null : newNote
+            );
+
+            // Reset form
+            newPermissionLevel = PermissionLevel.View;
+            newExpiresAt = null;
+            newAllowGuests = true;
+            newNote = string.Empty;
+
+            // Reload shares
+            await LoadActiveShares();
+
+            // Auto-copy the new share URL to clipboard
+            await CopyToClipboard(share.Id, share.ShareToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating share for ontology {OntologyId}", OntologyId);
+        }
+        finally
+        {
+            creatingShare = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteShare(int shareId)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this share link? It will immediately become invalid."))
+        {
+            return;
+        }
+
+        try
+        {
+            await ShareService.DeleteShareAsync(shareId);
+            await LoadActiveShares();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting share {ShareId}", shareId);
+        }
+    }
+
+    private async Task CopyToClipboard(int shareId, string shareToken)
+    {
+        var url = GetShareUrl(shareToken);
+        var inputId = $"share-url-{shareId}";
+
+        // Clear any existing message for this share
+        copyStatusMessage.Remove(shareId);
+        StateHasChanged();
+
+        try
+        {
+            // Try the modern clipboard API first
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
+            copyStatusMessage[shareId] = new CopyStatus
+            {
+                Message = "Copied to clipboard!",
+                IsSuccess = true
+            };
+        }
+        catch
+        {
+            // Fallback: select the input field and use execCommand
+            try
+            {
+                var success = await JS.InvokeAsync<bool>("copyFromInputField", inputId);
+                if (success)
+                {
+                    copyStatusMessage[shareId] = new CopyStatus
+                    {
+                        Message = "Copied to clipboard!",
+                        IsSuccess = true
+                    };
+                }
+                else
+                {
+                    // Text is selected, just need user to press Cmd+C / Ctrl+C
+                    copyStatusMessage[shareId] = new CopyStatus
+                    {
+                        Message = "Text selected - press ⌘C (Mac) or Ctrl+C (Windows) to copy",
+                        IsSuccess = false
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to copy share URL to clipboard for share {ShareId}", shareId);
+                copyStatusMessage[shareId] = new CopyStatus
+                {
+                    Message = "Please manually select and copy the URL above",
+                    IsSuccess = false
+                };
+            }
+        }
+
+        StateHasChanged();
+
+        // Auto-clear success messages after 3 seconds
+        if (copyStatusMessage.ContainsKey(shareId) && copyStatusMessage[shareId].IsSuccess)
+        {
+            await Task.Delay(3000);
+            copyStatusMessage.Remove(shareId);
+            StateHasChanged();
+        }
+    }
+
+    private string GetShareUrl(string shareToken)
+    {
+        var baseUrl = Navigation.BaseUri.TrimEnd('/');
+        return $"{baseUrl}/share/{shareToken}";
+    }
+
+    private string GetPermissionDescription(PermissionLevel level)
+    {
+        return level switch
+        {
+            PermissionLevel.View => "Can only view the ontology",
+            PermissionLevel.ViewAndAdd => "Can view and add new concepts/relationships",
+            PermissionLevel.ViewAddEdit => "Can view, add, and edit concepts/relationships",
+            PermissionLevel.FullAccess => "Complete control (owner only)",
+            _ => ""
+        };
+    }
+
+    private string GetPermissionBadgeColor(PermissionLevel level)
+    {
+        return level switch
+        {
+            PermissionLevel.View => "secondary",
+            PermissionLevel.ViewAndAdd => "info",
+            PermissionLevel.ViewAddEdit => "primary",
+            PermissionLevel.FullAccess => "success",
+            _ => "secondary"
+        };
+    }
+
+    private async Task CloseModal()
+    {
+        Show = false;
+        await ShowChanged.InvokeAsync(Show);
+    }
+}
