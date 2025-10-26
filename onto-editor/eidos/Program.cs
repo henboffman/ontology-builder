@@ -284,7 +284,7 @@ builder.Services.AddHttpClient();
 
 // Add health checks
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<ApplicationDbContext>("database");
+    .AddDbContextCheck<OntologyDbContext>("database");
 
 // Register Repositories (Data Layer)
 builder.Services.AddScoped<IUserRepository, UserRepository>();

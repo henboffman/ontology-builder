@@ -250,8 +250,12 @@ namespace Eidos.Services
 
             var createdOntology = await CreateOntologyAsync(clonedOntology);
 
-            // Clone all concepts
+            // Clone all concepts (optimized - batch insert instead of N+1)
             var conceptMapping = new Dictionary<int, int>(); // old ID -> new ID
+            var clonedConcepts = new List<Concept>();
+            var clonedProperties = new List<Property>();
+
+            // Prepare all concepts first
             foreach (var concept in sourceOntology.Concepts)
             {
                 var clonedConcept = new Concept
@@ -265,34 +269,57 @@ namespace Eidos.Services
                     PositionY = concept.PositionY,
                     Category = concept.Category,
                     Color = concept.Color,
-                    SourceOntology = concept.SourceOntology
+                    SourceOntology = concept.SourceOntology,
+                    Properties = new List<Property>() // Initialize for later
                 };
 
-                var createdConcept = await _conceptService.CreateAsync(clonedConcept, recordUndo: false);
-                conceptMapping[concept.Id] = createdConcept.Id;
+                clonedConcepts.Add(clonedConcept);
 
-                // Clone properties
-                foreach (var property in concept.Properties)
+                // Store original ID temporarily for mapping
+                clonedConcept.Id = concept.Id; // Temporary, will be replaced after insert
+            }
+
+            // Batch insert all concepts at once
+            await using (var context = await _contextFactory.CreateDbContextAsync())
+            {
+                // Clear temporary IDs before insert
+                foreach (var c in clonedConcepts)
                 {
-                    var clonedProperty = new Property
+                    var originalId = c.Id;
+                    c.Id = 0; // Reset for insert
+
+                    // Prepare properties for this concept
+                    var originalConcept = sourceOntology.Concepts.First(sc => sc.Id == originalId);
+                    foreach (var property in originalConcept.Properties)
                     {
-                        ConceptId = createdConcept.Id,
-                        Name = property.Name,
-                        Value = property.Value,
-                        DataType = property.DataType,
-                        Description = property.Description
-                    };
-                    await _propertyService.CreateAsync(clonedProperty);
+                        c.Properties.Add(new Property
+                        {
+                            Name = property.Name,
+                            Value = property.Value,
+                            DataType = property.DataType,
+                            Description = property.Description
+                        });
+                    }
+                }
+
+                context.Concepts.AddRange(clonedConcepts);
+                await context.SaveChangesAsync();
+
+                // Now build the mapping with the new IDs
+                for (int i = 0; i < sourceOntology.Concepts.Count; i++)
+                {
+                    conceptMapping[sourceOntology.Concepts.ToList()[i].Id] = clonedConcepts[i].Id;
                 }
             }
 
-            // Clone all relationships
+            // Clone all relationships (optimized - batch insert instead of N+1)
+            var clonedRelationships = new List<Relationship>();
             foreach (var relationship in sourceOntology.Relationships)
             {
                 if (conceptMapping.ContainsKey(relationship.SourceConceptId) &&
                     conceptMapping.ContainsKey(relationship.TargetConceptId))
                 {
-                    var clonedRelationship = new Relationship
+                    clonedRelationships.Add(new Relationship
                     {
                         OntologyId = createdOntology.Id,
                         SourceConceptId = conceptMapping[relationship.SourceConceptId],
@@ -302,26 +329,33 @@ namespace Eidos.Services
                         Description = relationship.Description,
                         OntologyUri = relationship.OntologyUri,
                         Strength = relationship.Strength
-                    };
-                    await _relationshipService.CreateAsync(clonedRelationship, recordUndo: false);
+                    });
                 }
             }
 
-            // Clone custom templates
-            foreach (var template in sourceOntology.CustomTemplates)
+            // Batch insert all relationships at once
+            if (clonedRelationships.Any())
             {
-                var clonedTemplate = new CustomConceptTemplate
-                {
-                    OntologyId = createdOntology.Id,
-                    Category = template.Category,
-                    Type = template.Type,
-                    Description = template.Description,
-                    Examples = template.Examples,
-                    Color = template.Color
-                };
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                context.Relationships.AddRange(clonedRelationships);
+                await context.SaveChangesAsync();
+            }
 
-                using var context = await _contextFactory.CreateDbContextAsync();
-                context.CustomConceptTemplates.Add(clonedTemplate);
+            // Clone custom templates (optimized - batch insert instead of N+1)
+            var clonedTemplates = sourceOntology.CustomTemplates.Select(template => new CustomConceptTemplate
+            {
+                OntologyId = createdOntology.Id,
+                Category = template.Category,
+                Type = template.Type,
+                Description = template.Description,
+                Examples = template.Examples,
+                Color = template.Color
+            }).ToList();
+
+            if (clonedTemplates.Any())
+            {
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                context.CustomConceptTemplates.AddRange(clonedTemplates);
                 await context.SaveChangesAsync();
             }
 
@@ -371,34 +405,34 @@ namespace Eidos.Services
 
         public async Task<List<Ontology>> GetOntologyDescendantsAsync(int ontologyId)
         {
-            var descendants = new List<Ontology>();
-            using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
 
-            // Get all ontologies with their parent relationships loaded
-            var allOntologies = await context.Ontologies
-                .Include(o => o.ChildOntologies)
+            // Use recursive CTE to efficiently fetch only descendants (optimized - no longer loads ALL ontologies)
+            // This reduces query from O(all ontologies) to O(descendants only)
+            var sql = @"
+                WITH OntologyTree AS (
+                    -- Base case: direct children of the specified ontology
+                    SELECT Id, UserId, Name, Description, Namespace, Tags, License, Author, Version,
+                           UsesBFO, UsesProvO, Notes, ParentOntologyId, ProvenanceType, ProvenanceNotes,
+                           CreatedAt, UpdatedAt
+                    FROM Ontologies
+                    WHERE ParentOntologyId = {0}
+
+                    UNION ALL
+
+                    -- Recursive case: children of children
+                    SELECT o.Id, o.UserId, o.Name, o.Description, o.Namespace, o.Tags, o.License, o.Author,
+                           o.Version, o.UsesBFO, o.UsesProvO, o.Notes, o.ParentOntologyId, o.ProvenanceType,
+                           o.ProvenanceNotes, o.CreatedAt, o.UpdatedAt
+                    FROM Ontologies o
+                    INNER JOIN OntologyTree t ON o.ParentOntologyId = t.Id
+                )
+                SELECT * FROM OntologyTree";
+
+            var descendants = await context.Ontologies
+                .FromSqlRaw(sql, ontologyId)
+                .AsNoTracking()
                 .ToListAsync();
-
-            // Build a mapping for efficient lookup
-            var childrenMap = allOntologies
-                .GroupBy(o => o.ParentOntologyId)
-                .Where(g => g.Key != null)
-                .ToDictionary(g => g.Key!.Value, g => g.ToList());
-
-            // Recursive function to get all descendants
-            void GetDescendantsRecursive(int parentId)
-            {
-                if (childrenMap.ContainsKey(parentId))
-                {
-                    foreach (var child in childrenMap[parentId])
-                    {
-                        descendants.Add(child);
-                        GetDescendantsRecursive(child.Id);
-                    }
-                }
-            }
-
-            GetDescendantsRecursive(ontologyId);
 
             return descendants;
         }

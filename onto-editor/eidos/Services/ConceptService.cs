@@ -1,3 +1,4 @@
+using Eidos.Data;
 using Eidos.Data.Repositories;
 using Eidos.Models;
 using Eidos.Models.Enums;
@@ -6,6 +7,7 @@ using Eidos.Services.Commands;
 using Eidos.Services.Interfaces;
 using Eidos.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace Eidos.Services;
@@ -28,6 +30,7 @@ public class ConceptService : IConceptService
     private readonly IUserService _userService;
     private readonly IOntologyShareService _shareService;
     private readonly IOntologyActivityService _activityService;
+    private readonly IDbContextFactory<OntologyDbContext> _contextFactory;
 
     public ConceptService(
         IConceptRepository conceptRepository,
@@ -38,7 +41,8 @@ public class ConceptService : IConceptService
         IHubContext<OntologyHub> hubContext,
         IUserService userService,
         IOntologyShareService shareService,
-        IOntologyActivityService activityService)
+        IOntologyActivityService activityService,
+        IDbContextFactory<OntologyDbContext> contextFactory)
     {
         _conceptRepository = conceptRepository;
         _ontologyRepository = ontologyRepository;
@@ -49,6 +53,7 @@ public class ConceptService : IConceptService
         _userService = userService;
         _shareService = shareService;
         _activityService = activityService;
+        _contextFactory = contextFactory;
     }
 
     public async Task<Concept> CreateAsync(Concept concept, bool recordUndo = true)
@@ -226,16 +231,18 @@ public class ConceptService : IConceptService
                      && r.SourceConceptId == conceptId)
             .ToList();
 
-        // Get the parent concepts
-        var parentIds = parentRelationships.Select(r => r.TargetConceptId).Distinct();
-        var parents = new List<Concept>();
+        // Get the parent concepts (optimized - single query instead of N+1)
+        var parentIds = parentRelationships.Select(r => r.TargetConceptId).Distinct().ToList();
 
-        foreach (var parentId in parentIds)
-        {
-            var parent = await _conceptRepository.GetByIdAsync(parentId);
-            if (parent != null)
-                parents.Add(parent);
-        }
+        if (!parentIds.Any())
+            return new List<Concept>();
+
+        // Use DbContext directly for efficient batch query
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var parents = await context.Concepts
+            .Where(c => parentIds.Contains(c.Id))
+            .AsNoTracking()
+            .ToListAsync();
 
         return parents;
     }
@@ -253,16 +260,18 @@ public class ConceptService : IConceptService
                      && r.TargetConceptId == conceptId)
             .ToList();
 
-        // Get the child concepts
-        var childIds = childRelationships.Select(r => r.SourceConceptId).Distinct();
-        var children = new List<Concept>();
+        // Get the child concepts (optimized - single query instead of N+1)
+        var childIds = childRelationships.Select(r => r.SourceConceptId).Distinct().ToList();
 
-        foreach (var childId in childIds)
-        {
-            var child = await _conceptRepository.GetByIdAsync(childId);
-            if (child != null)
-                children.Add(child);
-        }
+        if (!childIds.Any())
+            return new List<Concept>();
+
+        // Use DbContext directly for efficient batch query
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var children = await context.Concepts
+            .Where(c => childIds.Contains(c.Id))
+            .AsNoTracking()
+            .ToListAsync();
 
         return children;
     }
