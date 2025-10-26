@@ -8,20 +8,19 @@
     text-align: center;
     margin-bottom: 3rem;
     padding-bottom: 2rem;
-    border-bottom: 2px solid #dee2e6;
+    border-bottom: 2px solid var(--bs-border-color);
 }
 
 .release-notes-header h3 {
     font-size: 2rem;
     font-weight: 700;
-    color: #212529;
     margin-bottom: 0.5rem;
 }
 
 .release-notes-header p {
     font-size: 1.1rem;
     margin: 0;
-    color: #6c757d;
+    color: var(--bs-secondary-color);
 }
 
 /* Timeline */
@@ -37,7 +36,7 @@
     top: 0;
     bottom: 0;
     width: 3px;
-    background: linear-gradient(180deg, #0d6efd 0%, #6c757d 100%);
+    background: linear-gradient(180deg, var(--bs-primary) 0%, var(--bs-secondary) 100%);
     border-radius: 2px;
 }
 
@@ -47,7 +46,7 @@
     margin-bottom: 3rem;
     padding-left: 2rem;
     padding-bottom: 2rem;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid var(--bs-border-color);
 }
 
 .release-item:last-child {
@@ -61,10 +60,10 @@
     top: 0.5rem;
     width: 1rem;
     height: 1rem;
-    background-color: #fff;
-    border: 3px solid #0d6efd;
+    background-color: var(--bs-body-bg);
+    border: 3px solid var(--bs-primary);
     border-radius: 50%;
-    box-shadow: 0 0 0 3px #fff;
+    box-shadow: 0 0 0 3px var(--bs-body-bg);
 }
 
 .release-badge {
@@ -87,7 +86,7 @@
 }
 
 .release-date {
-    color: #6c757d;
+    color: var(--bs-secondary-color);
     font-size: 0.875rem;
     font-weight: 500;
     margin-bottom: 0.5rem;
@@ -96,7 +95,6 @@
 .release-title {
     font-size: 1.5rem;
     font-weight: 600;
-    color: #212529;
     margin-bottom: 1rem;
 }
 
@@ -105,19 +103,17 @@
 }
 
 .release-content {
-    color: #495057;
+    /* Inherit body color naturally from Bootstrap theme */
 }
 
 .release-content .lead {
     font-size: 1.1rem;
-    color: #212529;
     margin-bottom: 1.5rem;
 }
 
 .release-content h5 {
     font-size: 1.1rem;
     font-weight: 600;
-    color: #212529;
     margin-top: 1.5rem;
     margin-bottom: 1rem;
 }
@@ -130,11 +126,10 @@
 .feature-list li {
     margin-bottom: 0.75rem;
     line-height: 1.6;
-    color: #495057;
 }
 
 .feature-list li strong {
-    color: #212529;
+    font-weight: 600;
 }
 
 .feature-list ul {
@@ -146,89 +141,35 @@
 .feature-list ul li {
     margin-bottom: 0.25rem;
     font-size: 0.95rem;
-    color: #495057;
 }
 
 /* Footer */
 .release-footer {
     margin-top: 3rem;
     padding-top: 2rem;
-    border-top: 2px solid #dee2e6;
+    border-top: 2px solid var(--bs-border-color);
 }
 
 .release-footer h5 {
     font-size: 1.25rem;
     font-weight: 600;
     margin-bottom: 1rem;
-    color: #212529;
 }
 
 .release-footer h6 {
     font-size: 1rem;
     font-weight: 600;
     margin-bottom: 0.75rem;
-    color: #495057;
 }
 
 .release-footer a {
-    color: #0d6efd;
+    color: var(--bs-link-color);
     text-decoration: none;
 }
 
 .release-footer a:hover {
     text-decoration: underline;
-}
-
-/* Dark Mode */
-@media (prefers-color-scheme: dark) {
-    .release-notes-header {
-        border-bottom-color: #495057;
-    }
-
-    .release-notes-header h3 {
-        color: #f8f9fa;
-    }
-
-    .release-timeline::before {
-        background: linear-gradient(180deg, #0d6efd 0%, #adb5bd 100%);
-    }
-
-    .release-item {
-        border-bottom-color: #495057;
-    }
-
-    .release-item::before {
-        background-color: #2b3035;
-        box-shadow: 0 0 0 3px #2b3035;
-    }
-
-    .release-title {
-        color: #f8f9fa;
-    }
-
-    .release-content {
-        color: #adb5bd;
-    }
-
-    .release-content .lead {
-        color: #f8f9fa;
-    }
-
-    .release-content h5 {
-        color: #f8f9fa;
-    }
-
-    .feature-list li strong {
-        color: #f8f9fa;
-    }
-
-    .release-footer {
-        border-top-color: #495057;
-    }
-
-    .release-footer h6 {
-        color: #adb5bd;
-    }
+    color: var(--bs-link-hover-color);
 }
 
 /* Mobile Responsive */
