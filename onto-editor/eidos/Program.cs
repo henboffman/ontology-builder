@@ -282,6 +282,10 @@ if (builder.Environment.IsDevelopment())
 // Add HTTP client for downloading ontologies
 builder.Services.AddHttpClient();
 
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>("database");
+
 // Register Repositories (Data Layer)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IOntologyRepository, OntologyRepository>();
@@ -421,5 +425,9 @@ app.MapRazorComponents<App>()
 
 // Map SignalR hub for real-time collaborative editing
 app.MapHub<Eidos.Hubs.OntologyHub>("/ontologyhub");
+
+// Map health check endpoints
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/ready");
 
 app.Run();

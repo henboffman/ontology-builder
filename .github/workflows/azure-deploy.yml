@@ -80,9 +80,54 @@ jobs:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         package: ./publish
 
+    - name: Wait for deployment to stabilize
+      run: sleep 30
+
+    - name: Validate deployment - Health check
+      run: |
+        echo "🔍 Checking health endpoint..."
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://eidosonto.com/health)
+        if [ "$response" -eq 200 ]; then
+          echo "✅ Health check passed (HTTP $response)"
+        else
+          echo "❌ Health check failed (HTTP $response)"
+          exit 1
+        fi
+
+    - name: Validate deployment - Homepage
+      run: |
+        echo "🔍 Checking homepage..."
+        response=$(curl -s -w "%{http_code}" https://eidosonto.com -o /tmp/homepage.html)
+        if [ "$response" -eq 200 ]; then
+          echo "✅ Homepage accessible (HTTP $response)"
+          # Check for expected content
+          if grep -q "Eidos" /tmp/homepage.html; then
+            echo "✅ Homepage contains expected content"
+          else
+            echo "❌ Homepage missing expected content"
+            exit 1
+          fi
+        else
+          echo "❌ Homepage check failed (HTTP $response)"
+          exit 1
+        fi
+
+    - name: Validate deployment - Release notes
+      run: |
+        echo "🔍 Checking release notes page..."
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://eidosonto.com/release-notes)
+        if [ "$response" -eq 200 ]; then
+          echo "✅ Release notes page accessible (HTTP $response)"
+        else
+          echo "❌ Release notes check failed (HTTP $response)"
+          exit 1
+        fi
+
     - name: Deployment summary
       run: |
         echo "✅ Deployment to Azure completed successfully"
+        echo "✅ All validation tests passed"
         echo "🌐 Site URL: https://eidosonto.com"
+        echo "🏥 Health: https://eidosonto.com/health"
         echo "📦 Deployment ID: ${{ github.run_id }}"
         echo "🔖 Commit SHA: ${{ github.sha }}"
