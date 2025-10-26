@@ -10,13 +10,16 @@ namespace Eidos.Pages.Account
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IConfiguration _configuration;
 
         public LoginModel(
             SignInManager<ApplicationUser> signInManager,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IConfiguration configuration)
         {
             _signInManager = signInManager;
             _userManager = userManager;
+            _configuration = configuration;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -30,6 +33,19 @@ namespace Eidos.Pages.Account
 
         public bool IsRegisterMode => Mode == "register";
         public string ToggleUrl => IsRegisterMode ? "/Account/Login" : "/Account/Login?mode=register";
+
+        // Check if OAuth providers are configured
+        public bool IsGoogleConfigured =>
+            !string.IsNullOrEmpty(_configuration["Authentication:Google:ClientId"]) &&
+            !string.IsNullOrEmpty(_configuration["Authentication:Google:ClientSecret"]);
+
+        public bool IsMicrosoftConfigured =>
+            !string.IsNullOrEmpty(_configuration["Authentication:Microsoft:ClientId"]) &&
+            !string.IsNullOrEmpty(_configuration["Authentication:Microsoft:ClientSecret"]);
+
+        public bool IsGitHubConfigured =>
+            !string.IsNullOrEmpty(_configuration["Authentication:GitHub:ClientId"]) &&
+            !string.IsNullOrEmpty(_configuration["Authentication:GitHub:ClientSecret"]);
 
         public class InputModel
         {

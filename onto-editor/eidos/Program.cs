@@ -186,6 +186,40 @@ authBuilder.AddGitHub(options =>
     options.CorrelationCookie.SameSite = SameSiteMode.Lax;
     options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always; // Always require HTTPS
     options.CorrelationCookie.IsEssential = true;
+
+    // Assign roles after successful authentication
+    options.Events.OnCreatingTicket = async context =>
+    {
+        try
+        {
+            var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+            var seeder = context.HttpContext.RequestServices.GetRequiredService<DatabaseSeeder>();
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+
+            // Get the user email from claims
+            var email = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+            if (!string.IsNullOrEmpty(email))
+            {
+                // Find existing user (they may not exist yet on first login)
+                var user = await userManager.FindByEmailAsync(email);
+                if (user != null)
+                {
+                    await seeder.AssignDefaultRolesOnLoginAsync(user);
+                    logger.LogInformation("GitHub OAuth: Roles assigned for user: {Email}", email);
+                }
+                else
+                {
+                    logger.LogInformation("GitHub OAuth: User not found during OnCreatingTicket, will be created by framework: {Email}", email);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't break the login flow
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "Error in GitHub OAuth OnCreatingTicket event");
+        }
+    };
 });
 
 // Add Google OAuth provider (optional - only if configured)
@@ -207,6 +241,40 @@ if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientS
             ? CookieSecurePolicy.SameAsRequest
             : CookieSecurePolicy.Always;
         options.CorrelationCookie.IsEssential = true;
+
+        // Assign roles after successful authentication
+        options.Events.OnCreatingTicket = async context =>
+        {
+            try
+            {
+                var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+                var seeder = context.HttpContext.RequestServices.GetRequiredService<DatabaseSeeder>();
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+
+                // Get the user email from claims
+                var email = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+                if (!string.IsNullOrEmpty(email))
+                {
+                    // Find existing user (they may not exist yet on first login)
+                    var user = await userManager.FindByEmailAsync(email);
+                    if (user != null)
+                    {
+                        await seeder.AssignDefaultRolesOnLoginAsync(user);
+                        logger.LogInformation("Google OAuth: Roles assigned for user: {Email}", email);
+                    }
+                    else
+                    {
+                        logger.LogInformation("Google OAuth: User not found during OnCreatingTicket, will be created by framework: {Email}", email);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't break the login flow
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "Error in Google OAuth OnCreatingTicket event");
+            }
+        };
     });
 }
 
@@ -229,6 +297,40 @@ if (!string.IsNullOrEmpty(microsoftClientId) && !string.IsNullOrEmpty(microsoftC
             ? CookieSecurePolicy.SameAsRequest
             : CookieSecurePolicy.Always;
         options.CorrelationCookie.IsEssential = true;
+
+        // Assign roles after successful authentication
+        options.Events.OnCreatingTicket = async context =>
+        {
+            try
+            {
+                var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+                var seeder = context.HttpContext.RequestServices.GetRequiredService<DatabaseSeeder>();
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+
+                // Get the user email from claims
+                var email = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+                if (!string.IsNullOrEmpty(email))
+                {
+                    // Find existing user (they may not exist yet on first login)
+                    var user = await userManager.FindByEmailAsync(email);
+                    if (user != null)
+                    {
+                        await seeder.AssignDefaultRolesOnLoginAsync(user);
+                        logger.LogInformation("Microsoft OAuth: Roles assigned for user: {Email}", email);
+                    }
+                    else
+                    {
+                        logger.LogInformation("Microsoft OAuth: User not found during OnCreatingTicket, will be created by framework: {Email}", email);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't break the login flow
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "Error in Microsoft OAuth OnCreatingTicket event");
+            }
+        };
     });
 }
 
@@ -256,9 +358,36 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
     options.SignIn.RequireConfirmedEmail = false; // Set to true in production with email service
     options.SignIn.RequireConfirmedAccount = false;
 })
+    .AddRoles<IdentityRole>() // Add role support
     .AddEntityFrameworkStores<OntologyDbContext>()
     .AddSignInManager()
+    .AddRoleManager<RoleManager<IdentityRole>>() // Add role manager
     .AddDefaultTokenProviders();
+
+// Configure authorization policies
+builder.Services.AddAuthorization(options =>
+{
+    // Admin-only policy
+    options.AddPolicy(AppPolicies.RequireAdmin, policy =>
+        policy.RequireRole(AppRoles.Admin));
+
+    // Power user policy (Admin or PowerUser)
+    options.AddPolicy(AppPolicies.RequirePowerUser, policy =>
+        policy.RequireRole(AppRoles.Admin, AppRoles.PowerUser));
+
+    // Authenticated user policy
+    options.AddPolicy(AppPolicies.RequireAuthenticatedUser, policy =>
+        policy.RequireAuthenticatedUser());
+});
+
+// Register DatabaseSeeder service
+builder.Services.AddScoped<DatabaseSeeder>();
+
+// Register User Management service
+builder.Services.AddScoped<UserManagementService>();
+
+// Register Ontology Permission service
+builder.Services.AddScoped<OntologyPermissionService>();
 
 // Configure cookie settings for secure authentication
 builder.Services.ConfigureApplicationCookie(options =>
@@ -373,6 +502,10 @@ using (var scope = app.Services.CreateScope())
 
     // Use migrations instead of EnsureCreated for proper schema management
     db.Database.Migrate();
+
+    // Seed roles and admin users
+    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+    await seeder.SeedAsync();
 }
 
 // Configure the HTTP request pipeline.

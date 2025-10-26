@@ -21,6 +21,7 @@
 @inject IRestrictionService RestrictionService
 @inject ITtlImportService TtlImportService
 @inject ITtlExportService TtlExportService
+@inject OntologyPermissionService PermissionService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -111,6 +112,8 @@ else
 
         <!-- Ontology Settings Dialog -->
         <OntologySettingsDialog IsVisible="@showSettingsDialog"
+                               OntologyId="@(ontology?.Id ?? 0)"
+                               CurrentUserId="@currentUserId"
                                Name="@editingOntologyName"
                                NameChanged="@((value) => editingOntologyName = value)"
                                Description="@editingOntologyDescription"
@@ -129,6 +132,10 @@ else
                                UsesBFOChanged="@((value) => editingOntologyUsesBFO = value)"
                                UsesProvO="@editingOntologyUsesProvO"
                                UsesProvOChanged="@((value) => editingOntologyUsesProvO = value)"
+                               Visibility="@editingOntologyVisibility"
+                               VisibilityChanged="@((value) => editingOntologyVisibility = value)"
+                               AllowPublicEdit="@editingOntologyAllowPublicEdit"
+                               AllowPublicEditChanged="@((value) => editingOntologyAllowPublicEdit = value)"
                                OnSaveClick="@SaveSettings"
                                OnCancelClick="@CancelSettings" />
 
@@ -580,6 +587,8 @@ else
     private string? editingOntologyLicense;
     private bool editingOntologyUsesBFO;
     private bool editingOntologyUsesProvO;
+    private string editingOntologyVisibility = OntologyVisibility.Private;
+    private bool editingOntologyAllowPublicEdit = false;
 
     // TTL Import state
     private bool showImportDialog = false;
@@ -614,15 +623,41 @@ else
                 return;
             }
 
-            // Check user's permission level for this ontology
-            // For authenticated users: tracked in UserShareAccess table by userId
-            // For guest users: tracked via GuestSessionToken query parameter
-            userPermissionLevel = await ShareService.GetPermissionLevelAsync(ontology.Id, currentUserId, GuestSessionToken);
-
-            // If no explicit permission is set, assume FullAccess (owner or default)
-            if (!userPermissionLevel.HasValue)
+            // First, check if user has access based on ontology visibility (private/group/public)
+            var canView = await PermissionService.CanViewAsync(ontology.Id, currentUserId);
+            if (!canView)
             {
+                loadError = "You do not have permission to view this ontology.";
+                return;
+            }
+
+            // Check if user can edit based on ontology visibility permissions
+            var canEdit = await PermissionService.CanEditAsync(ontology.Id, currentUserId);
+
+            // Also check sharing permissions (for shared links with specific permissions)
+            var sharePermission = await ShareService.GetPermissionLevelAsync(ontology.Id, currentUserId, GuestSessionToken);
+
+            // Determine final permission level by combining both systems
+            if (sharePermission.HasValue)
+            {
+                // If there's a share permission, use it (it may be more restrictive)
+                userPermissionLevel = sharePermission;
+            }
+            else if (canEdit)
+            {
+                // User can edit based on ontology visibility/ownership
                 userPermissionLevel = PermissionLevel.FullAccess;
+            }
+            else if (canView)
+            {
+                // User can only view
+                userPermissionLevel = PermissionLevel.View;
+            }
+            else
+            {
+                // No access (shouldn't reach here due to canView check above)
+                loadError = "You do not have permission to access this ontology.";
+                return;
             }
         }
         catch (Exception ex)
@@ -1226,6 +1261,8 @@ else
         editingOntologyLicense = ontology.License;
         editingOntologyUsesBFO = ontology.UsesBFO;
         editingOntologyUsesProvO = ontology.UsesProvO;
+        editingOntologyVisibility = ontology.Visibility ?? OntologyVisibility.Private;
+        editingOntologyAllowPublicEdit = ontology.AllowPublicEdit;
 
         showSettingsDialog = true;
     }
@@ -1256,6 +1293,8 @@ else
             ontology.License = editingOntologyLicense;
             ontology.UsesBFO = editingOntologyUsesBFO;
             ontology.UsesProvO = editingOntologyUsesProvO;
+            ontology.Visibility = editingOntologyVisibility;
+            ontology.AllowPublicEdit = editingOntologyAllowPublicEdit;
             ontology.UpdatedAt = DateTime.UtcNow;
 
             await OntologyService.UpdateOntologyAsync(ontology);

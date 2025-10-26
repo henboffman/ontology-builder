@@ -13,6 +13,7 @@
 @inject OntologyDownloadService DownloadService
 @inject ITtlImportService ImportService
 @inject TutorialService TutorialService
+@inject OntologyPermissionService PermissionService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @inject ILogger<Home> Logger
@@ -723,7 +724,8 @@
 
     private async Task LoadOntologies()
     {
-        ontologies = await OntologyService.GetOntologiesForCurrentUserAsync();
+        // Use permission service to get only ontologies the user can access
+        ontologies = await PermissionService.GetAccessibleOntologiesAsync(currentUserId);
 
         // Reload permission button texts
         if (ontologies != null)

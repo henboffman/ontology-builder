@@ -69,6 +69,22 @@ namespace Eidos.Models
         /// </summary>
         public string? ProvenanceNotes { get; set; }
 
+        // Visibility and Permissions
+        /// <summary>
+        /// Visibility level: "private", "group", "public"
+        /// - private: Only owner can access
+        /// - group: Owner + specified groups can access
+        /// - public: Anyone can view (read-only by default)
+        /// </summary>
+        [Required]
+        [StringLength(20)]
+        public string Visibility { get; set; } = "private";
+
+        /// <summary>
+        /// Whether public users can edit (only relevant if Visibility is "public")
+        /// </summary>
+        public bool AllowPublicEdit { get; set; } = false;
+
         // Navigation properties
         public ICollection<Concept> Concepts { get; set; } = new List<Concept>();
         public ICollection<Relationship> Relationships { get; set; } = new List<Relationship>();
@@ -81,7 +97,22 @@ namespace Eidos.Models
         /// Ontologies that were forked/derived from this one
         /// </summary>
         public ICollection<Ontology> ChildOntologies { get; set; } = new List<Ontology>();
+
+        /// <summary>
+        /// Group permissions for this ontology
+        /// </summary>
+        public ICollection<OntologyGroupPermission> GroupPermissions { get; set; } = new List<OntologyGroupPermission>();
     }
+
+/// <summary>
+/// Visibility level constants for ontologies
+/// </summary>
+public static class OntologyVisibility
+{
+    public const string Private = "private";
+    public const string Group = "group";
+    public const string Public = "public";
+}
 
     /// <summary>
     /// Represents a link to an external ontology that is referenced/imported

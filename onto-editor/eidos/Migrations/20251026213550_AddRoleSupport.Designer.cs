@@ -4,6 +4,7 @@ using Eidos.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Eidos.Migrations
 {
     [DbContext(typeof(OntologyDbContext))]
-    partial class OntologyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251026213550_AddRoleSupport")]
+    partial class AddRoleSupport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -516,9 +519,6 @@ namespace Eidos.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<bool>("AllowPublicEdit")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Author")
                         .HasColumnType("nvarchar(max)");
 
@@ -572,11 +572,6 @@ namespace Eidos.Migrations
 
                     b.Property<string>("Version")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Visibility")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 
@@ -665,44 +660,6 @@ namespace Eidos.Migrations
                         .HasDatabaseName("IX_OntologyActivity_OntologyId_VersionNumber");
 
                     b.ToTable("OntologyActivities");
-                });
-
-            modelBuilder.Entity("Eidos.Models.OntologyGroupPermission", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("GrantedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("GrantedByUserId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("OntologyId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("PermissionLevel")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("UserGroupId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GrantedByUserId");
-
-                    b.HasIndex("UserGroupId");
-
-                    b.HasIndex("OntologyId", "UserGroupId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_OntologyGroupPermission_OntologyId_GroupId");
-
-                    b.ToTable("OntologyGroupPermissions");
                 });
 
             modelBuilder.Entity("Eidos.Models.OntologyLink", b =>
@@ -917,87 +874,6 @@ namespace Eidos.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
-                });
-
-            modelBuilder.Entity("Eidos.Models.UserGroup", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Color")
-                        .HasMaxLength(7)
-                        .HasColumnType("nvarchar(7)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedByUserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedByUserId");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("UserGroups");
-                });
-
-            modelBuilder.Entity("Eidos.Models.UserGroupMember", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AddedByUserId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<bool>("IsGroupAdmin")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("JoinedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("UserGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AddedByUserId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserGroupId", "UserId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_UserGroupMember_GroupId_UserId");
-
-                    b.ToTable("UserGroupMembers");
                 });
 
             modelBuilder.Entity("Eidos.Models.UserPreferences", b =>
@@ -1427,32 +1303,6 @@ namespace Eidos.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Eidos.Models.OntologyGroupPermission", b =>
-                {
-                    b.HasOne("Eidos.Models.ApplicationUser", "GrantedByUser")
-                        .WithMany()
-                        .HasForeignKey("GrantedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Eidos.Models.Ontology", "Ontology")
-                        .WithMany("GroupPermissions")
-                        .HasForeignKey("OntologyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Eidos.Models.UserGroup", "UserGroup")
-                        .WithMany("OntologyPermissions")
-                        .HasForeignKey("UserGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("GrantedByUser");
-
-                    b.Navigation("Ontology");
-
-                    b.Navigation("UserGroup");
-                });
-
             modelBuilder.Entity("Eidos.Models.OntologyLink", b =>
                 {
                     b.HasOne("Eidos.Models.Ontology", "Ontology")
@@ -1518,43 +1368,6 @@ namespace Eidos.Migrations
                     b.Navigation("SourceConcept");
 
                     b.Navigation("TargetConcept");
-                });
-
-            modelBuilder.Entity("Eidos.Models.UserGroup", b =>
-                {
-                    b.HasOne("Eidos.Models.ApplicationUser", "CreatedByUser")
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CreatedByUser");
-                });
-
-            modelBuilder.Entity("Eidos.Models.UserGroupMember", b =>
-                {
-                    b.HasOne("Eidos.Models.ApplicationUser", "AddedByUser")
-                        .WithMany()
-                        .HasForeignKey("AddedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Eidos.Models.UserGroup", "UserGroup")
-                        .WithMany("Members")
-                        .HasForeignKey("UserGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Eidos.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("AddedByUser");
-
-                    b.Navigation("User");
-
-                    b.Navigation("UserGroup");
                 });
 
             modelBuilder.Entity("Eidos.Models.UserPreferences", b =>
@@ -1673,8 +1486,6 @@ namespace Eidos.Migrations
 
                     b.Navigation("CustomTemplates");
 
-                    b.Navigation("GroupPermissions");
-
                     b.Navigation("IndividualRelationships");
 
                     b.Navigation("Individuals");
@@ -1687,13 +1498,6 @@ namespace Eidos.Migrations
             modelBuilder.Entity("Eidos.Models.OntologyShare", b =>
                 {
                     b.Navigation("GuestSessions");
-                });
-
-            modelBuilder.Entity("Eidos.Models.UserGroup", b =>
-                {
-                    b.Navigation("Members");
-
-                    b.Navigation("OntologyPermissions");
                 });
 #pragma warning restore 612, 618
         }

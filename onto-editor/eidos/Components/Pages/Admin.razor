@@ -1,9 +1,12 @@
 @page "/admin"
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using Eidos.Data
+@using Eidos.Models
 @using Microsoft.Extensions.Diagnostics.HealthChecks
 @using Microsoft.JSInterop
 @using System.Runtime.InteropServices
+@attribute [Authorize(Policy = AppPolicies.RequireAdmin)]
 @inject OntologyDbContext DbContext
 @inject IConfiguration Configuration
 @inject HealthCheckService HealthCheckService
@@ -280,6 +283,17 @@
                             <button class="btn btn-outline-secondary" @onclick="@(() => ShowCommandInfo("Download Logs", "az webapp log download --name eidos --resource-group eidos_group --log-file logs.zip"))">
                                 <i class="bi bi-download"></i> Download
                             </button>
+                        </div>
+                    </div>
+                    <div class="action-group">
+                        <h3>Administration</h3>
+                        <div class="action-buttons">
+                            <a href="/admin/users" class="btn btn-outline-primary">
+                                <i class="bi bi-people"></i> User Management
+                            </a>
+                            <a href="/admin" class="btn btn-outline-secondary">
+                                <i class="bi bi-sliders"></i> Dashboard
+                            </a>
                         </div>
                     </div>
                 </div>

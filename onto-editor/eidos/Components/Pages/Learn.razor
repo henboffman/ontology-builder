@@ -93,7 +93,7 @@
                         <p><strong>Domain: A Library</strong></p>
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <div class="p-3 bg-light rounded">
+                                <div class="p-3  rounded">
                                     <h6 class="text-primary"><i class="bi bi-box"></i> Concepts</h6>
                                     <ul class="small mb-0">
                                         <li>Book</li>
@@ -104,7 +104,7 @@
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <div class="p-3 bg-light rounded">
+                                <div class="p-3 rounded">
                                     <h6 class="text-success"><i class="bi bi-arrow-left-right"></i> Relationships</h6>
                                     <ul class="small mb-0">
                                         <li>Author → <em>writes</em> → Book</li>
@@ -114,7 +114,7 @@
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <div class="p-3 bg-light rounded">
+                                <div class="p-3 rounded">
                                     <h6 class="text-warning"><i class="bi bi-tags"></i> Properties</h6>
                                     <ul class="small mb-0">
                                         <li>Book: title, ISBN, year</li>
@@ -1209,3 +1209,91 @@ Relationships: Temporal and causal</code></pre>
         Navigation.NavigateTo("/");
     }
 }
+
+<style>
+    /* Dark mode fixes for Learn page */
+    [data-bs-theme="dark"] .learn-page .text-muted {
+        color: var(--bs-secondary-color) !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page h5.text-muted {
+        color: var(--bs-light) !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page .bg-light {
+        background-color: var(--bs-gray-800) !important;
+        color: var(--bs-light) !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page .bg-light h6 {
+        color: var(--bs-light) !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page .bg-light ul {
+        color: var(--bs-light) !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page .bg-light pre,
+    [data-bs-theme="dark"] .learn-page .bg-light code {
+        background-color: var(--bs-gray-900) !important;
+        color: var(--bs-light) !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page .nav-link {
+        color: var(--bs-light) !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page .nav-link.active {
+        background-color: var(--bs-primary) !important;
+        color: white !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page .nav-link:hover {
+        background-color: var(--bs-gray-700) !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page .alert-light {
+        background-color: var(--bs-gray-800) !important;
+        color: var(--bs-light) !important;
+        border-color: var(--bs-gray-700) !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page dl dt {
+        color: var(--bs-light) !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page dl dd {
+        color: var(--bs-secondary-color) !important;
+    }
+
+    /* Fix badge text colors in dark mode */
+    [data-bs-theme="dark"] .learn-page .badge {
+        color: white !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page .badge.text-dark {
+        color: white !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page .badge.bg-light {
+        background-color: var(--bs-gray-700) !important;
+        color: var(--bs-light) !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page .badge.bg-warning {
+        background-color: #f39c12 !important;
+        color: white !important;
+    }
+
+    /* Fix card text in example sections */
+    [data-bs-theme="dark"] .learn-page .card-body p,
+    [data-bs-theme="dark"] .learn-page .card-body ul,
+    [data-bs-theme="dark"] .learn-page .card-body li {
+        color: var(--bs-body-color) !important;
+    }
+
+    [data-bs-theme="dark"] .learn-page .card-body .small,
+    [data-bs-theme="dark"] .learn-page .card-body small {
+        color: var(--bs-secondary-color) !important;
+    }
+</style>

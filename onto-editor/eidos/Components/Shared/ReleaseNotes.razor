@@ -10,9 +10,83 @@
     </div>
 
     <div class="release-timeline">
-        <!-- Latest: Version Control & Activity Tracking -->
+        <!-- Latest: Group Management & Permissions -->
         <div class="release-item">
             <div class="release-badge badge bg-primary">Latest</div>
+            <div class="release-date">October 26, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-shield-lock text-success me-2"></i>
+                Group Management & Permission System
+            </h4>
+            <div class="release-content">
+                <p class="lead">Fine-grained access control with group-based permissions for ontologies.</p>
+
+                <h5>New Features</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Ontology Permission System</strong>
+                        <ul>
+                            <li>Three visibility levels: Private, Group, and Public</li>
+                            <li>Three permission levels: View, Edit, and Admin</li>
+                            <li>Permission hierarchy with inheritance</li>
+                            <li>Public edit toggle for open collaboration</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Group Management UI</strong>
+                        <ul>
+                            <li>New Permissions tab in Ontology Settings dialog</li>
+                            <li>Add/remove group access with permission levels</li>
+                            <li>Change permission levels for existing groups</li>
+                            <li>View member counts and grant history</li>
+                            <li>Real-time permission updates</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Role-Based Access Control (RBAC)</strong>
+                        <ul>
+                            <li>Four user roles: Admin, PowerUser, User, Guest</li>
+                            <li>Permission checks at UI and service layers</li>
+                            <li>Home page filters by accessible ontologies</li>
+                            <li>Ontology view validates edit permissions</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>OAuth Improvements</strong>
+                        <ul>
+                            <li>Conditional OAuth button rendering (only shows configured providers)</li>
+                            <li>Comprehensive error handling in OAuth event handlers</li>
+                            <li>Prevents login failures from breaking authentication flow</li>
+                            <li>Configuration detection for Google, Microsoft, and GitHub</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Dark Mode Enhancements</strong>
+                        <ul>
+                            <li>Fixed Learn page contrast issues</li>
+                            <li>Proper badge text colors in dark mode</li>
+                            <li>Readable navigation and content sections</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>Testing</h5>
+                <ul class="feature-list">
+                    <li>32 new comprehensive tests added (157+ total tests)</li>
+                    <li>OntologyPermissionService integration tests (20+ tests)</li>
+                    <li>LoginModel OAuth configuration unit tests (12 tests)</li>
+                    <li>100% pass rate maintained</li>
+                </ul>
+
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>How to use:</strong> Open any ontology settings to manage group permissions and visibility. Navigate to Home to see only ontologies you have access to.
+                </div>
+            </div>
+        </div>
+
+        <!-- Version Control & Activity Tracking -->
+        <div class="release-item">
             <div class="release-date">October 26, 2025</div>
             <h4 class="release-title">
                 <i class="bi bi-clock-history text-primary me-2"></i>
@@ -117,7 +191,7 @@
             <div class="release-content">
                 <p>Comprehensive test suite ensuring reliability and quality.</p>
                 <ul class="feature-list">
-                    <li>162 automated tests (100% passing)</li>
+                    <li>125+ automated tests (100% passing) - expanded to 157+ with permission system tests</li>
                     <li>Component tests with bUnit</li>
                     <li>Service integration tests</li>
                     <li>Repository tests with in-memory database</li>

@@ -10,7 +10,7 @@
 
 /* Override Bootstrap utility classes for dark mode compatibility */
 .learn-page .text-muted {
-    color: var(--bs-secondary-color) !important;
+    /* color: var(--bs-secondary-color) !important; */
 }
 
 .learn-page .bg-light {
@@ -19,7 +19,7 @@
 
 /* Make Contents heading more visible */
 .learn-page .sticky-top h5 {
-    color: var(--bs-body-color) !important;
+    /* color: var(--bs-body-color) !important; */
     opacity: 0.85;
 }
 
@@ -57,7 +57,7 @@ div.sticky-top {
 /* Table of contents navigation */
 .nav-link {
     padding: 0.5rem 0.75rem;
-    color: var(--bs-body-color);
+    /* color: var(--bs-body-color); */
     text-decoration: none;
     border-radius: 6px;
     transition: all 0.2s ease;
@@ -118,7 +118,8 @@ div.sticky-top {
 }
 
 .accordion-button::after {
-    content: '\F282'; /* Bootstrap icon chevron-down */
+    content: '\F282';
+    /* Bootstrap icon chevron-down */
     font-family: 'bootstrap-icons';
     margin-left: auto;
     transition: transform 0.2s ease;
@@ -139,6 +140,7 @@ div.sticky-top {
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);

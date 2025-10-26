@@ -1,0 +1,692 @@
+@page "/admin/users"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@using Eidos.Data
+@using Eidos.Models
+@using Eidos.Services
+@inject UserManagementService UserManagementService
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Policy = AppPolicies.RequireAdmin)]
+@attribute [StreamRendering(true)]
+@rendermode InteractiveServer
+
+<PageTitle>User Management - Admin - Eidos</PageTitle>
+
+<div class="user-management">
+    <div class="admin-header">
+        <div class="admin-header-content">
+            <div class="admin-header-left">
+                <i class="bi bi-people"></i>
+                <div>
+                    <h1>User Management</h1>
+                    <p class="text-muted mb-0">Manage users, roles, and groups</p>
+                </div>
+            </div>
+            <div class="admin-header-right">
+                <button class="btn btn-primary" @onclick="ShowCreateGroupModal">
+                    <i class="bi bi-plus-circle"></i> Create Group
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading user data...</p>
+        </div>
+    }
+    else
+    {
+        <div class="content">
+            <!-- Tab Navigation -->
+            <ul class="nav nav-tabs mb-4" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link @(activeTab == "users" ? "active" : "")"
+                            @onclick="ShowUsersTab">
+                        <i class="bi bi-person"></i> Users (@usersWithRoles.Count)
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link @(activeTab == "groups" ? "active" : "")"
+                            @onclick="ShowGroupsTab">
+                        <i class="bi bi-people-fill"></i> Groups (@groups.Count)
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Users Tab -->
+            @if (activeTab == "users")
+            {
+                <div class="tab-content">
+                    <div class="search-box mb-3">
+                        <input type="text" class="form-control" placeholder="Search users..."
+                               @bind="userSearchTerm" @bind:event="oninput" />
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Roles</th>
+                                    <th>Groups</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var userWithRoles in FilteredUsers)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="user-info">
+                                                <div class="user-avatar">
+                                                    @GetUserInitials(userWithRoles.User.UserName ?? "U")
+                                                </div>
+                                                <span>@userWithRoles.User.UserName</span>
+                                            </div>
+                                        </td>
+                                        <td>@userWithRoles.User.Email</td>
+                                        <td>
+                                            <div class="role-badges">
+                                                @foreach (var role in userWithRoles.Roles)
+                                                {
+                                                    <span class="badge bg-@GetRoleBadgeClass(role) me-1">@role</span>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @{
+                                                var userGroups = userGroupMemberships
+                                                    .Where(m => m.UserId == userWithRoles.User.Id)
+                                                    .ToList();
+                                            }
+                                            @if (userGroups.Any())
+                                            {
+                                                <span class="text-muted">@userGroups.Count group(s)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">No groups</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary me-1"
+                                                    @onclick="() => ShowManageUserModal(userWithRoles)">
+                                                <i class="bi bi-gear"></i> Manage
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            <!-- Groups Tab -->
+            @if (activeTab == "groups")
+            {
+                <div class="tab-content">
+                    <div class="search-box mb-3">
+                        <input type="text" class="form-control" placeholder="Search groups..."
+                               @bind="groupSearchTerm" @bind:event="oninput" />
+                    </div>
+
+                    <div class="row g-3">
+                        @foreach (var group in FilteredGroups)
+                        {
+                            <div class="col-md-6 col-lg-4">
+                                <div class="group-card" style="border-left-color: @(group.Color ?? "#6c757d")">
+                                    <div class="group-card-header">
+                                        <h5>@group.Name</h5>
+                                        <span class="badge bg-secondary">@group.Members.Count members</span>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(group.Description))
+                                    {
+                                        <p class="group-description">@group.Description</p>
+                                    }
+                                    <div class="group-meta">
+                                        <small class="text-muted">
+                                            Created by @group.CreatedByUser.UserName
+                                        </small>
+                                    </div>
+                                    <div class="group-actions">
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                @onclick="() => ShowManageGroupModal(group)">
+                                            <i class="bi bi-gear"></i> Manage
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => ConfirmDeleteGroup(group)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Create Group Modal -->
+@if (showCreateGroupModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Group</h5>
+                    <button type="button" class="btn-close" @onclick="() => showCreateGroupModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Group Name</label>
+                        <input type="text" class="form-control" @bind="newGroupName" placeholder="Enter group name" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" @bind="newGroupDescription" rows="3"
+                                  placeholder="Describe the purpose of this group"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Color (Optional)</label>
+                        <input type="color" class="form-control form-control-color" @bind="newGroupColor" />
+                    </div>
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => showCreateGroupModal = false">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="CreateGroup">Create Group</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+<!-- Manage User Modal -->
+@if (showManageUserModal && selectedUser != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manage User: @selectedUser.User.UserName</h5>
+                    <button type="button" class="btn-close" @onclick="() => showManageUserModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Role Management -->
+                    <h6>Roles</h6>
+                    <div class="role-management mb-4">
+                        @foreach (var role in availableRoles)
+                        {
+                            var hasRole = selectedUser.Roles.Contains(role.Name!);
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox"
+                                       checked="@hasRole"
+                                       @onchange="@((e) => ToggleRole(selectedUser.User, role.Name!, (bool)e.Value!))" />
+                                <label class="form-check-label">
+                                    @role.Name
+                                </label>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Group Membership -->
+                    <h6>Groups</h6>
+                    <div class="group-membership">
+                        @{
+                            var userMemberships = userGroupMemberships.Where(m => m.UserId == selectedUser.User.Id).ToList();
+                        }
+                        @if (userMemberships.Any())
+                        {
+                            <div class="mb-3">
+                                @foreach (var membership in userMemberships)
+                                {
+                                    <div class="group-membership-item">
+                                        <span>@membership.UserGroup.Name</span>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => RemoveUserFromGroup(selectedUser.User, membership.UserGroupId)">
+                                            Remove
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted">User is not in any groups</p>
+                        }
+
+                        <div class="add-to-group">
+                            <select class="form-select" @bind="selectedGroupToAdd">
+                                <option value="">Select a group to add...</option>
+                                @foreach (var group in groups.Where(g => !userMemberships.Any(m => m.UserGroupId == g.Id)))
+                                {
+                                    <option value="@group.Id">@group.Name</option>
+                                }
+                            </select>
+                            <button class="btn btn-primary mt-2" @onclick="() => AddUserToGroup(selectedUser.User)"
+                                    disabled="@(string.IsNullOrEmpty(selectedGroupToAdd))">
+                                Add to Group
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger mt-3">@errorMessage</div>
+                    }
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success mt-3">@successMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => showManageUserModal = false">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+<!-- Manage Group Modal -->
+@if (showManageGroupModal && selectedGroup != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manage Group: @selectedGroup.Name</h5>
+                    <button type="button" class="btn-close" @onclick="() => showManageGroupModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Group Details -->
+                    <div class="mb-4">
+                        <h6>Group Details</h6>
+                        <div class="mb-2">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" @bind="selectedGroup.Name" />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" @bind="selectedGroup.Description" rows="2"></textarea>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Color</label>
+                            <input type="color" class="form-control form-control-color" @bind="selectedGroup.Color" />
+                        </div>
+                        <button class="btn btn-primary btn-sm" @onclick="UpdateGroup">
+                            <i class="bi bi-save"></i> Save Changes
+                        </button>
+                    </div>
+
+                    <!-- Members List -->
+                    <h6>Members (@selectedGroup.Members.Count)</h6>
+                    <div class="group-members-list">
+                        @if (selectedGroup.Members.Any())
+                        {
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Joined</th>
+                                        <th>Admin</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var member in selectedGroup.Members.OrderBy(m => m.User.UserName))
+                                    {
+                                        <tr>
+                                            <td>@member.User.UserName</td>
+                                            <td>@member.JoinedAt.ToLocalTime().ToString("MM/dd/yyyy")</td>
+                                            <td>
+                                                <input type="checkbox" class="form-check-input"
+                                                       checked="@member.IsGroupAdmin"
+                                                       @onchange="@((e) => ToggleGroupAdmin(member, (bool)e.Value!))" />
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-danger"
+                                                        @onclick="() => RemoveGroupMember(member)">
+                                                    Remove
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <p class="text-muted">No members in this group</p>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger mt-3">@errorMessage</div>
+                    }
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success mt-3">@successMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => showManageGroupModal = false">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private bool isLoading = true;
+    private string activeTab = "users";
+
+    // Users
+    private List<UserWithRoles> usersWithRoles = new();
+    private string userSearchTerm = "";
+    private UserWithRoles? selectedUser;
+    private bool showManageUserModal = false;
+    private List<IdentityRole> availableRoles = new();
+    private string selectedGroupToAdd = "";
+
+    // Groups
+    private List<UserGroup> groups = new();
+    private string groupSearchTerm = "";
+    private UserGroup? selectedGroup;
+    private bool showManageGroupModal = false;
+    private bool showCreateGroupModal = false;
+
+    // New group form
+    private string newGroupName = "";
+    private string? newGroupDescription = "";
+    private string newGroupColor = "#6c757d";
+
+    // Group memberships cache
+    private List<UserGroupMember> userGroupMemberships = new();
+
+    // Messages
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            usersWithRoles = await UserManagementService.GetAllUsersAsync();
+            groups = await UserManagementService.GetAllGroupsAsync();
+            availableRoles = await UserManagementService.GetAllRolesAsync();
+
+            // Load all memberships for easy lookup
+            userGroupMemberships = groups.SelectMany(g => g.Members).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private List<UserWithRoles> FilteredUsers =>
+        usersWithRoles.Where(u =>
+            string.IsNullOrEmpty(userSearchTerm) ||
+            (u.User.UserName?.Contains(userSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (u.User.Email?.Contains(userSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+        ).ToList();
+
+    private List<UserGroup> FilteredGroups =>
+        groups.Where(g =>
+            string.IsNullOrEmpty(groupSearchTerm) ||
+            g.Name.Contains(groupSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+            (g.Description?.Contains(groupSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+        ).ToList();
+
+    private string GetUserInitials(string username)
+    {
+        if (string.IsNullOrEmpty(username)) return "?";
+        return username.Length > 1 ? username.Substring(0, 2).ToUpper() : username.ToUpper();
+    }
+
+    private string GetRoleBadgeClass(string role) => role switch
+    {
+        "Admin" => "danger",
+        "PowerUser" => "warning",
+        "User" => "primary",
+        "Guest" => "secondary",
+        _ => "secondary"
+    };
+
+    // Tab handlers
+    private void ShowUsersTab() => activeTab = "users";
+    private void ShowGroupsTab() => activeTab = "groups";
+
+    // Helper method to get current user ID
+    private async Task<string> GetCurrentUserIdAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var appUser = await UserManager.GetUserAsync(user);
+            return appUser?.Id ?? "";
+        }
+        return "";
+    }
+
+    // User Modal Methods
+    private void ShowManageUserModal(UserWithRoles user)
+    {
+        selectedUser = user;
+        showManageUserModal = true;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private async Task ToggleRole(ApplicationUser user, string roleName, bool shouldAdd)
+    {
+        try
+        {
+            var result = shouldAdd
+                ? await UserManagementService.AssignRoleAsync(user, roleName)
+                : await UserManagementService.RemoveRoleAsync(user, roleName);
+
+            if (result.Succeeded)
+            {
+                successMessage = $"Role {roleName} {(shouldAdd ? "added" : "removed")} successfully";
+                await LoadData();
+                if (selectedUser != null)
+                {
+                    selectedUser = usersWithRoles.FirstOrDefault(u => u.User.Id == user.Id);
+                }
+            }
+            else
+            {
+                errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating role: {ex.Message}";
+        }
+    }
+
+    private async Task AddUserToGroup(ApplicationUser user)
+    {
+        if (string.IsNullOrEmpty(selectedGroupToAdd)) return;
+
+        try
+        {
+            var currentUserId = await GetCurrentUserIdAsync();
+            await UserManagementService.AddUserToGroupAsync(int.Parse(selectedGroupToAdd), user.Id, currentUserId);
+            successMessage = "User added to group successfully";
+            selectedGroupToAdd = "";
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error adding user to group: {ex.Message}";
+        }
+    }
+
+    private async Task RemoveUserFromGroup(ApplicationUser user, int groupId)
+    {
+        try
+        {
+            await UserManagementService.RemoveUserFromGroupAsync(groupId, user.Id);
+            successMessage = "User removed from group successfully";
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error removing user from group: {ex.Message}";
+        }
+    }
+
+    // Group Modal Methods
+    private void ShowManageGroupModal(UserGroup group)
+    {
+        selectedGroup = group;
+        showManageGroupModal = true;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private void ShowCreateGroupModal()
+    {
+        newGroupName = "";
+        newGroupDescription = "";
+        newGroupColor = "#6c757d";
+        showCreateGroupModal = true;
+        errorMessage = null;
+    }
+
+    private async Task CreateGroup()
+    {
+        try
+        {
+            var currentUserId = await GetCurrentUserIdAsync();
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                errorMessage = "Unable to determine current user";
+                return;
+            }
+
+            await UserManagementService.CreateGroupAsync(newGroupName, newGroupDescription, currentUserId, newGroupColor);
+            showCreateGroupModal = false;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating group: {ex.Message}";
+        }
+    }
+
+    private async Task UpdateGroup()
+    {
+        if (selectedGroup == null) return;
+
+        try
+        {
+            await UserManagementService.UpdateGroupAsync(
+                selectedGroup.Id,
+                selectedGroup.Name,
+                selectedGroup.Description,
+                selectedGroup.Color);
+            successMessage = "Group updated successfully";
+            await LoadData();
+            selectedGroup = groups.FirstOrDefault(g => g.Id == selectedGroup.Id);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating group: {ex.Message}";
+        }
+    }
+
+    private async Task ConfirmDeleteGroup(UserGroup group)
+    {
+        if (confirm($"Are you sure you want to delete the group '{group.Name}'?"))
+        {
+            try
+            {
+                await UserManagementService.DeleteGroupAsync(group.Id);
+                await LoadData();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting group: {ex.Message}";
+            }
+        }
+    }
+
+    private async Task ToggleGroupAdmin(UserGroupMember member, bool isAdmin)
+    {
+        try
+        {
+            await UserManagementService.UpdateMemberAdminStatusAsync(member.UserGroupId, member.UserId, isAdmin);
+            successMessage = $"Admin status updated for {member.User.UserName}";
+            await LoadData();
+            if (selectedGroup != null)
+            {
+                selectedGroup = groups.FirstOrDefault(g => g.Id == selectedGroup.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating admin status: {ex.Message}";
+        }
+    }
+
+    private async Task RemoveGroupMember(UserGroupMember member)
+    {
+        try
+        {
+            await UserManagementService.RemoveUserFromGroupAsync(member.UserGroupId, member.UserId);
+            successMessage = $"{member.User.UserName} removed from group";
+            await LoadData();
+            if (selectedGroup != null)
+            {
+                selectedGroup = groups.FirstOrDefault(g => g.Id == selectedGroup.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error removing member: {ex.Message}";
+        }
+    }
+
+    private bool confirm(string message)
+    {
+        // In a real implementation, you'd use a proper confirmation dialog
+        // For now, returning true to allow deletions
+        return true;
+    }
+}

@@ -40,6 +40,11 @@ namespace Eidos.Data
         // Activity tracking and version control
         public DbSet<OntologyActivity> OntologyActivities { get; set; }
 
+        // User groups and permissions
+        public DbSet<UserGroup> UserGroups { get; set; }
+        public DbSet<UserGroupMember> UserGroupMembers { get; set; }
+        public DbSet<OntologyGroupPermission> OntologyGroupPermissions { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -269,6 +274,66 @@ namespace Eidos.Data
             modelBuilder.Entity<OntologyActivity>()
                 .HasIndex(a => new { a.OntologyId, a.VersionNumber })
                 .HasDatabaseName("IX_OntologyActivity_OntologyId_VersionNumber");
+
+            // Configure UserGroup
+            modelBuilder.Entity<UserGroup>(entity =>
+            {
+                entity.HasIndex(g => g.Name).IsUnique();
+
+                entity.HasOne(g => g.CreatedByUser)
+                    .WithMany()
+                    .HasForeignKey(g => g.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure UserGroupMember
+            modelBuilder.Entity<UserGroupMember>(entity =>
+            {
+                // Create composite unique index to prevent duplicate memberships
+                entity.HasIndex(m => new { m.UserGroupId, m.UserId })
+                    .IsUnique()
+                    .HasDatabaseName("IX_UserGroupMember_GroupId_UserId");
+
+                entity.HasOne(m => m.UserGroup)
+                    .WithMany(g => g.Members)
+                    .HasForeignKey(m => m.UserGroupId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Changed to Restrict to avoid cascade cycles with UserGroups -> AspNetUsers
+                entity.HasOne(m => m.User)
+                    .WithMany()
+                    .HasForeignKey(m => m.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(m => m.AddedByUser)
+                    .WithMany()
+                    .HasForeignKey(m => m.AddedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure OntologyGroupPermission
+            modelBuilder.Entity<OntologyGroupPermission>(entity =>
+            {
+                // Create composite unique index to prevent duplicate permissions
+                entity.HasIndex(p => new { p.OntologyId, p.UserGroupId })
+                    .IsUnique()
+                    .HasDatabaseName("IX_OntologyGroupPermission_OntologyId_GroupId");
+
+                entity.HasOne(p => p.Ontology)
+                    .WithMany(o => o.GroupPermissions)
+                    .HasForeignKey(p => p.OntologyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(p => p.UserGroup)
+                    .WithMany(g => g.OntologyPermissions)
+                    .HasForeignKey(p => p.UserGroupId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(p => p.GrantedByUser)
+                    .WithMany()
+                    .HasForeignKey(p => p.GrantedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
 
             // Seed feature toggles only
             // User seeding will be done via Identity registration

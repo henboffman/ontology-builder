@@ -1,3 +1,9 @@
+@using Eidos.Models
+@using Eidos.Services
+@inject OntologyPermissionService PermissionService
+@inject UserManagementService UserManagementService
+@inject ToastService ToastService
+
 @if (IsVisible)
 {
     <div class="row mb-3">
@@ -10,70 +16,222 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Name</label>
-                                <input type="text" class="form-control" @bind="name" />
-                            </div>
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link @(activeTab == "general" ? "active" : "")"
+                                    type="button"
+                                    @onclick='() => activeTab = "general"'>
+                                <i class="bi bi-info-circle"></i> General
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link @(activeTab == "permissions" ? "active" : "")"
+                                    type="button"
+                                    @onclick='() => activeTab = "permissions"'>
+                                <i class="bi bi-shield-lock"></i> Permissions
+                            </button>
+                        </li>
+                    </ul>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Description</label>
-                                <textarea class="form-control" rows="3" @bind="description"></textarea>
-                                <small class="text-muted">A brief description of what this ontology represents</small>
-                            </div>
+                    <!-- Tab Content -->
+                    <div class="tab-content">
+                        <!-- General Tab -->
+                        @if (activeTab == "general")
+                        {
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Name</label>
+                                        <input type="text" class="form-control" @bind="name" />
+                                    </div>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Author</label>
-                                <input type="text" class="form-control" @bind="author" placeholder="Your name or organization" />
-                            </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Description</label>
+                                        <textarea class="form-control" rows="3" @bind="description"></textarea>
+                                        <small class="text-muted">A brief description of what this ontology represents</small>
+                                    </div>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Version</label>
-                                <input type="text" class="form-control" @bind="version" placeholder="e.g., 1.0.0" />
-                                <small class="text-muted">Semantic versioning recommended (e.g., 1.0.0)</small>
-                            </div>
-                        </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Author</label>
+                                        <input type="text" class="form-control" @bind="author" placeholder="Your name or organization" />
+                                    </div>
 
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Namespace</label>
-                                <input type="text" class="form-control" @bind="namespaceUri" placeholder="http://example.org/ontology/" />
-                                <small class="text-muted">URI namespace for TTL export (e.g., http://example.org/my-ontology/)</small>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Tags</label>
-                                <input type="text" class="form-control" @bind="tags" placeholder="medical, research, biology" />
-                                <small class="text-muted">Comma-separated tags for categorization</small>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">License</label>
-                                <input type="text" class="form-control" @bind="license" placeholder="e.g., CC-BY-4.0, MIT" />
-                                <small class="text-muted">License for this ontology (e.g., CC-BY-4.0, MIT, Apache-2.0)</small>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Ontology Frameworks</label>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="usesBFO" @bind="usesBFO" />
-                                    <label class="form-check-label" for="usesBFO">
-                                        Uses BFO (Basic Formal Ontology)
-                                    </label>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Version</label>
+                                        <input type="text" class="form-control" @bind="version" placeholder="e.g., 1.0.0" />
+                                        <small class="text-muted">Semantic versioning recommended (e.g., 1.0.0)</small>
+                                    </div>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="usesProvO" @bind="usesProvO" />
-                                    <label class="form-check-label" for="usesProvO">
-                                        Uses PROV-O (Provenance Ontology)
-                                    </label>
+
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Namespace</label>
+                                        <input type="text" class="form-control" @bind="namespaceUri" placeholder="http://example.org/ontology/" />
+                                        <small class="text-muted">URI namespace for TTL export (e.g., http://example.org/my-ontology/)</small>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Tags</label>
+                                        <input type="text" class="form-control" @bind="tags" placeholder="medical, research, biology" />
+                                        <small class="text-muted">Comma-separated tags for categorization</small>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">License</label>
+                                        <input type="text" class="form-control" @bind="license" placeholder="e.g., CC-BY-4.0, MIT" />
+                                        <small class="text-muted">License for this ontology (e.g., CC-BY-4.0, MIT, Apache-2.0)</small>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Ontology Frameworks</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="usesBFO" @bind="usesBFO" />
+                                            <label class="form-check-label" for="usesBFO">
+                                                Uses BFO (Basic Formal Ontology)
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="usesProvO" @bind="usesProvO" />
+                                            <label class="form-check-label" for="usesProvO">
+                                                Uses PROV-O (Provenance Ontology)
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        }
+
+                        <!-- Permissions Tab -->
+                        @if (activeTab == "permissions")
+                        {
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Visibility</label>
+                                        <select class="form-select" @bind="visibility">
+                                            <option value="@OntologyVisibility.Private">Private - Only you can access</option>
+                                            <option value="@OntologyVisibility.Group">Group - Specific groups can access</option>
+                                            <option value="@OntologyVisibility.Public">Public - Anyone can view</option>
+                                        </select>
+                                        <small class="text-muted">
+                                            @if (visibility == OntologyVisibility.Private)
+                                            {
+                                                <text>Only you can view and edit this ontology</text>
+                                            }
+                                            else if (visibility == OntologyVisibility.Group)
+                                            {
+                                                <text>Only members of selected groups can access</text>
+                                            }
+                                            else
+                                            {
+                                                <text>Anyone can view this ontology</text>
+                                            }
+                                        </small>
+                                    </div>
+
+                                    @if (visibility == OntologyVisibility.Public)
+                                    {
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="allowPublicEdit" @bind="allowPublicEdit" />
+                                                <label class="form-check-label" for="allowPublicEdit">
+                                                    Allow public editing
+                                                </label>
+                                            </div>
+                                            <small class="text-muted">If checked, anyone can edit this ontology (not just view)</small>
+                                        </div>
+                                    }
+                                </div>
+
+                                @if (visibility == OntologyVisibility.Group)
+                                {
+                                    <div class="col-md-12">
+                                        <hr class="my-3" />
+                                        <h6 class="fw-bold">Group Access</h6>
+
+                                        <!-- Add Group Section -->
+                                        <div class="mb-3">
+                                            <label class="form-label">Add Group</label>
+                                            <div class="input-group">
+                                                <select class="form-select" @bind="selectedGroupToAdd">
+                                                    <option value="">-- Select a group --</option>
+                                                    @foreach (var group in availableGroups)
+                                                    {
+                                                        <option value="@group.Id">@group.Name (@group.Members.Count members)</option>
+                                                    }
+                                                </select>
+                                                <select class="form-select" style="max-width: 150px;" @bind="selectedPermissionLevel">
+                                                    <option value="@PermissionLevels.View">View Only</option>
+                                                    <option value="@PermissionLevels.Edit">Can Edit</option>
+                                                    <option value="@PermissionLevels.Admin">Admin</option>
+                                                </select>
+                                                <button class="btn btn-primary" @onclick="AddGroupPermission" disabled="@(string.IsNullOrEmpty(selectedGroupToAdd))">
+                                                    <i class="bi bi-plus-circle"></i> Add
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Current Group Permissions -->
+                                        @if (groupPermissions.Count > 0)
+                                        {
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Group</th>
+                                                            <th>Members</th>
+                                                            <th>Permission</th>
+                                                            <th>Granted By</th>
+                                                            <th>Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach (var permission in groupPermissions)
+                                                        {
+                                                            <tr>
+                                                                <td>@permission.UserGroup.Name</td>
+                                                                <td>@permission.UserGroup.Members.Count</td>
+                                                                <td>
+                                                                    <select class="form-select form-select-sm"
+                                                                            value="@permission.PermissionLevel"
+                                                                            @onchange="@(e => UpdateGroupPermission(permission.UserGroupId, e.Value?.ToString() ?? PermissionLevels.View))">
+                                                                        <option value="@PermissionLevels.View">View Only</option>
+                                                                        <option value="@PermissionLevels.Edit">Can Edit</option>
+                                                                        <option value="@PermissionLevels.Admin">Admin</option>
+                                                                    </select>
+                                                                </td>
+                                                                <td>
+                                                                    <small class="text-muted">
+                                                                        @permission.GrantedAt.ToLocalTime().ToString("g")
+                                                                    </small>
+                                                                </td>
+                                                                <td>
+                                                                    <button class="btn btn-sm btn-outline-danger"
+                                                                            @onclick="() => RemoveGroupPermission(permission.UserGroupId)">
+                                                                        <i class="bi bi-trash"></i>
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="alert alert-info">
+                                                <i class="bi bi-info-circle"></i> No groups have access yet. Add groups above to grant access.
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
                     </div>
 
                     <div class="d-flex gap-2 mt-3">
-                        <button class="btn btn-primary" @onclick="OnSaveClick">
+                        <button class="btn btn-primary" @onclick="HandleSaveClick">
                             <i class="bi bi-check-circle"></i> Save Settings
                         </button>
                         <button class="btn btn-outline-secondary" @onclick="OnCancelClick">
@@ -90,6 +248,13 @@
     [Parameter]
     public bool IsVisible { get; set; }
 
+    [Parameter]
+    public int OntologyId { get; set; }
+
+    [Parameter]
+    public string? CurrentUserId { get; set; }
+
+    // General settings
     [Parameter]
     public string Name { get; set; } = string.Empty;
 
@@ -117,6 +282,14 @@
     [Parameter]
     public bool UsesProvO { get; set; }
 
+    // Permission settings
+    [Parameter]
+    public string Visibility { get; set; } = OntologyVisibility.Private;
+
+    [Parameter]
+    public bool AllowPublicEdit { get; set; }
+
+    // Events
     [Parameter]
     public EventCallback OnSaveClick { get; set; }
 
@@ -150,6 +323,124 @@
     [Parameter]
     public EventCallback<bool> UsesProvOChanged { get; set; }
 
+    [Parameter]
+    public EventCallback<string> VisibilityChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> AllowPublicEditChanged { get; set; }
+
+    // Component state
+    private string activeTab = "general";
+    private List<UserGroup> availableGroups = new();
+    private List<OntologyGroupPermission> groupPermissions = new();
+    private string selectedGroupToAdd = "";
+    private string selectedPermissionLevel = PermissionLevels.View;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible && OntologyId > 0)
+        {
+            await LoadGroupsAndPermissions();
+        }
+    }
+
+    private async Task LoadGroupsAndPermissions()
+    {
+        try
+        {
+            // Load all available groups
+            var allGroups = await UserManagementService.GetAllGroupsAsync();
+
+            // Load current group permissions for this ontology
+            groupPermissions = await PermissionService.GetGroupPermissionsAsync(OntologyId);
+
+            // Filter available groups to show only those not already granted access
+            var grantedGroupIds = groupPermissions.Select(gp => gp.UserGroupId).ToHashSet();
+            availableGroups = allGroups.Where(g => !grantedGroupIds.Contains(g.Id)).ToList();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load groups: {ex.Message}");
+        }
+    }
+
+    private async Task AddGroupPermission()
+    {
+        if (string.IsNullOrEmpty(selectedGroupToAdd) || string.IsNullOrEmpty(CurrentUserId))
+            return;
+
+        try
+        {
+            var groupId = int.Parse(selectedGroupToAdd);
+            await PermissionService.GrantGroupAccessAsync(OntologyId, groupId, selectedPermissionLevel, CurrentUserId);
+
+            ToastService.ShowSuccess("Group access granted");
+
+            // Reload the lists
+            await LoadGroupsAndPermissions();
+
+            // Reset selection
+            selectedGroupToAdd = "";
+            selectedPermissionLevel = PermissionLevels.View;
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to grant access: {ex.Message}");
+        }
+    }
+
+    private async Task UpdateGroupPermission(int groupId, string permissionLevel)
+    {
+        if (string.IsNullOrEmpty(CurrentUserId))
+            return;
+
+        try
+        {
+            await PermissionService.GrantGroupAccessAsync(OntologyId, groupId, permissionLevel, CurrentUserId);
+            ToastService.ShowSuccess("Permission updated");
+            await LoadGroupsAndPermissions();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to update permission: {ex.Message}");
+        }
+    }
+
+    private async Task RemoveGroupPermission(int groupId)
+    {
+        try
+        {
+            await PermissionService.RevokeGroupAccessAsync(OntologyId, groupId);
+            ToastService.ShowSuccess("Group access revoked");
+            await LoadGroupsAndPermissions();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to revoke access: {ex.Message}");
+        }
+    }
+
+    private async Task HandleSaveClick()
+    {
+        // Save visibility changes if needed
+        if (OntologyId > 0 && !string.IsNullOrEmpty(CurrentUserId))
+        {
+            try
+            {
+                await PermissionService.UpdateVisibilityAsync(OntologyId, visibility, allowPublicEdit);
+            }
+            catch (Exception ex)
+            {
+                ToastService.ShowError($"Failed to update visibility: {ex.Message}");
+                return;
+            }
+        }
+
+        // Invoke the parent's save handler for general settings
+        await OnSaveClick.InvokeAsync();
+    }
+
+    // Two-way binding properties with change notifications
     private string name
     {
         get => Name;
@@ -263,6 +554,32 @@
             {
                 UsesProvO = value;
                 UsesProvOChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private string visibility
+    {
+        get => Visibility;
+        set
+        {
+            if (Visibility != value)
+            {
+                Visibility = value;
+                VisibilityChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private bool allowPublicEdit
+    {
+        get => AllowPublicEdit;
+        set
+        {
+            if (AllowPublicEdit != value)
+            {
+                AllowPublicEdit = value;
+                AllowPublicEditChanged.InvokeAsync(value);
             }
         }
     }
