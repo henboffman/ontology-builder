@@ -6,6 +6,7 @@ using Eidos.Services.Commands;
 using Eidos.Services.Interfaces;
 using Eidos.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using System.Text.Json;
 
 namespace Eidos.Services;
 
@@ -25,6 +26,7 @@ public class RelationshipService : IRelationshipService
     private readonly IHubContext<OntologyHub> _hubContext;
     private readonly IUserService _userService;
     private readonly IOntologyShareService _shareService;
+    private readonly IOntologyActivityService _activityService;
 
     public RelationshipService(
         IRelationshipRepository relationshipRepository,
@@ -33,7 +35,8 @@ public class RelationshipService : IRelationshipService
         CommandInvoker commandInvoker,
         IHubContext<OntologyHub> hubContext,
         IUserService userService,
-        IOntologyShareService shareService)
+        IOntologyShareService shareService,
+        IOntologyActivityService activityService)
     {
         _relationshipRepository = relationshipRepository;
         _ontologyRepository = ontologyRepository;
@@ -42,6 +45,7 @@ public class RelationshipService : IRelationshipService
         _hubContext = hubContext;
         _userService = userService;
         _shareService = shareService;
+        _activityService = activityService;
     }
 
     public async Task<Relationship> CreateAsync(Relationship relationship, bool recordUndo = true)
@@ -72,6 +76,9 @@ public class RelationshipService : IRelationshipService
             await _ontologyRepository.UpdateTimestampAsync(relationship.OntologyId);
         }
 
+        // Record activity for version control
+        await RecordRelationshipActivity(relationship, ActivityTypes.Create, null, relationship);
+
         // Broadcast relationship creation to other users in the ontology
         await BroadcastRelationshipChange(relationship.OntologyId, ChangeType.Added, relationship);
 
@@ -94,6 +101,9 @@ public class RelationshipService : IRelationshipService
                 $"User does not have permission to edit relationships in ontology {relationship.OntologyId}");
         }
 
+        // Capture before state for activity tracking
+        var beforeRelationship = await _relationshipRepository.GetByIdAsync(relationship.Id);
+
         if (recordUndo)
         {
             var command = _commandFactory.UpdateRelationshipCommand(relationship);
@@ -104,6 +114,9 @@ public class RelationshipService : IRelationshipService
             await _relationshipRepository.UpdateAsync(relationship);
             await _ontologyRepository.UpdateTimestampAsync(relationship.OntologyId);
         }
+
+        // Record activity for version control
+        await RecordRelationshipActivity(relationship, ActivityTypes.Update, beforeRelationship, relationship);
 
         // Broadcast relationship update to other users in the ontology
         await BroadcastRelationshipChange(relationship.OntologyId, ChangeType.Updated, relationship);
@@ -143,6 +156,9 @@ public class RelationshipService : IRelationshipService
             await _relationshipRepository.DeleteAsync(id);
             await _ontologyRepository.UpdateTimestampAsync(ontologyId);
         }
+
+        // Record activity for version control
+        await RecordRelationshipActivity(relationship, ActivityTypes.Delete, relationship, null);
 
         // Broadcast relationship deletion to other users in the ontology
         await BroadcastRelationshipChange(ontologyId, ChangeType.Deleted, null, id);
@@ -188,5 +204,62 @@ public class RelationshipService : IRelationshipService
         };
 
         await _hubContext.Clients.Group(groupName).SendAsync("RelationshipChanged", changeEvent);
+    }
+
+    /// <summary>
+    /// Records relationship activity for version control
+    /// </summary>
+    private async Task RecordRelationshipActivity(Relationship relationship, string activityType, Relationship? before, Relationship? after)
+    {
+        try
+        {
+            var currentUser = await _userService.GetCurrentUserAsync();
+
+            var activity = new OntologyActivity
+            {
+                OntologyId = relationship.OntologyId,
+                UserId = currentUser?.Id,
+                ActorName = currentUser?.Email ?? "Unknown User",
+                ActivityType = activityType,
+                EntityType = EntityTypes.Relationship,
+                EntityId = relationship.Id,
+                EntityName = relationship.RelationType,
+                Description = activityType switch
+                {
+                    ActivityTypes.Create => $"Created relationship '{relationship.RelationType}'",
+                    ActivityTypes.Update => $"Updated relationship '{relationship.RelationType}'",
+                    ActivityTypes.Delete => $"Deleted relationship '{relationship.RelationType}'",
+                    _ => $"Modified relationship '{relationship.RelationType}'"
+                },
+                BeforeSnapshot = before != null ? SerializeRelationshipToJson(before) : null,
+                AfterSnapshot = after != null ? SerializeRelationshipToJson(after) : null,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _activityService.RecordActivityAsync(activity);
+        }
+        catch (Exception)
+        {
+            // Don't fail the operation if activity recording fails
+            // Just log and continue
+        }
+    }
+
+    /// <summary>
+    /// Serializes a relationship to JSON for snapshot storage
+    /// </summary>
+    private string SerializeRelationshipToJson(Relationship relationship)
+    {
+        var snapshot = new
+        {
+            relationship.Id,
+            relationship.SourceConceptId,
+            relationship.TargetConceptId,
+            relationship.RelationType,
+            relationship.Description,
+            relationship.CreatedAt
+        };
+
+        return JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = false });
     }
 }

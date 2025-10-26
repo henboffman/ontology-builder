@@ -6,6 +6,7 @@ using Eidos.Services.Commands;
 using Eidos.Services.Interfaces;
 using Eidos.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using System.Text.Json;
 
 namespace Eidos.Services;
 
@@ -26,6 +27,7 @@ public class ConceptService : IConceptService
     private readonly IHubContext<OntologyHub> _hubContext;
     private readonly IUserService _userService;
     private readonly IOntologyShareService _shareService;
+    private readonly IOntologyActivityService _activityService;
 
     public ConceptService(
         IConceptRepository conceptRepository,
@@ -35,7 +37,8 @@ public class ConceptService : IConceptService
         CommandInvoker commandInvoker,
         IHubContext<OntologyHub> hubContext,
         IUserService userService,
-        IOntologyShareService shareService)
+        IOntologyShareService shareService,
+        IOntologyActivityService activityService)
     {
         _conceptRepository = conceptRepository;
         _ontologyRepository = ontologyRepository;
@@ -45,6 +48,7 @@ public class ConceptService : IConceptService
         _hubContext = hubContext;
         _userService = userService;
         _shareService = shareService;
+        _activityService = activityService;
     }
 
     public async Task<Concept> CreateAsync(Concept concept, bool recordUndo = true)
@@ -75,6 +79,9 @@ public class ConceptService : IConceptService
             await _ontologyRepository.UpdateTimestampAsync(concept.OntologyId);
         }
 
+        // Record activity for version control
+        await RecordConceptActivity(concept, ActivityTypes.Create, null, concept);
+
         // Broadcast concept creation to other users in the ontology
         await BroadcastConceptChange(concept.OntologyId, ChangeType.Added, concept);
 
@@ -97,6 +104,9 @@ public class ConceptService : IConceptService
                 $"User does not have permission to edit concepts in ontology {concept.OntologyId}");
         }
 
+        // Capture before state for activity tracking
+        var beforeConcept = await _conceptRepository.GetByIdAsync(concept.Id);
+
         if (recordUndo)
         {
             var command = _commandFactory.UpdateConceptCommand(concept);
@@ -107,6 +117,9 @@ public class ConceptService : IConceptService
             await _conceptRepository.UpdateAsync(concept);
             await _ontologyRepository.UpdateTimestampAsync(concept.OntologyId);
         }
+
+        // Record activity for version control
+        await RecordConceptActivity(concept, ActivityTypes.Update, beforeConcept, concept);
 
         // Broadcast concept update to other users in the ontology
         await BroadcastConceptChange(concept.OntologyId, ChangeType.Updated, concept);
@@ -146,6 +159,9 @@ public class ConceptService : IConceptService
             await _conceptRepository.DeleteAsync(id);
             await _ontologyRepository.UpdateTimestampAsync(ontologyId);
         }
+
+        // Record activity for version control
+        await RecordConceptActivity(concept, ActivityTypes.Delete, concept, null);
 
         // Broadcast concept deletion to other users in the ontology
         await BroadcastConceptChange(ontologyId, ChangeType.Deleted, null, id);
@@ -304,5 +320,66 @@ public class ConceptService : IConceptService
         };
 
         await _hubContext.Clients.Group(groupName).SendAsync("ConceptChanged", changeEvent);
+    }
+
+    /// <summary>
+    /// Records concept activity for version control
+    /// </summary>
+    private async Task RecordConceptActivity(Concept concept, string activityType, Concept? before, Concept? after)
+    {
+        try
+        {
+            var currentUser = await _userService.GetCurrentUserAsync();
+
+            var activity = new OntologyActivity
+            {
+                OntologyId = concept.OntologyId,
+                UserId = currentUser?.Id,
+                ActorName = currentUser?.Email ?? "Unknown User",
+                ActivityType = activityType,
+                EntityType = EntityTypes.Concept,
+                EntityId = concept.Id,
+                EntityName = concept.Name,
+                Description = activityType switch
+                {
+                    ActivityTypes.Create => $"Created concept '{concept.Name}'",
+                    ActivityTypes.Update => $"Updated concept '{concept.Name}'",
+                    ActivityTypes.Delete => $"Deleted concept '{concept.Name}'",
+                    _ => $"Modified concept '{concept.Name}'"
+                },
+                BeforeSnapshot = before != null ? SerializeConceptToJson(before) : null,
+                AfterSnapshot = after != null ? SerializeConceptToJson(after) : null,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _activityService.RecordActivityAsync(activity);
+        }
+        catch (Exception)
+        {
+            // Don't fail the operation if activity recording fails
+            // Just log and continue
+        }
+    }
+
+    /// <summary>
+    /// Serializes a concept to JSON for snapshot storage
+    /// </summary>
+    private string SerializeConceptToJson(Concept concept)
+    {
+        var snapshot = new
+        {
+            concept.Id,
+            concept.Name,
+            concept.Definition,
+            concept.SimpleExplanation,
+            concept.Examples,
+            concept.Color,
+            concept.PositionX,
+            concept.PositionY,
+            concept.Category,
+            concept.CreatedAt
+        };
+
+        return JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = false });
     }
 }

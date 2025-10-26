@@ -173,6 +173,11 @@ else
                                       ShowActivity="true"
                                       RecentActivityLimit="10" />
                 }
+                else if (viewMode == ViewMode.VersionHistory)
+                {
+                    <VersionHistoryPanel OntologyId="@ontology.Id"
+                                        OnRevertRequested="@HandleRevertRequested" />
+                }
                 else if (viewMode == ViewMode.Help)
                 {
                     <OntologyFrameworkGuide />
@@ -1900,6 +1905,48 @@ else
             {
                 Logger.LogError(ex, "Error deleting restriction {RestrictionId}", restriction.Id);
                 ToastService.ShowError($"Failed to delete restriction: {ex.Message}");
+            }
+        }
+    }
+
+    // Version Control
+    private async Task HandleRevertRequested(int versionNumber)
+    {
+        var confirmed = await ConfirmService.ShowAsync(
+            "Revert to Version",
+            $"Are you sure you want to revert this ontology to version {versionNumber}? This action cannot be undone automatically.",
+            "Revert",
+            ConfirmType.Warning
+        );
+
+        if (confirmed)
+        {
+            try
+            {
+                ToastService.ShowInfo($"Reverting to version {versionNumber}...");
+
+                // Note: This is a placeholder for the full revert logic
+                // Full implementation would need to:
+                // 1. Capture current state snapshot
+                // 2. Retrieve the target version's data
+                // 3. Apply the changes to all affected entities
+                // 4. Record the revert activity
+
+                Logger.LogWarning("Revert to version {VersionNumber} requested for ontology {OntologyId}", versionNumber, Id);
+
+                ToastService.ShowWarning("Version revert functionality is in development. This feature will restore the ontology to its previous state.");
+
+                // TODO: Implement full revert logic
+                // This would involve:
+                // - Loading the target version's snapshot
+                // - Applying changes to concepts, relationships, properties, etc.
+                // - Using the ActivityService to record the revert
+                // - Refreshing the UI
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error reverting to version {VersionNumber}", versionNumber);
+                ToastService.ShowError($"Failed to revert to version {versionNumber}: {ex.Message}");
             }
         }
     }

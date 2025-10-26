@@ -25,14 +25,16 @@ Eidos.Tests/
 │   │   ├── ConceptServiceTests.cs              (16 tests - unit tests with mocks)
 │   │   ├── RelationshipServiceTests.cs         (18 tests - unit tests with mocks)
 │   │   ├── ConceptServiceIntegrationTests.cs   (11 tests - REAL database integration)
-│   │   └── RelationshipServiceIntegrationTests.cs (14 tests - REAL database integration)
+│   │   ├── RelationshipServiceIntegrationTests.cs (14 tests - REAL database integration)
+│   │   └── OntologyShareServiceTests.cs        (8 tests - collaborator tracking)
 │   └── Workflows/                 # End-to-end workflow tests
 │       └── OntologyWorkflowTests.cs            (7 tests - complete user scenarios)
 ├── Components/                    # Blazor component tests using bUnit
 │   ├── ForkCloneDialogTests.cs    (5 tests)
 │   ├── OntologyLineageTests.cs    (7 tests)
 │   ├── ConfirmDialogTests.cs      (9 tests)
-│   └── ConceptEditorTests.cs      (15 tests)
+│   ├── ConceptEditorTests.cs      (15 tests)
+│   └── CollaboratorPanelTests.cs  (9 tests)
 └── Helpers/                       # Test utilities and helpers
     ├── TestDataBuilder.cs         # Builder for test data objects
     └── TestDbContextFactory.cs    # In-memory database factory
@@ -137,7 +139,7 @@ These tests verify service behavior and delegation logic using mocked repositori
 - ✅ Allow valid relationship creation
 - ✅ Broadcast create via SignalR
 
-### Service Integration Tests (25 tests - using REAL database)
+### Service Integration Tests (33 tests - using REAL database)
 
 These tests use REAL repositories and verify the full application stack works correctly.
 
@@ -167,6 +169,16 @@ These tests use REAL repositories and verify the full application stack works co
 - ✅ Create multiple relationships - all persist with unique IDs
 - ✅ Get relationship with concepts loads source and target
 
+#### OntologyShareServiceTests (8 tests)
+- ✅ Returns empty list when no collaborators exist
+- ✅ Returns authenticated collaborators with access details
+- ✅ Returns guest collaborators with session information
+- ✅ Includes activity history for each collaborator
+- ✅ Excludes inactive shares from results
+- ✅ Returns user activity history ordered by date
+- ✅ Respects activity limit parameter
+- ✅ Only returns activities for specified user
+
 ### Workflow Tests (7 tests - end-to-end scenarios)
 
 These tests verify complete user workflows from start to finish using real services and database.
@@ -179,7 +191,7 @@ These tests verify complete user workflows from start to finish using real servi
 - ✅ Delete workflow (remove concepts and relationships, verify cleanup)
 - ✅ Complex lineage workflow (multi-generational fork/clone tracking)
 
-### Component Tests (36 tests)
+### Component Tests (45 tests)
 
 #### ForkCloneDialog Component (5 tests)
 - ✅ Display fork modal with correct content
@@ -224,6 +236,17 @@ These tests verify complete user workflows from start to finish using real servi
 - ✅ Add pulse-attention class when ShouldPulse is true
 - ✅ Not add pulse class when ShouldPulse is false
 
+#### CollaboratorPanel Component (9 tests)
+- ✅ Shows loading state initially
+- ✅ Displays empty state when no collaborators exist
+- ✅ Displays collaborator cards with user information
+- ✅ Displays guest collaborators correctly with guest badge
+- ✅ Displays correct permission level badges
+- ✅ Displays edit statistics when ShowDetails is true
+- ✅ Displays recent activity timeline when ShowActivity is true
+- ✅ Shows error message when service fails
+- ✅ Calls service with correct ontology ID and activity limit parameters
+
 ## Running Tests
 
 ### Run all tests
@@ -253,11 +276,7 @@ dotnet test --filter "FullyQualifiedName~AddAsync_ShouldAddOntology"
 
 ## Test Results
 
-**Current Status:** ✅ **All 137 tests passing** (Duration: ~854ms)
-
-```
-Passed!  - Failed: 0, Passed: 137, Skipped: 0, Total: 137, Duration: 854 ms
-```
+**Current Status:** ✅ **All 162 tests passing**
 
 **Test Breakdown:**
 - Repository Integration Tests: 19
@@ -265,15 +284,17 @@ Passed!  - Failed: 0, Passed: 137, Skipped: 0, Total: 137, Duration: 854 ms
   - OntologyService: 24
   - ConceptService: 16
   - RelationshipService: 18
-- Service Integration Tests: 25
+- Service Integration Tests: 33
   - ConceptServiceIntegrationTests: 11
   - RelationshipServiceIntegrationTests: 14
+  - OntologyShareServiceTests: 8
 - Workflow Tests: 7
-- Component Tests: 36
+- Component Tests: 45
   - ForkCloneDialog: 5
   - OntologyLineage: 7
   - ConfirmDialog: 9
   - ConceptEditor: 15
+  - CollaboratorPanel: 9
 
 ## Test Helpers
 
@@ -363,6 +384,8 @@ Consider adding tests for:
 - [x] ConceptService integration tests ✅ COMPLETED (11 tests)
 - [x] RelationshipService integration tests ✅ COMPLETED (14 tests)
 - [x] End-to-end workflow tests ✅ COMPLETED (7 tests)
+- [x] OntologyShareService tests ✅ COMPLETED (8 tests)
+- [x] CollaboratorPanel component tests ✅ COMPLETED (9 tests)
 - [ ] PropertyService integration tests
 - [ ] PropertyRepository tests
 - [ ] UserRepository tests
@@ -370,11 +393,12 @@ Consider adding tests for:
 - [ ] Additional Blazor component tests (RelationshipEditor, ShareModal, etc.)
 - [ ] Performance tests for large ontologies
 - [ ] Validation logic tests
+- [ ] Activity tracking integration tests
 
 ## Continuous Integration
 
 These tests are designed to run in CI/CD pipelines. They:
-- Run quickly (~854ms total for 137 tests)
+- Run quickly (fast execution for 162 tests)
 - Don't require external dependencies
 - Use in-memory databases
 - Are deterministic and reliable
@@ -383,8 +407,8 @@ These tests are designed to run in CI/CD pipelines. They:
 
 ---
 
-**Last Updated:** 2025-10-25
-**Total Tests:** 137
+**Last Updated:** 2025-10-26
+**Total Tests:** 162
 **Pass Rate:** 100%
 
 **Test Breakdown:**
@@ -393,14 +417,19 @@ These tests are designed to run in CI/CD pipelines. They:
   - OntologyService: 24
   - ConceptService: 16
   - RelationshipService: 18
-- Service Integration Tests (REAL database): 25
+- Service Integration Tests (REAL database): 33
   - ConceptServiceIntegrationTests: 11
   - RelationshipServiceIntegrationTests: 14
+  - OntologyShareServiceTests: 8
 - Workflow Tests (end-to-end): 7
-- Component Tests: 36
+- Component Tests: 45
   - ForkCloneDialog: 5
   - OntologyLineage: 7
   - ConfirmDialog: 9
   - ConceptEditor: 15
+  - CollaboratorPanel: 9
 
-**Key Achievement:** The test suite now includes TRUE integration tests that verify the application actually works with real database operations, not just mocked behavior. This provides confidence that the full stack (Services → Repositories → Database) functions correctly.
+**Key Achievements:**
+- TRUE integration tests that verify the application actually works with real database operations, not just mocked behavior
+- Comprehensive collaborator tracking and activity monitoring test coverage
+- Foundation for version control testing with activity snapshots

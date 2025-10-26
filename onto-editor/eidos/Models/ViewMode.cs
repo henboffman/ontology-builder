@@ -11,5 +11,6 @@ public enum ViewMode
     Templates,
     Links,
     Collaborators,
+    VersionHistory,
     Help
 }

@@ -307,6 +307,7 @@ builder.Services.AddScoped<IFeatureToggleService, FeatureToggleService>();
 builder.Services.AddScoped<IConceptService, ConceptService>();
 builder.Services.AddScoped<IRelationshipService, RelationshipService>();
 builder.Services.AddScoped<IOntologyShareService, OntologyShareService>();
+builder.Services.AddScoped<IOntologyActivityService, OntologyActivityService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<IIndividualService, IndividualService>();
 builder.Services.AddScoped<IRestrictionService, RestrictionService>();

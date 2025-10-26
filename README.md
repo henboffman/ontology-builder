@@ -10,6 +10,8 @@ A modern web application for creating, managing, and visualizing ontologies buil
 - **Visual Ontology Editor**: Interactive graph-based editor using Cytoscape.js
 - **Concept Management**: Create and organize concepts with properties, relationships, and hierarchies
 - **Real-time Collaboration**: Multi-user editing with SignalR
+- **Collaborator Tracking**: View all users and guests with access to an ontology, including edit history and activity timelines
+- **Activity Monitoring**: Track all changes with before/after snapshots for version control
 - **Import/Export**: Support for TTL (Turtle) format
 - **User Authentication**: OAuth support for GitHub, Google, and Microsoft
 
@@ -128,6 +130,14 @@ ontology-builder/
 - Touch-friendly for mobile devices
 - Auto-resize and responsive layout
 
+### Collaborator Tracking System
+- **CollaboratorPanel Component**: View all users and guests with access to an ontology
+- **Activity Tracking**: Records all changes with before/after snapshots for future version control
+- **Edit Statistics**: Per-user breakdown of creates, updates, and deletes across concepts, relationships, and properties
+- **Activity Timeline**: Recent changes with timestamps and descriptions
+- **Permission Management**: View-only, View & Add, Can Edit, and Full Access levels
+- **Guest Sessions**: Track anonymous users accessing via share links
+
 ### Authentication
 - OAuth integration (GitHub, Google, Microsoft)
 - Secure credential storage in Azure Key Vault
@@ -137,6 +147,7 @@ ontology-builder/
 - Entity Framework Core migrations
 - Azure SQL Database with Managed Identity
 - Optimized queries and indexing
+- Activity tracking with versioning support
 
 ## Configuration
 

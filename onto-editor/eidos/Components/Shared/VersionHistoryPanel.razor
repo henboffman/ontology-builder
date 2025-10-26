@@ -1,0 +1,488 @@
+@using Eidos.Models.DTOs
+@using Eidos.Services.Interfaces
+@inject IOntologyActivityService ActivityService
+@inject ILogger<VersionHistoryPanel> Logger
+
+<div class="version-history-panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5>
+            <i class="bi bi-clock-history me-2"></i>
+            Version History
+            @if (Stats != null)
+            {
+                <span class="badge bg-secondary ms-2">v@Stats.CurrentVersion</span>
+            }
+        </h5>
+
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary" @onclick="RefreshAsync" disabled="@IsLoading">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+            <button class="btn btn-outline-info" @onclick="ToggleStatsPanel" disabled="@IsLoading">
+                <i class="bi bi-bar-chart"></i> Stats
+            </button>
+        </div>
+    </div>
+
+    @if (ShowStats && Stats != null)
+    {
+        <div class="stats-panel card mb-3">
+            <div class="card-body">
+                <h6 class="card-title">Statistics</h6>
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <div class="stat-item">
+                            <div class="stat-label">Total Versions</div>
+                            <div class="stat-value">@Stats.TotalVersions</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-item">
+                            <div class="stat-label">Current Version</div>
+                            <div class="stat-value">@Stats.CurrentVersion</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-item">
+                            <div class="stat-label">Contributors</div>
+                            <div class="stat-value">@Stats.TotalContributors</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-item">
+                            <div class="stat-label">Time Span</div>
+                            <div class="stat-value">@GetTimeSpan()</div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (Stats.ActivityTypeBreakdown.Any())
+                {
+                    <div class="mt-3">
+                        <h6 class="small text-muted">Activity Breakdown</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var item in Stats.ActivityTypeBreakdown)
+                            {
+                                <span class="badge bg-@GetActivityBadgeColor(item.Key)">
+                                    @item.Key: @item.Value
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Filter Section -->
+    <div class="filter-section card mb-3">
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label small">Entity Type</label>
+                    <select class="form-select form-select-sm" @bind="FilterEntityType" @bind:after="ApplyFiltersAsync">
+                        <option value="">All Types</option>
+                        <option value="concept">Concepts</option>
+                        <option value="relationship">Relationships</option>
+                        <option value="property">Properties</option>
+                        <option value="individual">Individuals</option>
+                        <option value="ontology">Ontology</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small">Activity Type</label>
+                    <select class="form-select form-select-sm" @bind="FilterActivityType" @bind:after="ApplyFiltersAsync">
+                        <option value="">All Activities</option>
+                        <option value="create">Create</option>
+                        <option value="update">Update</option>
+                        <option value="delete">Delete</option>
+                        <option value="import">Import</option>
+                        <option value="export">Export</option>
+                        <option value="revert">Revert</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small">Results per page</label>
+                    <select class="form-select form-select-sm" @bind="PageSize" @bind:after="ApplyFiltersAsync">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted small mt-2">Loading version history...</p>
+        </div>
+    }
+    else if (ErrorMessage != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            @ErrorMessage
+        </div>
+    }
+    else if (Activities == null || !Activities.Any())
+    {
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+            <p class="mb-0">No version history available.</p>
+            <p class="small">Changes will appear here once you start editing.</p>
+        </div>
+    }
+    else
+    {
+        <div class="version-timeline">
+            @foreach (var activity in Activities)
+            {
+                <div class="timeline-item @(SelectedActivityId == activity.Id ? "selected" : "")"
+                     @onclick="() => SelectActivity(activity.Id)">
+                    <div class="timeline-marker">
+                        <i class="bi bi-@GetActivityIcon(activity.ActivityType)"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-header">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>@activity.Description</strong>
+                                    @if (activity.VersionNumber.HasValue)
+                                    {
+                                        <span class="badge bg-info ms-2">v@activity.VersionNumber</span>
+                                    }
+                                    <span class="badge bg-@GetActivityTypeBadgeColor(activity.ActivityType) ms-1">
+                                        @activity.ActivityType
+                                    </span>
+                                    <span class="badge bg-secondary ms-1">
+                                        @activity.EntityType
+                                    </span>
+                                </div>
+                                <div class="timeline-actions">
+                                    @if (!string.IsNullOrEmpty(activity.AfterSnapshot))
+                                    {
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="() => ViewDetails(activity.Id)"
+                                                title="View details">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    }
+                                    @if (activity.VersionNumber.HasValue && activity.ActivityType != "revert")
+                                    {
+                                        <button class="btn btn-sm btn-outline-warning"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="() => ConfirmRevert(activity)"
+                                                title="Revert to this version">
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <div class="timeline-meta">
+                            <i class="bi bi-person"></i>
+                            @activity.ActorName
+                            @if (activity.IsGuestUser)
+                            {
+                                <span class="badge bg-info ms-1">Guest</span>
+                            }
+                            <span class="mx-2">•</span>
+                            <i class="bi bi-clock"></i>
+                            @FormatDateTime(activity.CreatedAt)
+                        </div>
+                        @if (!string.IsNullOrEmpty(activity.EntityName))
+                        {
+                            <div class="timeline-detail">
+                                <small class="text-muted">Entity: @activity.EntityName</small>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(activity.Notes))
+                        {
+                            <div class="timeline-notes">
+                                <small><i class="bi bi-sticky"></i> @activity.Notes</small>
+                            </div>
+                        }
+
+                        @if (SelectedActivityId == activity.Id && ShowActivityDetails)
+                        {
+                            <div class="activity-details mt-3">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <strong>Version Details</strong>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (!string.IsNullOrEmpty(activity.BeforeSnapshot))
+                                        {
+                                            <div class="mb-3">
+                                                <h6 class="small text-muted">Before:</h6>
+                                                <pre class="snapshot-preview">@activity.BeforeSnapshot</pre>
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrEmpty(activity.AfterSnapshot))
+                                        {
+                                            <div>
+                                                <h6 class="small text-muted">After:</h6>
+                                                <pre class="snapshot-preview">@activity.AfterSnapshot</pre>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Pagination -->
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>
+                <button class="btn btn-sm btn-outline-secondary"
+                        @onclick="LoadMoreAsync"
+                        disabled="@(IsLoading || Activities.Count < PageSize)">
+                    <i class="bi bi-arrow-down"></i> Load More
+                </button>
+            </div>
+            <div class="text-muted small">
+                Showing @Activities.Count @(Activities.Count == 1 ? "version" : "versions")
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public int OntologyId { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnRevertRequested { get; set; }
+
+    private List<OntologyActivityDto>? Activities { get; set; }
+    private VersionHistoryStatsDto? Stats { get; set; }
+    private bool IsLoading { get; set; } = true;
+    private string? ErrorMessage { get; set; }
+    private int SelectedActivityId { get; set; } = 0;
+    private bool ShowActivityDetails { get; set; } = false;
+    private bool ShowStats { get; set; } = false;
+
+    // Filters
+    private string FilterEntityType { get; set; } = "";
+    private string FilterActivityType { get; set; } = "";
+    private int PageSize { get; set; } = 50;
+    private int CurrentSkip { get; set; } = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (OntologyId > 0)
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            // Load stats
+            Stats = await ActivityService.GetVersionStatsAsync(OntologyId);
+
+            // Load activities with filters
+            await ApplyFiltersAsync();
+
+            Logger.LogInformation("Loaded version history for ontology {OntologyId}", OntologyId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading version history for ontology {OntologyId}", OntologyId);
+            ErrorMessage = "Failed to load version history. Please try again.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task ApplyFiltersAsync()
+    {
+        try
+        {
+            CurrentSkip = 0;
+
+            if (!string.IsNullOrEmpty(FilterEntityType))
+            {
+                Activities = await ActivityService.GetActivityByEntityTypeAsync(OntologyId, FilterEntityType, CurrentSkip, PageSize);
+            }
+            else
+            {
+                Activities = await ActivityService.GetActivityHistoryAsync(OntologyId, CurrentSkip, PageSize);
+            }
+
+            // Apply activity type filter in memory (can be optimized with a service method)
+            if (!string.IsNullOrEmpty(FilterActivityType) && Activities != null)
+            {
+                Activities = Activities.Where(a => a.ActivityType == FilterActivityType).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error applying filters");
+            ErrorMessage = "Failed to apply filters.";
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (Activities == null) return;
+
+        try
+        {
+            CurrentSkip += PageSize;
+            List<OntologyActivityDto> moreActivities;
+
+            if (!string.IsNullOrEmpty(FilterEntityType))
+            {
+                moreActivities = await ActivityService.GetActivityByEntityTypeAsync(OntologyId, FilterEntityType, CurrentSkip, PageSize);
+            }
+            else
+            {
+                moreActivities = await ActivityService.GetActivityHistoryAsync(OntologyId, CurrentSkip, PageSize);
+            }
+
+            if (!string.IsNullOrEmpty(FilterActivityType))
+            {
+                moreActivities = moreActivities.Where(a => a.ActivityType == FilterActivityType).ToList();
+            }
+
+            Activities.AddRange(moreActivities);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading more activities");
+        }
+    }
+
+    public async Task RefreshAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private void ToggleStatsPanel()
+    {
+        ShowStats = !ShowStats;
+    }
+
+    private void SelectActivity(int activityId)
+    {
+        if (SelectedActivityId == activityId)
+        {
+            SelectedActivityId = 0;
+            ShowActivityDetails = false;
+        }
+        else
+        {
+            SelectedActivityId = activityId;
+            ShowActivityDetails = false;
+        }
+    }
+
+    private void ViewDetails(int activityId)
+    {
+        SelectedActivityId = activityId;
+        ShowActivityDetails = !ShowActivityDetails;
+    }
+
+    private async Task ConfirmRevert(OntologyActivityDto activity)
+    {
+        if (activity.VersionNumber.HasValue)
+        {
+            await OnRevertRequested.InvokeAsync(activity.VersionNumber.Value);
+        }
+    }
+
+    private string GetActivityIcon(string activityType)
+    {
+        return activityType.ToLower() switch
+        {
+            "create" => "plus-circle-fill",
+            "update" => "pencil-fill",
+            "delete" => "trash-fill",
+            "import" => "download",
+            "export" => "upload",
+            "revert" => "arrow-counterclockwise",
+            "fork" => "diagram-2",
+            "clone" => "files",
+            _ => "dot"
+        };
+    }
+
+    private string GetActivityTypeBadgeColor(string activityType)
+    {
+        return activityType.ToLower() switch
+        {
+            "create" => "success",
+            "update" => "primary",
+            "delete" => "danger",
+            "revert" => "warning",
+            "import" => "info",
+            "export" => "secondary",
+            _ => "secondary"
+        };
+    }
+
+    private string GetActivityBadgeColor(string activityType)
+    {
+        return activityType.ToLower() switch
+        {
+            "create" => "success",
+            "update" => "primary",
+            "delete" => "danger",
+            _ => "secondary"
+        };
+    }
+
+    private string FormatDateTime(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalMinutes < 1)
+            return "just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+
+        return dateTime.ToString("MMM dd, yyyy HH:mm");
+    }
+
+    private string GetTimeSpan()
+    {
+        if (Stats == null || Stats.TotalVersions == 0)
+            return "N/A";
+
+        var span = Stats.LastActivityDate - Stats.FirstActivityDate;
+        if (span.TotalDays < 1)
+            return $"{(int)span.TotalHours}h";
+        if (span.TotalDays < 30)
+            return $"{(int)span.TotalDays}d";
+        if (span.TotalDays < 365)
+            return $"{(int)(span.TotalDays / 30)}mo";
+
+        return $"{(int)(span.TotalDays / 365)}y";
+    }
+}

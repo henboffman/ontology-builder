@@ -1,0 +1,250 @@
+@inject ILogger<ReleaseNotes> Logger
+
+<div class="release-notes-container">
+    <div class="release-notes-header">
+        <h3>
+            <i class="bi bi-megaphone me-2"></i>
+            Release Notes
+        </h3>
+        <p class="text-muted">What's new in Eidos Ontology Builder</p>
+    </div>
+
+    <div class="release-timeline">
+        <!-- Latest: Version Control & Activity Tracking -->
+        <div class="release-item">
+            <div class="release-badge badge bg-primary">Latest</div>
+            <div class="release-date">October 26, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-clock-history text-primary me-2"></i>
+                Version Control & Activity Tracking
+            </h4>
+            <div class="release-content">
+                <p class="lead">Track every change made to your ontologies with complete version history.</p>
+
+                <h5>New Features</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Version History Panel</strong>
+                        <ul>
+                            <li>Timeline view of all changes</li>
+                            <li>Filter by entity type (concepts, relationships, properties)</li>
+                            <li>Filter by activity type (create, update, delete)</li>
+                            <li>Statistics dashboard showing contributors and activity breakdown</li>
+                            <li>Before/after snapshots for all changes</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Automatic Activity Recording</strong>
+                        <ul>
+                            <li>Tracks all concept and relationship changes</li>
+                            <li>Captures complete before/after state</li>
+                            <li>Auto-incrementing version numbers</li>
+                            <li>User attribution for all changes</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Version Comparison</strong>
+                        <ul>
+                            <li>Side-by-side diff view</li>
+                            <li>Highlights added, modified, and removed fields</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Revert Capability</strong> (foundation - full implementation coming soon)
+                    </li>
+                </ul>
+
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>How to use:</strong> Click the "History" button in any ontology to view the complete version timeline.
+                </div>
+            </div>
+        </div>
+
+        <!-- Collaborator Tracking -->
+        <div class="release-item">
+            <div class="release-date">October 26, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-people text-success me-2"></i>
+                Collaborator Tracking System
+            </h4>
+            <div class="release-content">
+                <p class="lead">See who's working on your ontologies and track their contributions.</p>
+
+                <h5>New Features</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Collaborator Panel</strong>
+                        <ul>
+                            <li>View all users and guests with access</li>
+                            <li>Permission level badges (View, Can Edit, Full Access)</li>
+                            <li>Access statistics (first accessed, last active)</li>
+                            <li>Guest user identification</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Edit Statistics</strong>
+                        <ul>
+                            <li>Per-user contribution breakdown</li>
+                            <li>Counts for concepts, relationships, and properties</li>
+                            <li>Created, updated, and deleted tracking</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Activity Timeline</strong>
+                        <ul>
+                            <li>Recent activity for each collaborator</li>
+                            <li>Chronological list with descriptions</li>
+                            <li>Entity names and timestamps</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>How to use:</strong> Click the "Collaborators" button to see everyone working on your ontology.
+                </div>
+            </div>
+        </div>
+
+        <!-- Testing Infrastructure -->
+        <div class="release-item">
+            <div class="release-date">October 25, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-shield-check text-info me-2"></i>
+                Enhanced Testing Infrastructure
+            </h4>
+            <div class="release-content">
+                <p>Comprehensive test suite ensuring reliability and quality.</p>
+                <ul class="feature-list">
+                    <li>162 automated tests (100% passing)</li>
+                    <li>Component tests with bUnit</li>
+                    <li>Service integration tests</li>
+                    <li>Repository tests with in-memory database</li>
+                    <li>End-to-end workflow tests</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Dark Mode -->
+        <div class="release-item">
+            <div class="release-date">October 25, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-moon-stars text-warning me-2"></i>
+                Dark Mode & Theme Support
+            </h4>
+            <div class="release-content">
+                <p>Easy on the eyes, day or night.</p>
+                <ul class="feature-list">
+                    <li>Light and dark mode themes</li>
+                    <li>Persisted user preference</li>
+                    <li>Smooth theme transitions</li>
+                    <li>Color-blind friendly palette</li>
+                    <li>System theme detection</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Mobile Responsive -->
+        <div class="release-item">
+            <div class="release-date">October 24, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-phone text-danger me-2"></i>
+                Mobile Responsive Design
+            </h4>
+            <div class="release-content">
+                <p>Work on your ontologies anywhere, on any device.</p>
+                <ul class="feature-list">
+                    <li>Touch-friendly graph editor</li>
+                    <li>Mobile-optimized controls</li>
+                    <li>Responsive layouts for all views</li>
+                    <li>Collapsible sidebars on small screens</li>
+                    <li>Gesture support (pinch-zoom, pan)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Azure Deployment -->
+        <div class="release-item">
+            <div class="release-date">October 24, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-cloud-upload text-primary me-2"></i>
+                Production Deployment
+            </h4>
+            <div class="release-content">
+                <p>Deployed to Azure with enterprise-grade infrastructure.</p>
+                <ul class="feature-list">
+                    <li>Azure App Service hosting</li>
+                    <li>Azure SQL Database</li>
+                    <li>Azure Key Vault for secrets</li>
+                    <li>Application Insights monitoring</li>
+                    <li>HTTPS-only with TLS 1.2</li>
+                    <li>CI/CD with GitHub Actions</li>
+                    <li>Custom domain: https://eidosonto.com</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Initial Release -->
+        <div class="release-item">
+            <div class="release-date">October 20, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-rocket text-success me-2"></i>
+                Initial Release
+            </h4>
+            <div class="release-content">
+                <p>The foundation of Eidos Ontology Builder.</p>
+                <h5>Core Features</h5>
+                <ul class="feature-list">
+                    <li>Ontology management (create, edit, delete)</li>
+                    <li>Concept and relationship management</li>
+                    <li>Interactive graph visualization</li>
+                    <li>List and hierarchy views</li>
+                    <li>TTL export/import</li>
+                    <li>Template system</li>
+                    <li>Fork/clone ontologies</li>
+                    <li>Undo/redo support</li>
+                    <li>Real-time collaboration</li>
+                    <li>User authentication (OAuth)</li>
+                    <li>User preferences</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="release-footer">
+        <div class="alert alert-secondary">
+            <h5><i class="bi bi-info-circle me-2"></i>About Eidos</h5>
+            <p class="mb-2">
+                <strong>Eidos Ontology Builder</strong> is a modern web application for creating, managing, and visualizing ontologies.
+                Built with Blazor Server and .NET 9, it provides an intuitive interface for knowledge organization and semantic modeling.
+            </p>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <h6>Technology Stack</h6>
+                    <ul class="list-unstyled small">
+                        <li><i class="bi bi-check2 text-success"></i> Blazor Server (.NET 9)</li>
+                        <li><i class="bi bi-check2 text-success"></i> Azure SQL Database</li>
+                        <li><i class="bi bi-check2 text-success"></i> SignalR (Real-time)</li>
+                        <li><i class="bi bi-check2 text-success"></i> Cytoscape.js (Visualization)</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>Links</h6>
+                    <ul class="list-unstyled small">
+                        <li><i class="bi bi-globe"></i> <a href="https://eidosonto.com" target="_blank">eidosonto.com</a></li>
+                        <li><i class="bi bi-github"></i> <a href="#" target="_blank">GitHub Repository</a></li>
+                        <li><i class="bi bi-book"></i> <a href="#" target="_blank">Documentation</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Logger.LogInformation("Release Notes page loaded");
+    }
+}
