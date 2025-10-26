@@ -1,5 +1,10 @@
 # Eidos Ontology Builder
 
+[![Build and Deploy](https://github.com/henboffman/ontology-builder/actions/workflows/azure-deploy.yml/badge.svg)](https://github.com/henboffman/ontology-builder/actions/workflows/azure-deploy.yml)
+[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
+[![Azure](https://img.shields.io/badge/Azure-Deployed-0078D4?logo=microsoftazure)](https://eidosonto.com)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 A modern web application for creating, managing, and visualizing ontologies built with Blazor Server and .NET 9.
 
 🌐 **Live Site**: [https://eidosonto.com](https://eidosonto.com)
