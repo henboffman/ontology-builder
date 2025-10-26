@@ -416,7 +416,7 @@ appsettings.Production.json
 keys/
 
 # Ignore all .md files in the root directory
-/*.md
+# /*.md
 
 # Un-ignore the README.md file
-!README.md
+# !README.md
