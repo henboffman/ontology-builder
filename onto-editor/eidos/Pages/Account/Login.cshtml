@@ -31,8 +31,10 @@
                             <div class="alert alert-success">@Model.SuccessMessage</div>
                         }
 
-                        <form method="post">
-                            <input type="hidden" name="IsRegisterMode" value="@Model.IsRegisterMode" />
+                        <form method="post" asp-page="/Account/Login">
+                            @Html.AntiForgeryToken()
+                            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                            <input type="hidden" name="Mode" value="@Model.Mode" />
 
                             @if (Model.IsRegisterMode)
                             {

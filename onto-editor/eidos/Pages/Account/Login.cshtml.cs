@@ -58,7 +58,7 @@ namespace Eidos.Pages.Account
             public string Password { get; set; } = "";
 
             [DataType(DataType.Password)]
-            [Compare(nameof(Password), ErrorMessage = "Passwords do not match")]
+            // Note: Compare validation removed - validated manually in HandleRegister to avoid validation errors in login mode
             public string ConfirmPassword { get; set; } = "";
 
             public string DisplayName { get; set; } = "";
@@ -68,6 +68,21 @@ namespace Eidos.Pages.Account
         {
             if (!ModelState.IsValid)
             {
+                // Set error message from ModelState validation errors
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .Where(m => !string.IsNullOrEmpty(m));
+
+                if (errors.Any())
+                {
+                    ErrorMessage = string.Join("; ", errors);
+                }
+                else
+                {
+                    ErrorMessage = "Please fill in all required fields.";
+                }
+
                 return Page();
             }
 
@@ -86,6 +101,13 @@ namespace Eidos.Pages.Account
             if (string.IsNullOrWhiteSpace(Input.DisplayName))
             {
                 ErrorMessage = "Display name is required";
+                return Page();
+            }
+
+            // Manual password confirmation validation (not in attributes to avoid login mode validation errors)
+            if (Input.Password != Input.ConfirmPassword)
+            {
+                ErrorMessage = "Passwords do not match";
                 return Page();
             }
 
@@ -116,6 +138,15 @@ namespace Eidos.Pages.Account
 
         private async Task<IActionResult> HandleLogin()
         {
+            // First check if the user exists
+            var user = await _userManager.FindByEmailAsync(Input.Email);
+
+            if (user == null)
+            {
+                ErrorMessage = "No account found with this email address.";
+                return Page();
+            }
+
             var result = await _signInManager.PasswordSignInAsync(
                 Input.Email,
                 Input.Password,
@@ -132,9 +163,20 @@ namespace Eidos.Pages.Account
                 ErrorMessage = "Account locked due to multiple failed login attempts. Please try again in 15 minutes.";
                 return Page();
             }
+            else if (result.RequiresTwoFactor)
+            {
+                ErrorMessage = "Two-factor authentication is required but not implemented.";
+                return Page();
+            }
+            else if (result.IsNotAllowed)
+            {
+                ErrorMessage = "Login not allowed. Please confirm your email address first.";
+                return Page();
+            }
             else
             {
-                ErrorMessage = "Invalid email or password";
+                // More specific error message
+                ErrorMessage = $"Invalid password for {Input.Email}. Please check your password and try again.";
                 return Page();
             }
         }
