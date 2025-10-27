@@ -68,43 +68,12 @@
                             </div>
                         </div>
 
-                        @if (share.AllowGuestAccess)
-                        {
-                            <div class="mb-4">
-                                <h6>Choose how to access:</h6>
-
-                                <div class="d-grid gap-2 mb-2">
-                                    <button class="btn btn-success btn-lg" @onclick="ContinueAsGuest">
-                                        <i class="bi bi-box-arrow-in-right"></i> Continue as Guest
-                                    </button>
-                                </div>
-
-                                <div class="text-center my-3">
-                                    <span class="text-muted">— or —</span>
-                                </div>
-
-                                <div class="d-grid gap-2">
-                                    <a href="/Account/Login?returnUrl=@Uri.EscapeDataString($"/share/{ShareToken}")"
-                                       class="btn btn-outline-primary">
-                                        <i class="bi bi-person"></i> Sign In
-                                    </a>
-                                    <a href="/Account/Register?returnUrl=@Uri.EscapeDataString($"/share/{ShareToken}")"
-                                       class="btn btn-outline-secondary">
-                                        <i class="bi bi-person-plus"></i> Create Account
-                                    </a>
-                                </div>
-
-                                <div class="alert alert-warning mt-3 small">
-                                    <i class="bi bi-exclamation-circle"></i>
-                                    <strong>Guest users:</strong> Your session will be temporary and any changes may not be saved after you leave.
-                                </div>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="alert alert-warning mb-4">
-                                <i class="bi bi-lock"></i> This share link requires you to sign in or create an account.
-                            </div>
+                        <div class="mb-4">
+                            <h6 class="mb-3">Sign in to access this ontology</h6>
+                            <p class="text-muted small mb-3">
+                                Create a free account or sign in with an existing account to view this shared ontology.
+                                You can use email/password or sign in instantly with Google, GitHub, or Microsoft.
+                            </p>
 
                             <div class="d-grid gap-2">
                                 <a href="/Account/Login?returnUrl=@Uri.EscapeDataString($"/share/{ShareToken}")"
@@ -113,10 +82,10 @@
                                 </a>
                                 <a href="/Account/Register?returnUrl=@Uri.EscapeDataString($"/share/{ShareToken}")"
                                    class="btn btn-outline-secondary">
-                                    <i class="bi bi-person-plus"></i> Create Account
+                                    <i class="bi bi-person-plus"></i> Create Free Account
                                 </a>
                             </div>
-                        }
+                        </div>
 
                         @if (share.ExpiresAt.HasValue)
                         {
@@ -227,62 +196,6 @@
         }
     }
 
-    private async Task ValidateAndRedirect(bool isGuest)
-    {
-        isLoading = true;
-
-        try
-        {
-            // Get the share by token
-            share = await ShareService.GetShareByTokenAsync(ShareToken);
-
-            if (share == null)
-            {
-                errorMessage = "This share link is invalid or has been revoked.";
-                isLoading = false;
-                return;
-            }
-
-            // Validate the share access
-            var (isValid, validationError) = await ShareService.ValidateShareAccessAsync(ShareToken);
-            if (!isValid)
-            {
-                errorMessage = validationError ?? "This share link is not accessible.";
-                isLoading = false;
-                return;
-            }
-
-            // Record the access
-            await ShareService.RecordShareAccessAsync(ShareToken);
-
-            // Create guest session if needed
-            if (isGuest)
-            {
-                var guestSession = await ShareService.CreateGuestSessionAsync(share.Id);
-                // Store guest session token in session storage or cookies
-                // For now, we'll just redirect with the session token in query string
-                Navigation.NavigateTo($"/ontology/{share.OntologyId}?guestSession={guestSession.SessionToken}", forceLoad: true);
-            }
-            else
-            {
-                // Redirect authenticated user to the ontology
-                Navigation.NavigateTo($"/ontology/{share.OntologyId}", forceLoad: true);
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"An error occurred: {ex.Message}";
-            isLoading = false;
-        }
-    }
-
-    private async Task ContinueAsGuest()
-    {
-        if (share != null && share.AllowGuestAccess)
-        {
-            await ValidateAndRedirect(isGuest: true);
-        }
-    }
 
     private string GetPermissionDescription(PermissionLevel level)
     {

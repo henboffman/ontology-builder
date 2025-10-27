@@ -1,0 +1,25 @@
+# ZAP Scanning Rules
+# Format: ID	THRESHOLD	[IGNORE/WARN/FAIL]
+
+# High severity issues - fail build
+10029	MEDIUM	FAIL	# Cookie Poisoning
+10038	MEDIUM	FAIL	# Content Security Policy (CSP) Header Not Set
+10054	MEDIUM	FAIL	# Cookie Without Secure Flag
+10055	MEDIUM	FAIL	# CSP Scanner
+10096	MEDIUM	FAIL	# Timestamp Disclosure
+10098	MEDIUM	FAIL	# Cross-Domain Misconfiguration
+
+# Medium severity - warn only
+10020	MEDIUM	WARN	# X-Frame-Options Header Not Set
+10021	MEDIUM	WARN	# X-Content-Type-Options Header Missing
+10023	MEDIUM	WARN	# Information Disclosure - Debug Error Messages
+10027	MEDIUM	WARN	# Information Disclosure - Suspicious Comments
+
+# Low severity - ignore for now
+10015	LOW	IGNORE	# Re-examine Cache-control Directives
+10017	LOW	IGNORE	# Cross-Domain JavaScript Source File Inclusion
+10019	LOW	IGNORE	# Content-Type Header Missing
+
+# Authentication tests
+10011	MEDIUM	FAIL	# Cookie Without HttpOnly Flag
+90001	HIGH	FAIL	# Insecure HTTP Method

@@ -87,8 +87,8 @@ if (!builder.Environment.IsDevelopment())
     {
         options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
 
-        // Enable detailed tracking while still maintaining cost controls
-        options.EnableAdaptiveSampling = true; // Reduces ingestion by ~50%
+        // Disable adaptive sampling to capture all telemetry details
+        options.EnableAdaptiveSampling = false; // Capture 100% of telemetry for debugging
         options.EnablePerformanceCounterCollectionModule = true;
         options.EnableDependencyTrackingTelemetryModule = true;
         options.EnableRequestTrackingTelemetryModule = true;
@@ -110,7 +110,7 @@ if (!builder.Environment.IsDevelopment())
     // Add telemetry processor for enriching data
     builder.Services.AddApplicationInsightsTelemetryProcessor<EnrichmentTelemetryProcessor>();
 
-    Console.WriteLine("✓ Application Insights configured with detailed tracking and adaptive sampling");
+    Console.WriteLine("✓ Application Insights configured with detailed tracking and optimized sampling");
 }
 
 // Add services to the container.
