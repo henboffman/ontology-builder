@@ -11,29 +11,29 @@ namespace Eidos.Tests.Integration.Services;
 public class OntologyShareServiceTests : IDisposable
 {
     private readonly OntologyDbContext _context;
+    private readonly DbContextOptions<OntologyDbContext> _options;
     private readonly Mock<ILogger<OntologyShareService>> _loggerMock;
     private readonly OntologyShareService _service;
 
     public OntologyShareServiceTests()
     {
-        var options = new DbContextOptionsBuilder<OntologyDbContext>()
+        _options = new DbContextOptionsBuilder<OntologyDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        _context = new OntologyDbContext(options);
+        _context = new OntologyDbContext(_options);
         _loggerMock = new Mock<ILogger<OntologyShareService>>();
 
         var contextFactory = new Mock<IDbContextFactory<OntologyDbContext>>();
         contextFactory.Setup(f => f.CreateDbContextAsync(default))
-            .ReturnsAsync(_context);
+            .ReturnsAsync(() => new OntologyDbContext(_options));
 
         _service = new OntologyShareService(contextFactory.Object, _loggerMock.Object);
     }
 
     public void Dispose()
     {
-        _context.Database.EnsureDeleted();
-        _context.Dispose();
+        _context?.Dispose();
     }
 
     [Fact]

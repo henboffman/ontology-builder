@@ -685,21 +685,27 @@ public class OntologyPermissionServiceTests : IDisposable
             Name = "My Ontology",
             UserId = userId,
             Visibility = OntologyVisibility.Private,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            Concepts = new List<Concept>(),
+            GroupPermissions = new List<OntologyGroupPermission>()
         };
         var publicOntology = new Ontology
         {
             Name = "Public Ontology",
             UserId = "other",
             Visibility = OntologyVisibility.Public,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            Concepts = new List<Concept>(),
+            GroupPermissions = new List<OntologyGroupPermission>()
         };
         var privateOntology = new Ontology
         {
             Name = "Other's Private",
             UserId = "other",
             Visibility = OntologyVisibility.Private,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            Concepts = new List<Concept>(),
+            GroupPermissions = new List<OntologyGroupPermission>()
         };
         _context.Ontologies.AddRange(ownedOntology, publicOntology, privateOntology);
         await _context.SaveChangesAsync();

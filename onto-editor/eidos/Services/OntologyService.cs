@@ -407,34 +407,29 @@ namespace Eidos.Services
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
-            // Use recursive CTE to efficiently fetch only descendants (optimized - no longer loads ALL ontologies)
-            // This reduces query from O(all ontologies) to O(descendants only)
-            var sql = @"
-                WITH OntologyTree AS (
-                    -- Base case: direct children of the specified ontology
-                    SELECT Id, UserId, Name, Description, Namespace, Tags, License, Author, Version,
-                           UsesBFO, UsesProvO, Notes, ParentOntologyId, ProvenanceType, ProvenanceNotes,
-                           CreatedAt, UpdatedAt
-                    FROM Ontologies
-                    WHERE ParentOntologyId = {0}
+            // Recursively fetch descendants using C# to ensure compatibility with all providers
+            var result = new List<Ontology>();
+            var queue = new Queue<int>();
+            queue.Enqueue(ontologyId);
 
-                    UNION ALL
+            while (queue.Count > 0)
+            {
+                var currentId = queue.Dequeue();
 
-                    -- Recursive case: children of children
-                    SELECT o.Id, o.UserId, o.Name, o.Description, o.Namespace, o.Tags, o.License, o.Author,
-                           o.Version, o.UsesBFO, o.UsesProvO, o.Notes, o.ParentOntologyId, o.ProvenanceType,
-                           o.ProvenanceNotes, o.CreatedAt, o.UpdatedAt
-                    FROM Ontologies o
-                    INNER JOIN OntologyTree t ON o.ParentOntologyId = t.Id
-                )
-                SELECT * FROM OntologyTree";
+                // Get all direct children of current ontology
+                var children = await context.Ontologies
+                    .Where(o => o.ParentOntologyId == currentId)
+                    .AsNoTracking()
+                    .ToListAsync();
 
-            var descendants = await context.Ontologies
-                .FromSqlRaw(sql, ontologyId)
-                .AsNoTracking()
-                .ToListAsync();
+                foreach (var child in children)
+                {
+                    result.Add(child);
+                    queue.Enqueue(child.Id);
+                }
+            }
 
-            return descendants;
+            return result;
         }
     }
 }

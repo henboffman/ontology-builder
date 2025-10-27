@@ -215,6 +215,12 @@ public class IndividualServiceTests : IDisposable
     public async Task AddPropertyAsync_WithValidProperty_ShouldAddProperty()
     {
         // Arrange
+        // Add individual to in-memory database
+        using var context = await _contextFactory.CreateDbContextAsync();
+        var individual = new Individual { Id = 1, OntologyId = 1, ConceptId = 1, Name = "Test" };
+        context.Individuals.Add(individual);
+        await context.SaveChangesAsync();
+
         var property = new IndividualProperty
         {
             IndividualId = 1,
@@ -223,15 +229,13 @@ public class IndividualServiceTests : IDisposable
             DataType = "string"
         };
 
-        var individual = new Individual { Id = 1, OntologyId = 1, ConceptId = 1, Name = "Test" };
-        _mockIndividualRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(individual);
-
         // Act
         var result = await _service.AddPropertyAsync(property);
 
         // Assert
         Assert.NotNull(result);
         Assert.Equal("color", result.Name);
+        Assert.Equal("brown", result.Value);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using Eidos.Data;
 using Eidos.Data.Repositories;
 using Eidos.Hubs;
 using Eidos.Models;
@@ -7,6 +8,7 @@ using Eidos.Services.Commands;
 using Eidos.Services.Interfaces;
 using Eidos.Tests.Helpers;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
 
@@ -43,6 +45,8 @@ public class OntologyWorkflowTests : IDisposable
         var mockCommandFactory = new Mock<ICommandFactory>();
         var mockCommandInvoker = new Mock<CommandInvoker>();
         var mockHubContext = new Mock<IHubContext<OntologyHub>>();
+        var mockActivityService = new Mock<IOntologyActivityService>();
+        var mockContextFactory = new Mock<IDbContextFactory<OntologyDbContext>>();
 
         _testUser = TestDataBuilder.CreateUser();
         mockUserService.Setup(s => s.GetCurrentUserAsync()).ReturnsAsync(_testUser);
@@ -69,7 +73,9 @@ public class OntologyWorkflowTests : IDisposable
             mockCommandInvoker.Object,
             mockHubContext.Object,
             mockUserService.Object,
-            mockShareService.Object);
+            mockShareService.Object,
+            mockActivityService.Object,
+            mockContextFactory.Object);
 
         _relationshipService = new RelationshipService(
             _relationshipRepository,
@@ -78,7 +84,8 @@ public class OntologyWorkflowTests : IDisposable
             mockCommandInvoker.Object,
             mockHubContext.Object,
             mockUserService.Object,
-            mockShareService.Object);
+            mockShareService.Object,
+            mockActivityService.Object);
 
         _ontologyService = new OntologyService(
             _contextFactory,

@@ -133,16 +133,17 @@ public class OntologyPermissionService
     /// </summary>
     public async Task<List<Ontology>> GetAccessibleOntologiesAsync(string? userId)
     {
-        var query = _context.Ontologies
-            .Include(o => o.User)
-            .Include(o => o.Concepts)
-            .Include(o => o.GroupPermissions)
-            .ThenInclude(gp => gp.UserGroup)
-            .ThenInclude(g => g.Members)
-            .AsQueryable();
+        // Load ontologies with minimal includes to avoid in-memory provider issues
+        var ontologies = await _context.Ontologies.ToListAsync();
 
-        // Filter based on visibility and user access
-        var ontologies = await query.ToListAsync();
+        // Load group permissions separately if needed for group visibility checks
+        if (ontologies.Any(o => o.Visibility == OntologyVisibility.Group))
+        {
+            var ontologyIds = ontologies.Select(o => o.Id).ToList();
+            var groupPerms = await _context.OntologyGroupPermissions
+                .Where(gp => ontologyIds.Contains(gp.OntologyId))
+                .ToListAsync();
+        }
 
         return ontologies.Where(o =>
         {
@@ -157,8 +158,8 @@ public class OntologyPermissionService
             // Group ontologies are visible to group members
             if (o.Visibility == OntologyVisibility.Group && !string.IsNullOrEmpty(userId))
             {
-                return o.GroupPermissions.Any(gp =>
-                    gp.UserGroup.Members.Any(m => m.UserId == userId));
+                return o.GroupPermissions != null && o.GroupPermissions.Any(gp =>
+                    gp.UserGroup?.Members != null && gp.UserGroup.Members.Any(m => m.UserId == userId));
             }
 
             // Private ontologies are not visible

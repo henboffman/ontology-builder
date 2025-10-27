@@ -1,3 +1,4 @@
+using Eidos.Data;
 using Eidos.Data.Repositories;
 using Eidos.Hubs;
 using Eidos.Models;
@@ -7,6 +8,7 @@ using Eidos.Services.Commands;
 using Eidos.Services.Interfaces;
 using Eidos.Tests.Helpers;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
 
@@ -28,6 +30,7 @@ public class RelationshipServiceIntegrationTests : IDisposable
     private readonly Mock<IHubContext<OntologyHub>> _mockHubContext;
     private readonly Mock<IUserService> _mockUserService;
     private readonly Mock<IOntologyShareService> _mockShareService;
+    private readonly Mock<IOntologyActivityService> _mockActivityService;
     private readonly ApplicationUser _testUser;
 
     public RelationshipServiceIntegrationTests()
@@ -46,6 +49,7 @@ public class RelationshipServiceIntegrationTests : IDisposable
         _mockHubContext = new Mock<IHubContext<OntologyHub>>();
         _mockUserService = new Mock<IUserService>();
         _mockShareService = new Mock<IOntologyShareService>();
+        _mockActivityService = new Mock<IOntologyActivityService>();
 
         _testUser = TestDataBuilder.CreateUser();
         _mockUserService.Setup(s => s.GetCurrentUserAsync()).ReturnsAsync(_testUser);
@@ -72,7 +76,8 @@ public class RelationshipServiceIntegrationTests : IDisposable
             _mockCommandInvoker.Object,
             _mockHubContext.Object,
             _mockUserService.Object,
-            _mockShareService.Object
+            _mockShareService.Object,
+            _mockActivityService.Object
         );
     }
 

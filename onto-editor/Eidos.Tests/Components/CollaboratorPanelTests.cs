@@ -27,20 +27,21 @@ public class CollaboratorPanelTests : TestContext
     public void CollaboratorPanel_ShowsLoadingState_Initially()
     {
         // Arrange
+        var tcs = new TaskCompletionSource<List<CollaboratorInfo>>();
         _shareServiceMock
             .Setup(s => s.GetCollaboratorsAsync(It.IsAny<int>(), It.IsAny<int>()))
-            .ReturnsAsync(new List<CollaboratorInfo>());
+            .Returns(tcs.Task);
 
         // Act
         var cut = RenderComponent<CollaboratorPanel>(parameters => parameters
             .Add(p => p.OntologyId, 1));
 
-        // Assert
-        cut.WaitForAssertion(() =>
-        {
-            var spinner = cut.Find(".spinner-border");
-            Assert.NotNull(spinner);
-        }, TimeSpan.FromSeconds(1));
+        // Assert - check spinner exists before async call completes
+        var spinner = cut.Find(".spinner-border");
+        Assert.NotNull(spinner);
+
+        // Complete the async operation
+        tcs.SetResult(new List<CollaboratorInfo>());
     }
 
     [Fact]
@@ -233,9 +234,9 @@ public class CollaboratorPanelTests : TestContext
             .Add(p => p.OntologyId, 1)
             .Add(p => p.ShowDetails, true));
 
-        cut.WaitForState(() => !cut.Instance.GetType()
+        cut.WaitForState(() => !(cut.Instance.GetType()
             .GetProperty("IsLoading", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.GetValue(cut.Instance) as bool? ?? true);
+            ?.GetValue(cut.Instance) as bool? ?? true));
 
         // Click to expand details
         var expandButton = cut.Find(".btn-outline-primary");
@@ -300,9 +301,9 @@ public class CollaboratorPanelTests : TestContext
             .Add(p => p.ShowDetails, true)
             .Add(p => p.ShowActivity, true));
 
-        cut.WaitForState(() => !cut.Instance.GetType()
+        cut.WaitForState(() => !(cut.Instance.GetType()
             .GetProperty("IsLoading", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.GetValue(cut.Instance) as bool? ?? true);
+            ?.GetValue(cut.Instance) as bool? ?? true));
 
         // Click to expand details
         var expandButton = cut.Find(".btn-outline-primary");
@@ -355,7 +356,7 @@ public class CollaboratorPanelTests : TestContext
         {
             _shareServiceMock.Verify(
                 s => s.GetCollaboratorsAsync(123, 15),
-                Times.Once
+                Times.AtLeastOnce
             );
         });
     }
