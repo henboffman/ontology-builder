@@ -22,6 +22,9 @@
 @rendermode InteractiveServer
 
 <PageTitle>Eidos</PageTitle>
+<HeadContent>
+    <meta name="description" content="Eidos Ontology Builder - Create, manage, and visualize ontologies with real-time collaboration. Interactive graph editor with TTL export, multiple view modes, and permission-based sharing." />
+</HeadContent>
 
 <TutorialOverlay @ref="tutorialOverlay"
                 Steps="@TutorialService.GetHomeTutorialSteps()"
@@ -36,10 +39,11 @@
             <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
                 <span class="visually-hidden">Importing...</span>
             </div>
-            <h4>@importProgress.Stage</h4>
+            <h2>@importProgress.Stage</h2>
             <div class="progress mt-3 mb-2" style="height: 25px;">
                 <div class="progress-bar progress-bar-striped progress-bar-animated"
                      role="progressbar"
+                     aria-label="Import progress: @importProgress.Percentage percent complete"
                      style="width: @(importProgress.Percentage)%"
                      aria-valuenow="@importProgress.Percentage"
                      aria-valuemin="0"
@@ -108,7 +112,7 @@
             <div class="col-md-12">
                 <div class="card border-info">
                     <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Getting Started with Eidos</h5>
+                        <h2 class="mb-0 h5"><i class="bi bi-lightbulb"></i> Getting Started with Eidos</h2>
                         <button class="btn btn-sm btn-outline-light" @onclick="() => showGettingStarted = false">
                             <i class="bi bi-x"></i>
                         </button>
@@ -116,7 +120,7 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6">
-                                <h6 class="text-primary">Quick Start Guide</h6>
+                                <h3 class="text-primary h6">Quick Start Guide</h3>
                                 <ol class="mb-3">
                                     <li><strong>Create an Ontology</strong> - Click "Create New Ontology" and give it a name</li>
                                     <li><strong>Add Concepts</strong> - Define the key ideas or entities in your domain</li>
@@ -126,7 +130,7 @@
                                     <li><strong>Export</strong> - Download as TTL (Turtle) format for sharing</li>
                                 </ol>
 
-                                <h6 class="text-primary">Key Features</h6>
+                                <h3 class="text-primary h6">Key Features</h3>
                                 <ul>
                                     <li><strong>Interactive Graph</strong> - Drag nodes, zoom, and explore visually</li>
                                     <li><strong>Version History</strong> - Track all changes with full audit trail</li>
@@ -139,7 +143,7 @@
                                 </ul>
                             </div>
                             <div class="col-md-6">
-                                <h6 class="text-primary">View Modes</h6>
+                                <h3 class="text-primary h6">View Modes</h3>
                                 <div class="mb-3">
                                     <ul class="small">
                                         <li><i class="bi bi-diagram-3"></i> <strong>Graph</strong> - Visual network with drag-and-drop</li>
@@ -156,7 +160,7 @@
                                     </ul>
                                 </div>
 
-                                <h6 class="text-primary">Tips & Tricks</h6>
+                                <h3 class="text-primary h6">Tips & Tricks</h3>
                                 <ul class="mb-0">
                                     <li><strong>Ctrl+Click</strong> nodes to quickly add relationships</li>
                                     <li>Use <strong>History</strong> view to see who changed what</li>
@@ -179,7 +183,7 @@
             <div class="col-md-6">
                 <div class="card border-primary">
                     <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Create New Ontology</h5>
+                        <h2 class="mb-0 h5">Create New Ontology</h2>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
@@ -351,7 +355,7 @@
             <div class="col-md-6">
                 <div class="card bg-light">
                     <div class="card-body">
-                        <h5 class="card-title">💡 What is an Ontology?</h5>
+                        <h3 class="card-title h5">💡 What is an Ontology?</h3>
                         <p>An ontology is a structured way to organize knowledge about a specific domain. Think of it as:</p>
                         <ul>
                             <li><strong>Concepts</strong> - The "things" in your domain (like nodes in a graph)</li>
@@ -385,7 +389,7 @@
             else if (!ontologies.Any())
             {
                 <div class="alert alert-info text-center p-5">
-                    <h4>No ontologies yet</h4>
+                    <h2 class="h4">No ontologies yet</h2>
                     <p>Get started by creating your first ontology, or explore the example that came with the app!</p>
                 </div>
             }
@@ -466,7 +470,7 @@
                             <div class="card h-100 ontology-card">
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <h5 class="card-title">@ontology.Name</h5>
+                                        <h3 class="card-title h5">@ontology.Name</h3>
                                         @if (ontology.Name.Contains("Example"))
                                         {
                                             <span class="badge bg-info">Example</span>

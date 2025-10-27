@@ -792,41 +792,44 @@ else
                 return;
             }
 
-            // First, check if user has access based on ontology visibility (private/group/public)
-            var canView = await PermissionService.CanViewAsync(ontology.Id, currentUserId);
-            if (!canView)
-            {
-                loadError = "You do not have permission to view this ontology.";
-                return;
-            }
-
-            // Check if user can edit based on ontology visibility permissions
-            var canEdit = await PermissionService.CanEditAsync(ontology.Id, currentUserId);
-
-            // Also check sharing permissions (for shared links with specific permissions)
+            // IMPORTANT: Check share permissions FIRST before regular permissions
+            // This allows users with share links to access ontologies they wouldn't normally have access to
             var sharePermission = await ShareService.GetPermissionLevelAsync(ontology.Id, currentUserId, GuestSessionToken);
 
-            // Determine final permission level by combining both systems
             if (sharePermission.HasValue)
             {
-                // If there's a share permission, use it (it may be more restrictive)
+                // User has valid share access (either via link or guest session)
                 userPermissionLevel = sharePermission;
-            }
-            else if (canEdit)
-            {
-                // User can edit based on ontology visibility/ownership
-                userPermissionLevel = PermissionLevel.FullAccess;
-            }
-            else if (canView)
-            {
-                // User can only view
-                userPermissionLevel = PermissionLevel.View;
             }
             else
             {
-                // No access (shouldn't reach here due to canView check above)
-                loadError = "You do not have permission to access this ontology.";
-                return;
+                // No share permission, check regular ontology visibility permissions
+                var canView = await PermissionService.CanViewAsync(ontology.Id, currentUserId);
+                if (!canView)
+                {
+                    loadError = "You do not have permission to view this ontology.";
+                    return;
+                }
+
+                // Check if user can edit based on ontology visibility permissions
+                var canEdit = await PermissionService.CanEditAsync(ontology.Id, currentUserId);
+
+                if (canEdit)
+                {
+                    // User can edit based on ontology visibility/ownership
+                    userPermissionLevel = PermissionLevel.FullAccess;
+                }
+                else if (canView)
+                {
+                    // User can only view
+                    userPermissionLevel = PermissionLevel.View;
+                }
+                else
+                {
+                    // No access (shouldn't reach here due to canView check above)
+                    loadError = "You do not have permission to access this ontology.";
+                    return;
+                }
             }
         }
         catch (Exception ex)

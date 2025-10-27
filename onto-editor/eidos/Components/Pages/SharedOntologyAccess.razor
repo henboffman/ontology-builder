@@ -144,6 +144,7 @@
     private bool isAuthenticated = false;
     private string? errorMessage;
     private string? currentUserId;
+    private bool hasRedirected = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -166,8 +167,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && isAuthenticated && share != null && string.IsNullOrEmpty(errorMessage))
+        // Redirect authenticated users after validation completes (not just on first render)
+        if (!hasRedirected && isAuthenticated && share != null && string.IsNullOrEmpty(errorMessage))
         {
+            hasRedirected = true; // Prevent redirect loop
+
             // User is authenticated and share is valid, redirect to ontology
             try
             {
@@ -184,6 +188,7 @@
             {
                 errorMessage = $"An error occurred while accessing the ontology: {ex.Message}";
                 isLoading = false;
+                hasRedirected = false; // Allow retry
                 StateHasChanged();
             }
         }

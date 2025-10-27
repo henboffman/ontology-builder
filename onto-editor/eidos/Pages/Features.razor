@@ -3,6 +3,9 @@
 @using Microsoft.AspNetCore.Components.Web
 
 <PageTitle>Features - Eidos</PageTitle>
+<HeadContent>
+    <meta name="description" content="Eidos features professional ontology management with secure authentication, real-time collaboration, multiple view modes, and comprehensive import/export capabilities for knowledge modeling." />
+</HeadContent>
 
 <div class="container-fluid py-4">
     <div class="row">
@@ -11,23 +14,17 @@
             <!-- Header -->
             <div class="text-center mb-5">
                 <h1 class="display-4 fw-bold mb-3">Eidos Features</h1>
-                <p class="lead text-muted">Production-ready, enterprise-grade ontology builder with world-class architecture</p>
-                <div class="d-flex justify-content-center gap-3 flex-wrap mt-4">
-                    <span class="badge bg-primary fs-6">157+ Tests</span>
-                    <span class="badge bg-success fs-6">100% Pass Rate</span>
-                    <span class="badge bg-info fs-6">8+ Design Patterns</span>
-                    <span class="badge bg-warning text-dark fs-6">30+ Security Features</span>
-                </div>
+                <p class="lead text-muted">Everything you need to build, visualize, and share knowledge models</p>
             </div>
 
-            <!-- Quick Stats -->
+            <!-- Key Benefits -->
             <div class="row g-3 mb-5">
                 <div class="col-md-3 col-sm-6">
                     <div class="card border-primary h-100">
                         <div class="card-body text-center">
-                            <i class="bi bi-gear-wide-connected fs-1 text-primary mb-2"></i>
-                            <h3 class="h5 mb-1">15+ Services</h3>
-                            <p class="text-muted small mb-0">Focused architecture</p>
+                            <i class="bi bi-diagram-3 fs-1 text-primary mb-2"></i>
+                            <h3 class="h5 mb-1">11 View Modes</h3>
+                            <p class="text-muted small mb-0">Visualize your way</p>
                         </div>
                     </div>
                 </div>
@@ -35,26 +32,26 @@
                     <div class="card border-success h-100">
                         <div class="card-body text-center">
                             <i class="bi bi-shield-check fs-1 text-success mb-2"></i>
-                            <h3 class="h5 mb-1">OAuth 2.0</h3>
-                            <p class="text-muted small mb-0">3 providers</p>
+                            <h3 class="h5 mb-1">Secure Sign-In</h3>
+                            <p class="text-muted small mb-0">Multiple providers</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3 col-sm-6">
                     <div class="card border-info h-100">
                         <div class="card-body text-center">
-                            <i class="bi bi-universal-access fs-1 text-info mb-2"></i>
-                            <h3 class="h5 mb-1">WCAG 2.1</h3>
-                            <p class="text-muted small mb-0">Fully accessible</p>
+                            <i class="bi bi-people-fill fs-1 text-info mb-2"></i>
+                            <h3 class="h5 mb-1">Collaborate</h3>
+                            <p class="text-muted small mb-0">Real-time teamwork</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3 col-sm-6">
                     <div class="card border-warning h-100">
                         <div class="card-body text-center">
-                            <i class="bi bi-lightning-charge fs-1 text-warning mb-2"></i>
-                            <h3 class="h5 mb-1">377+ Async</h3>
-                            <p class="text-muted small mb-0">Operations</p>
+                            <i class="bi bi-universal-access fs-1 text-warning mb-2"></i>
+                            <h3 class="h5 mb-1">Accessible</h3>
+                            <p class="text-muted small mb-0">Everyone can use</p>
                         </div>
                     </div>
                 </div>
@@ -123,53 +120,6 @@
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>Notes View (Markdown)</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>Templates View</li>
                                     </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Architecture & Design Patterns -->
-                <div class="accordion-item">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#architecture">
-                            <i class="bi bi-building me-2 text-info"></i>
-                            <strong>Architecture & Design Patterns</strong>
-                        </button>
-                    </h2>
-                    <div id="architecture" class="accordion-collapse collapse" data-bs-parent="#featuresAccordion">
-                        <div class="accordion-body">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <h5 class="text-info">
-                                        <i class="bi bi-palette me-2"></i>Design Patterns (8+)
-                                    </h5>
-                                    <ul class="list-unstyled ms-4">
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Command Pattern</strong> - Full undo/redo</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Repository Pattern</strong> - 5 specialized repos</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Factory Pattern</strong> - Command creation</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Facade Pattern</strong> - Unified service interface</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Strategy Pattern</strong> - Export strategies</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Observer Pattern</strong> - Event-driven updates</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Template Method</strong> - Base repository</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Builder Pattern</strong> - Fluent construction</li>
-                                    </ul>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <h5 class="text-info">
-                                        <i class="bi bi-shield-fill-check me-2"></i>SOLID Principles (All 5)
-                                    </h5>
-                                    <ul class="list-unstyled ms-4">
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Single Responsibility</strong> - 15+ focused services</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Open/Closed</strong> - Extensible via interfaces</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Liskov Substitution</strong> - Proper substitutability</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Interface Segregation</strong> - Focused interfaces</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Dependency Inversion</strong> - Depend on abstractions</li>
-                                    </ul>
-                                    <div class="alert alert-info mt-3">
-                                        <i class="bi bi-graph-down me-2"></i>
-                                        <strong>75% code reduction</strong> achieved through refactoring
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -369,51 +319,6 @@
                     </div>
                 </div>
 
-                <!-- Testing & Quality -->
-                <div class="accordion-item">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#testing">
-                            <i class="bi bi-check-all me-2 text-success"></i>
-                            <strong>Testing & Quality Assurance</strong>
-                        </button>
-                    </h2>
-                    <div id="testing" class="accordion-collapse collapse" data-bs-parent="#featuresAccordion">
-                        <div class="accordion-body">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <h5 class="text-success">
-                                        <i class="bi bi-clipboard-check me-2"></i>Test Suite (157+ Tests)
-                                    </h5>
-                                    <ul class="list-unstyled ms-4">
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Repository integration tests (19)</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Service unit tests (58)</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Service integration tests (45+)</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Unit/Pages tests (12)</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Workflow tests (7)</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Component tests (36)</li>
-                                    </ul>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <h5 class="text-success">
-                                        <i class="bi bi-speedometer2 me-2"></i>Quality Metrics
-                                    </h5>
-                                    <ul class="list-unstyled ms-4">
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>100% pass rate</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>845ms execution time</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>0 build errors</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Nullable reference types enabled</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>XML documentation on all public members</li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div class="alert alert-success">
-                                <i class="bi bi-trophy-fill me-2"></i>
-                                <strong>Test Coverage:</strong> Unit tests (fast feedback), Integration tests (database verification), Workflow tests (end-to-end validation)
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Standards Compliance -->
                 <div class="accordion-item">
                     <h2 class="accordion-header">
@@ -435,18 +340,6 @@
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>OWL - Web Ontology Language</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>Turtle (TTL) - RDF serialization</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>Standard URIs</li>
-                                    </ul>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <h5 class="text-info">
-                                        <i class="bi bi-code-square me-2"></i>.NET Standards
-                                    </h5>
-                                    <ul class="list-unstyled ms-4">
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>.NET 9 - Latest framework</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>C# 13 - Modern features</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>ASP.NET Core</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Entity Framework Core</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Microsoft.Identity</li>
                                     </ul>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -479,77 +372,20 @@
 
             </div>
 
-            <!-- Summary Statistics -->
-            <div class="card border-0 shadow-sm mt-5">
-                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, var(--bs-primary), var(--bs-info));">
-                    <h3 class="mb-0">
-                        <i class="bi bi-graph-up me-2"></i>Summary Statistics
-                    </h3>
-                </div>
-                <div class="card-body">
-                    <div class="row g-4">
-                        <div class="col-md-4">
-                            <div class="text-center p-3 border rounded">
-                                <h4 class="text-primary mb-2">15+</h4>
-                                <p class="text-muted mb-0">Focused Services</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center p-3 border rounded">
-                                <h4 class="text-success mb-2">377+</h4>
-                                <p class="text-muted mb-0">Async Operations</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center p-3 border rounded">
-                                <h4 class="text-info mb-2">12+</h4>
-                                <p class="text-muted mb-0">Database Tables</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center p-3 border rounded">
-                                <h4 class="text-warning mb-2">25+</h4>
-                                <p class="text-muted mb-0">Security Features</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center p-3 border rounded">
-                                <h4 class="text-danger mb-2">8+</h4>
-                                <p class="text-muted mb-0">Design Patterns</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center p-3 border rounded">
-                                <h4 class="text-primary mb-2">3000+</h4>
-                                <p class="text-muted mb-0">Documentation Lines</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Production Readiness -->
+            <!-- Why Choose Eidos -->
             <div class="alert alert-primary mt-5" role="alert">
                 <h4 class="alert-heading">
-                    <i class="bi bi-rocket-takeoff me-2"></i>Production Ready
+                    <i class="bi bi-rocket-takeoff me-2"></i>Reliable & Secure
                 </h4>
-                <p>Eidos is a <strong>production-ready, enterprise-grade</strong> application demonstrating:</p>
+                <p>Eidos is designed for professional use with attention to quality and user experience:</p>
                 <hr>
                 <ul class="mb-0">
-                    <li><strong>World-class architecture</strong> - SOLID principles, design patterns, clean architecture</li>
-                    <li><strong>Enterprise security</strong> - OAuth 2.0, RBAC, group permissions, rate limiting, comprehensive auditing</li>
-                    <li><strong>Excellent accessibility</strong> - WCAG compliant, keyboard navigation, ARIA support</li>
-                    <li><strong>Modern UX</strong> - 5 view modes, real-time collaboration, responsive design</li>
-                    <li><strong>Comprehensive testing</strong> - 157+ tests covering unit, integration, and workflow scenarios</li>
-                    <li><strong>Standards compliance</strong> - W3C, .NET, security, accessibility, and ontology standards</li>
+                    <li><strong>Secure by default</strong> - Industry-standard OAuth 2.0 authentication with multiple providers, role-based access control, and comprehensive security auditing</li>
+                    <li><strong>Accessible to everyone</strong> - WCAG 2.1 compliant with full keyboard navigation and screen reader support</li>
+                    <li><strong>Flexible visualization</strong> - Multiple view modes, real-time collaboration, and responsive design for any device</li>
+                    <li><strong>Standards compliant</strong> - Follows W3C, OWASP security recommendations, and established ontology standards</li>
+                    <li><strong>Thoroughly tested</strong> - Comprehensive quality assurance ensures reliable performance</li>
                 </ul>
-            </div>
-
-            <!-- Technology Stack -->
-            <div class="text-center text-muted mt-5 mb-4">
-                <p class="small">
-                    <strong>Built with:</strong> .NET 9 • C# 13 • ASP.NET Core • Entity Framework Core • Blazor Server • SignalR • Bootstrap 5 • D3.js
-                </p>
             </div>
 
         </div>

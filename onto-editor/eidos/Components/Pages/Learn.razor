@@ -12,6 +12,9 @@
 @inject IJSRuntime JS
 
 <PageTitle>Learn - Ontology Builder</PageTitle>
+<HeadContent>
+    <meta name="description" content="Learn how to build ontologies with interactive tutorials and examples. Understand concepts, relationships, properties, and real-world use cases for knowledge modeling and semantic web applications." />
+</HeadContent>
 
 <div class="container-fluid py-4 learn-page">
     <div class="row">
@@ -44,7 +47,7 @@
                     <small class="text-muted">
                         <strong>Your Progress:</strong><br/>
                         <div class="progress mt-2" style="height: 8px;">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: @(progressPercent)%"></div>
+                            <div class="progress-bar bg-success" role="progressbar" aria-label="Learning progress: @completedSections of @totalSections sections completed" aria-valuenow="@progressPercent" aria-valuemin="0" aria-valuemax="100" style="width: @(progressPercent)%"></div>
                         </div>
                         <span class="text-success">@completedSections / @totalSections sections</span>
                     </small>

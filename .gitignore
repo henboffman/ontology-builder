@@ -111,3 +111,12 @@ node_modules/
 *.swp
 *~
 .tmp/
+
+# Lighthouse CI
+.lighthouseci/
+lhci-data/
+*.lh.html
+*.lh.json
+
+# npm package-lock (optional - commit if you want reproducible builds)
+package-lock.json
