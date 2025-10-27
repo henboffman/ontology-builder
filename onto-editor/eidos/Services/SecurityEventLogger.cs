@@ -10,6 +10,15 @@ public class SecurityEventLogger
     private readonly ILogger<SecurityEventLogger> _logger;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
+    /// <summary>
+    /// Sanitizes strings for safe logging (removes line breaks).
+    /// </summary>
+    private static string SanitizeForLog(string input)
+    {
+        if (input == null) return null;
+        return input.Replace("\r", "").Replace("\n", "");
+    }
+
     public SecurityEventLogger(
         ILogger<SecurityEventLogger> logger,
         IHttpContextAccessor httpContextAccessor)
@@ -92,7 +101,7 @@ public class SecurityEventLogger
 
     public void LogRateLimitExceeded(string endpoint)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogWarning(
             "Rate limit exceeded. Endpoint: {Endpoint}, IP: {IpAddress}",
             endpoint, ipAddress);
@@ -100,7 +109,7 @@ public class SecurityEventLogger
 
     public void LogSuspiciousActivity(string activity, string details)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogWarning(
             "Suspicious activity detected. Activity: {Activity}, Details: {Details}, IP: {IpAddress}",
             activity, details, ipAddress);
@@ -108,7 +117,7 @@ public class SecurityEventLogger
 
     public void LogUnauthorizedAccess(string userId, string resource)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogWarning(
             "Unauthorized access attempt. UserId: {UserId}, Resource: {Resource}, IP: {IpAddress}",
             userId, resource, ipAddress);
