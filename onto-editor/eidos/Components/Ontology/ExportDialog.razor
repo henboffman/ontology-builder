@@ -22,8 +22,8 @@
                         <label class="form-label fw-bold">Select Export Format</label>
                         <div class="list-group">
                             <button type="button"
-                                    class="list-group-item list-group-item-action @(selectedFormat == "ttl" ? "active" : "")"
-                                    @onclick='() => selectedFormat = "ttl"'>
+                                class="list-group-item list-group-item-action @(selectedFormat == "ttl" ? "active" : "")"
+                                @onclick='() => selectedFormat = "ttl"'>
                                 <div class="d-flex w-100 justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">
@@ -39,8 +39,8 @@
                             </button>
 
                             <button type="button"
-                                    class="list-group-item list-group-item-action @(selectedFormat == "json" ? "active" : "")"
-                                    @onclick='() => selectedFormat = "json"'>
+                                class="list-group-item list-group-item-action @(selectedFormat == "json" ? "active" : "")"
+                                @onclick='() => selectedFormat = "json"'>
                                 <div class="d-flex w-100 justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">
@@ -56,8 +56,8 @@
                             </button>
 
                             <button type="button"
-                                    class="list-group-item list-group-item-action @(selectedFormat == "csv-concepts" ? "active" : "")"
-                                    @onclick='() => selectedFormat = "csv-concepts"'>
+                                class="list-group-item list-group-item-action @(selectedFormat == "csv-concepts" ? "active" : "")"
+                                @onclick='() => selectedFormat = "csv-concepts"'>
                                 <div class="d-flex w-100 justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">
@@ -73,8 +73,8 @@
                             </button>
 
                             <button type="button"
-                                    class="list-group-item list-group-item-action @(selectedFormat == "csv-relationships" ? "active" : "")"
-                                    @onclick='() => selectedFormat = "csv-relationships"'>
+                                class="list-group-item list-group-item-action @(selectedFormat == "csv-relationships" ? "active" : "")"
+                                @onclick='() => selectedFormat = "csv-relationships"'>
                                 <div class="d-flex w-100 justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">
@@ -90,8 +90,8 @@
                             </button>
 
                             <button type="button"
-                                    class="list-group-item list-group-item-action @(selectedFormat == "csv-full" ? "active" : "")"
-                                    @onclick='() => selectedFormat = "csv-full"'>
+                                class="list-group-item list-group-item-action @(selectedFormat == "csv-full" ? "active" : "")"
+                                @onclick='() => selectedFormat = "csv-full"'>
                                 <div class="d-flex w-100 justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">
@@ -111,20 +111,19 @@
                     @if (!string.IsNullOrEmpty(exportedContent))
                     {
                         <div class="alert alert-success">
-                            <i class="bi bi-check-circle"></i> Export generated successfully! Content has been copied to clipboard.
+                            <i class="bi bi-check-circle"></i> Export generated successfully! Content has been copied to
+                            clipboard.
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Preview</label>
-                            <textarea class="form-control font-monospace"
-                                      rows="10"
-                                      readonly
-                                      style="font-size: 0.875rem;">@exportedContent</textarea>
+                            <textarea class="form-control font-monospace" rows="10" readonly
+                        style="font-size: 0.875rem;">@exportedContent</textarea>
                         </div>
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="Hide">
+                    <button type="button" class="btn " @onclick="Hide">
                         <i class="bi bi-x-circle"></i> Close
                     </button>
                     <button type="button" class="btn btn-primary" @onclick="ExportAndCopy">
@@ -137,7 +136,8 @@
     <div class="modal-backdrop fade show"></div>
 }
 
-@code {
+@code
+{
     [Parameter]
     public Ontology? Ontology { get; set; }
 

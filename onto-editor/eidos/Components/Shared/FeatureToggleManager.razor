@@ -67,13 +67,9 @@
                                                 </small>
                                             </div>
                                             <div class="form-check form-switch">
-                                                <input class="form-check-input"
-                                                       type="checkbox"
-                                                       role="switch"
-                                                       id="toggle-@toggle.Id"
-                                                       checked="@toggle.IsEnabled"
-                                                       @onchange="() => ToggleFeature(toggle)"
-                                                       style="cursor: pointer; width: 3em; height: 1.5em;">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="toggle-@toggle.Id"
+                                                    checked="@toggle.IsEnabled" @onchange="() => ToggleFeature(toggle)"
+                                                    style="cursor: pointer; width: 3em; height: 1.5em;">
                                             </div>
                                         </div>
                                     }
@@ -89,14 +85,15 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="TogglePanel">Close</button>
+                    <button type="button" class="btn" @onclick="TogglePanel">Close</button>
                 </div>
             </div>
         </div>
     </div>
 }
 
-@code {
+@code
+{
     [Parameter]
     public EventCallback OnToggleChanged { get; set; }
 
@@ -120,8 +117,8 @@
         {
             var allToggles = await FeatureToggleService.GetAllAsync();
             togglesByCategory = allToggles
-                .GroupBy(t => t.Category)
-                .ToDictionary(g => g.Key, g => g.ToList());
+            .GroupBy(t => t.Category)
+            .ToDictionary(g => g.Key, g => g.ToList());
         }
         finally
         {

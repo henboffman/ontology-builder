@@ -1,3 +1,4 @@
+using Eidos.Constants;
 using Eidos.Data;
 using Eidos.Models;
 using Microsoft.EntityFrameworkCore;
@@ -17,31 +18,31 @@ namespace Eidos.Services
                 "wwwroot/ttl/bfo-core.ttl",
                 "Basic Formal Ontology",
                 "BFO",
-                "http://purl.obolibrary.org/obo/bfo/"
+                OntologyNamespaces.BfoBase
             ),
             ["ro"] = new OntologySource(
                 "wwwroot/rdf/Relations.rdf",
                 "Relations Ontology",
                 "RO",
-                "http://purl.obolibrary.org/obo/ro/"
+                OntologyNamespaces.RelationOntology
             ),
             ["owl"] = new OntologySource(
                 "",
                 "OWL Web Ontology Language",
                 "OWL",
-                "http://www.w3.org/2002/07/owl#"
+                OntologyNamespaces.Owl
             ),
             ["rdfs"] = new OntologySource(
                 "",
                 "RDF Schema",
                 "RDFS",
-                "http://www.w3.org/2000/01/rdf-schema#"
+                OntologyNamespaces.RdfSchema
             ),
             ["skos"] = new OntologySource(
                 "wwwroot/rdf/skos.rdf",
                 "Simple Knowledge Organization System",
                 "SKOS",
-                "http://www.w3.org/2004/02/skos/core#"
+                OntologyNamespaces.Skos
             ),
             ["foaf"] = new OntologySource(
                 "wwwroot/rdf/foaf.rdf",
@@ -59,7 +60,7 @@ namespace Eidos.Services
                 "wwwroot/rdf/dublin_core_terms.rdf",
                 "Dublin Core Metadata Terms",
                 "dcterms",
-                "http://purl.org/dc/terms/"
+                OntologyNamespaces.DublinCoreTerms
             ),
             ["software-description"] = new OntologySource(
                 "wwwroot/ttl/software-description.ttl",

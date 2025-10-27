@@ -48,14 +48,12 @@
             <!-- Tab Navigation -->
             <ul class="nav nav-tabs mb-4" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link @(activeTab == "users" ? "active" : "")"
-                            @onclick="ShowUsersTab">
+                    <button class="nav-link @(activeTab == "users" ? "active" : "")" @onclick="ShowUsersTab">
                         <i class="bi bi-person"></i> Users (@usersWithRoles.Count)
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link @(activeTab == "groups" ? "active" : "")"
-                            @onclick="ShowGroupsTab">
+                    <button class="nav-link @(activeTab == "groups" ? "active" : "")" @onclick="ShowGroupsTab">
                         <i class="bi bi-people-fill"></i> Groups (@groups.Count)
                     </button>
                 </li>
@@ -66,8 +64,8 @@
             {
                 <div class="tab-content">
                     <div class="search-box mb-3">
-                        <input type="text" class="form-control" placeholder="Search users..."
-                               @bind="userSearchTerm" @bind:event="oninput" />
+                        <input type="text" class="form-control" placeholder="Search users..." @bind="userSearchTerm"
+                            @bind:event="oninput" />
                     </div>
 
                     <div class="table-responsive">
@@ -105,8 +103,8 @@
                                         <td>
                                             @{
                                                 var userGroups = userGroupMemberships
-                                                    .Where(m => m.UserId == userWithRoles.User.Id)
-                                                    .ToList();
+                                                .Where(m => m.UserId == userWithRoles.User.Id)
+                                                .ToList();
                                             }
                                             @if (userGroups.Any())
                                             {
@@ -119,7 +117,7 @@
                                         </td>
                                         <td>
                                             <button class="btn btn-sm btn-outline-primary me-1"
-                                                    @onclick="() => ShowManageUserModal(userWithRoles)">
+                                                @onclick="() => ShowManageUserModal(userWithRoles)">
                                                 <i class="bi bi-gear"></i> Manage
                                             </button>
                                         </td>
@@ -136,8 +134,8 @@
             {
                 <div class="tab-content">
                     <div class="search-box mb-3">
-                        <input type="text" class="form-control" placeholder="Search groups..."
-                               @bind="groupSearchTerm" @bind:event="oninput" />
+                        <input type="text" class="form-control" placeholder="Search groups..." @bind="groupSearchTerm"
+                            @bind:event="oninput" />
                     </div>
 
                     <div class="row g-3">
@@ -159,12 +157,10 @@
                                         </small>
                                     </div>
                                     <div class="group-actions">
-                                        <button class="btn btn-sm btn-outline-primary"
-                                                @onclick="() => ShowManageGroupModal(group)">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowManageGroupModal(group)">
                                             <i class="bi bi-gear"></i> Manage
                                         </button>
-                                        <button class="btn btn-sm btn-outline-danger"
-                                                @onclick="() => ConfirmDeleteGroup(group)">
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDeleteGroup(group)">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </div>
@@ -196,7 +192,7 @@
                     <div class="mb-3">
                         <label class="form-label">Description (Optional)</label>
                         <textarea class="form-control" @bind="newGroupDescription" rows="3"
-                                  placeholder="Describe the purpose of this group"></textarea>
+                        placeholder="Describe the purpose of this group"></textarea>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Color (Optional)</label>
@@ -208,7 +204,7 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => showCreateGroupModal = false">Cancel</button>
+                    <button type="button" class="btn" @onclick="() => showCreateGroupModal = false">Cancel</button>
                     <button type="button" class="btn btn-primary" @onclick="CreateGroup">Create Group</button>
                 </div>
             </div>
@@ -235,9 +231,8 @@
                         {
                             var hasRole = selectedUser.Roles.Contains(role.Name!);
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox"
-                                       checked="@hasRole"
-                                       @onchange="@((e) => ToggleRole(selectedUser.User, role.Name!, (bool)e.Value!))" />
+                                <input class="form-check-input" type="checkbox" checked="@hasRole"
+                                    @onchange="@((e) => ToggleRole(selectedUser.User, role.Name!, (bool)e.Value!))" />
                                 <label class="form-check-label">
                                     @role.Name
                                 </label>
@@ -259,7 +254,7 @@
                                     <div class="group-membership-item">
                                         <span>@membership.UserGroup.Name</span>
                                         <button class="btn btn-sm btn-outline-danger"
-                                                @onclick="() => RemoveUserFromGroup(selectedUser.User, membership.UserGroupId)">
+                                            @onclick="() => RemoveUserFromGroup(selectedUser.User, membership.UserGroupId)">
                                             Remove
                                         </button>
                                     </div>
@@ -280,7 +275,7 @@
                                 }
                             </select>
                             <button class="btn btn-primary mt-2" @onclick="() => AddUserToGroup(selectedUser.User)"
-                                    disabled="@(string.IsNullOrEmpty(selectedGroupToAdd))">
+                                disabled="@(string.IsNullOrEmpty(selectedGroupToAdd))">
                                 Add to Group
                             </button>
                         </div>
@@ -296,7 +291,7 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => showManageUserModal = false">Close</button>
+                    <button type="button" class="btn" @onclick="() => showManageUserModal = false">Close</button>
                 </div>
             </div>
         </div>
@@ -356,13 +351,12 @@
                                             <td>@member.User.UserName</td>
                                             <td>@member.JoinedAt.ToLocalTime().ToString("MM/dd/yyyy")</td>
                                             <td>
-                                                <input type="checkbox" class="form-check-input"
-                                                       checked="@member.IsGroupAdmin"
-                                                       @onchange="@((e) => ToggleGroupAdmin(member, (bool)e.Value!))" />
+                                                <input type="checkbox" class="form-check-input" checked="@member.IsGroupAdmin"
+                                                    @onchange="@((e) => ToggleGroupAdmin(member, (bool)e.Value!))" />
                                             </td>
                                             <td>
                                                 <button class="btn btn-sm btn-outline-danger"
-                                                        @onclick="() => RemoveGroupMember(member)">
+                                                    @onclick="() => RemoveGroupMember(member)">
                                                     Remove
                                                 </button>
                                             </td>
@@ -387,7 +381,7 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => showManageGroupModal = false">Close</button>
+                    <button type="button" class="btn " @onclick="() => showManageGroupModal = false">Close</button>
                 </div>
             </div>
         </div>
@@ -395,7 +389,8 @@
     <div class="modal-backdrop fade show"></div>
 }
 
-@code {
+@code
+{
     private bool isLoading = true;
     private string activeTab = "users";
 
@@ -457,18 +452,18 @@
     }
 
     private List<UserWithRoles> FilteredUsers =>
-        usersWithRoles.Where(u =>
-            string.IsNullOrEmpty(userSearchTerm) ||
-            (u.User.UserName?.Contains(userSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            (u.User.Email?.Contains(userSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
-        ).ToList();
+    usersWithRoles.Where(u =>
+    string.IsNullOrEmpty(userSearchTerm) ||
+    (u.User.UserName?.Contains(userSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+    (u.User.Email?.Contains(userSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+    ).ToList();
 
     private List<UserGroup> FilteredGroups =>
-        groups.Where(g =>
-            string.IsNullOrEmpty(groupSearchTerm) ||
-            g.Name.Contains(groupSearchTerm, StringComparison.OrdinalIgnoreCase) ||
-            (g.Description?.Contains(groupSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
-        ).ToList();
+    groups.Where(g =>
+    string.IsNullOrEmpty(groupSearchTerm) ||
+    g.Name.Contains(groupSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+    (g.Description?.Contains(groupSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+    ).ToList();
 
     private string GetUserInitials(string username)
     {
@@ -516,8 +511,8 @@
         try
         {
             var result = shouldAdd
-                ? await UserManagementService.AssignRoleAsync(user, roleName)
-                : await UserManagementService.RemoveRoleAsync(user, roleName);
+            ? await UserManagementService.AssignRoleAsync(user, roleName)
+            : await UserManagementService.RemoveRoleAsync(user, roleName);
 
             if (result.Succeeded)
             {
@@ -617,10 +612,10 @@
         try
         {
             await UserManagementService.UpdateGroupAsync(
-                selectedGroup.Id,
-                selectedGroup.Name,
-                selectedGroup.Description,
-                selectedGroup.Color);
+            selectedGroup.Id,
+            selectedGroup.Name,
+            selectedGroup.Description,
+            selectedGroup.Color);
             successMessage = "Group updated successfully";
             await LoadData();
             selectedGroup = groups.FirstOrDefault(g => g.Id == selectedGroup.Id);

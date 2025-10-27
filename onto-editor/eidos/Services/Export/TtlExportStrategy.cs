@@ -1,3 +1,4 @@
+using Eidos.Constants;
 using Eidos.Models;
 using VDS.RDF;
 using VDS.RDF.Writing;
@@ -87,31 +88,28 @@ public class TtlExportStrategy : IExportStrategy
     private IGraph BuildRdfGraph(Ontology ontology)
     {
         var graph = new Graph();
-        graph.NamespaceMap.AddNamespace("rdf", UriFactory.Create("http://www.w3.org/1999/02/22-rdf-syntax-ns#"));
-        graph.NamespaceMap.AddNamespace("rdfs", UriFactory.Create("http://www.w3.org/2000/01/rdf-schema#"));
-        graph.NamespaceMap.AddNamespace("owl", UriFactory.Create("http://www.w3.org/2002/07/owl#"));
-        graph.NamespaceMap.AddNamespace("dc", UriFactory.Create("http://purl.org/dc/elements/1.1/"));
+        graph.NamespaceMap.AddNamespace("rdf", UriFactory.Create(OntologyNamespaces.RdfSyntax));
+        graph.NamespaceMap.AddNamespace("rdfs", UriFactory.Create(OntologyNamespaces.RdfSchema));
+        graph.NamespaceMap.AddNamespace("owl", UriFactory.Create(OntologyNamespaces.Owl));
+        graph.NamespaceMap.AddNamespace("dc", UriFactory.Create(OntologyNamespaces.DublinCoreElements));
 
         if (ontology.UsesBFO)
         {
-            graph.NamespaceMap.AddNamespace("bfo", UriFactory.Create("http://purl.obolibrary.org/obo/BFO_"));
+            graph.NamespaceMap.AddNamespace("bfo", UriFactory.Create(OntologyNamespaces.BfoPrefix));
         }
 
         if (ontology.UsesProvO)
         {
-            graph.NamespaceMap.AddNamespace("prov", UriFactory.Create("http://www.w3.org/ns/prov#"));
+            graph.NamespaceMap.AddNamespace("prov", UriFactory.Create(OntologyNamespaces.ProvO));
         }
 
         // Create base URI for this ontology - use custom namespace if provided
         var baseUri = !string.IsNullOrWhiteSpace(ontology.Namespace)
             ? ontology.Namespace
-            : $"http://example.org/ontology/{ontology.Name.ToLower().Replace(" ", "_")}/";
+            : OntologyNamespaces.CreateDefaultNamespace(ontology.Name);
 
         // Ensure namespace ends with / or #
-        if (!baseUri.EndsWith("/") && !baseUri.EndsWith("#"))
-        {
-            baseUri += "/";
-        }
+        baseUri = OntologyNamespaces.NormalizeNamespace(baseUri);
 
         graph.BaseUri = UriFactory.Create(baseUri);
 
@@ -238,14 +236,14 @@ public class TtlExportStrategy : IExportStrategy
         if (concept.Name.StartsWith("prov:"))
         {
             var provName = concept.Name.Substring(5); // Remove "prov:" prefix
-            return $"http://www.w3.org/ns/prov#{provName}";
+            return OntologyNamespaces.CreateProvOUri(provName);
         }
 
         // Check if this is a BFO concept (simplified check)
         if (concept.SourceOntology == "BFO" || new[] { "Entity", "Continuant", "Occurrent", "Process", "Temporal Region", "Independent Continuant", "Dependent Continuant" }.Contains(concept.Name))
         {
             var bfoName = concept.Name.Replace(" ", "");
-            return $"http://purl.obolibrary.org/obo/BFO_{bfoName}";
+            return OntologyNamespaces.CreateBfoUri(bfoName);
         }
 
         // Regular concept
@@ -258,7 +256,7 @@ public class TtlExportStrategy : IExportStrategy
         // Check for PROV-O relationship types
         if (new[] { "wasGeneratedBy", "used", "wasAssociatedWith", "wasAttributedTo", "wasDerivedFrom" }.Contains(relationType))
         {
-            return $"http://www.w3.org/ns/prov#{relationType}";
+            return OntologyNamespaces.CreateProvOUri(relationType);
         }
 
         // Check for common OWL/RDFS properties

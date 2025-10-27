@@ -1,0 +1,1455 @@
+@page "/documentation"
+@rendermode InteractiveServer
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<PageTitle>Documentation - Eidos</PageTitle>
+
+<div class="container-fluid py-4 documentation-page">
+    <div class="row">
+        <!-- Table of Contents Sidebar -->
+        <div class="col-lg-3 d-none d-lg-block">
+            <div class="sticky-top" style="top: 20px;">
+                <h5 class="mb-3">Contents</h5>
+                <nav class="nav flex-column doc-nav">
+                    <button class="nav-link @(activeSection == "overview" ? "active" : "")" @onclick='async () => await ScrollToSection("overview")'>
+                        <i class="bi bi-info-circle"></i> Overview
+                    </button>
+                    <button class="nav-link @(activeSection == "architecture" ? "active" : "")" @onclick='async () => await ScrollToSection("architecture")'>
+                        <i class="bi bi-diagram-3"></i> Architecture
+                    </button>
+                    <button class="nav-link @(activeSection == "core-concepts" ? "active" : "")" @onclick='async () => await ScrollToSection("core-concepts")'>
+                        <i class="bi bi-box"></i> Core Concepts
+                    </button>
+                    <button class="nav-link @(activeSection == "data-models" ? "active" : "")" @onclick='async () => await ScrollToSection("data-models")'>
+                        <i class="bi bi-database"></i> Data Models
+                    </button>
+                    <button class="nav-link @(activeSection == "services" ? "active" : "")" @onclick='async () => await ScrollToSection("services")'>
+                        <i class="bi bi-gear"></i> Services Layer
+                    </button>
+                    <button class="nav-link @(activeSection == "patterns" ? "active" : "")" @onclick='async () => await ScrollToSection("patterns")'>
+                        <i class="bi bi-palette"></i> Design Patterns
+                    </button>
+                    <button class="nav-link @(activeSection == "security" ? "active" : "")" @onclick='async () => await ScrollToSection("security")'>
+                        <i class="bi bi-shield-lock"></i> Security
+                    </button>
+                    <button class="nav-link @(activeSection == "collaboration" ? "active" : "")" @onclick='async () => await ScrollToSection("collaboration")'>
+                        <i class="bi bi-people"></i> Collaboration
+                    </button>
+                    <button class="nav-link @(activeSection == "ui-components" ? "active" : "")" @onclick='async () => await ScrollToSection("ui-components")'>
+                        <i class="bi bi-layout-text-sidebar"></i> UI Components
+                    </button>
+                    <button class="nav-link @(activeSection == "testing" ? "active" : "")" @onclick='async () => await ScrollToSection("testing")'>
+                        <i class="bi bi-check-circle"></i> Testing
+                    </button>
+                    <button class="nav-link @(activeSection == "deployment" ? "active" : "")" @onclick='async () => await ScrollToSection("deployment")'>
+                        <i class="bi bi-cloud-upload"></i> Deployment
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-9">
+            <div class="mb-5">
+                <h1 class="display-4 mb-3">Eidos Documentation</h1>
+                <p class="lead">
+                    Comprehensive technical documentation for the Eidos Ontology Builder application.
+                </p>
+            </div>
+
+            <!-- Section 1: Overview -->
+            <section id="overview" class="mb-5">
+                <h2 class="border-bottom pb-2 mb-4">
+                    <i class="bi bi-info-circle text-primary me-2"></i>
+                    Overview
+                </h2>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5>What is Eidos?</h5>
+                        <p>
+                            Eidos is a modern, production-ready web application for creating, managing, and visualizing ontologies.
+                            Built with <strong>Blazor Server</strong> and <strong>.NET 9</strong>, it provides an intuitive interface for
+                            knowledge organization and semantic modeling.
+                        </p>
+
+                        <h6 class="mt-4">Key Capabilities</h6>
+                        <ul>
+                            <li><strong>Visual Ontology Editor</strong> - Interactive graph-based concept and relationship management</li>
+                            <li><strong>Real-time Collaboration</strong> - Multiple users can work on the same ontology simultaneously</li>
+                            <li><strong>Import/Export</strong> - Full TTL (Turtle) format support for interoperability</li>
+                            <li><strong>Permission System</strong> - Group-based access control with fine-grained permissions</li>
+                            <li><strong>Version Control</strong> - Complete activity tracking with before/after snapshots</li>
+                            <li><strong>Multiple Views</strong> - Graph, List, Hierarchy, TTL, and Notes views</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5>Technology Stack</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Frontend</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check2-circle text-success me-2"></i>Blazor Server (.NET 9)</li>
+                                    <li><i class="bi bi-check2-circle text-success me-2"></i>Bootstrap 5</li>
+                                    <li><i class="bi bi-check2-circle text-success me-2"></i>Cytoscape.js (Graph Visualization)</li>
+                                    <li><i class="bi bi-check2-circle text-success me-2"></i>SignalR (Real-time)</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Backend</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check2-circle text-success me-2"></i>ASP.NET Core</li>
+                                    <li><i class="bi bi-check2-circle text-success me-2"></i>Entity Framework Core</li>
+                                    <li><i class="bi bi-check2-circle text-success me-2"></i>Azure SQL Database</li>
+                                    <li><i class="bi bi-check2-circle text-success me-2"></i>Azure App Service</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2: Architecture -->
+            <section id="architecture" class="mb-5">
+                <h2 class="border-bottom pb-2 mb-4">
+                    <i class="bi bi-diagram-3 text-info me-2"></i>
+                    Architecture
+                </h2>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5>Application Architecture</h5>
+                        <p>Eidos follows a clean, layered architecture with clear separation of concerns:</p>
+
+                        <pre class="bg-light p-3 rounded"><code>┌─────────────────────────────────────┐
+│      Blazor UI Components Layer      │
+│   (Pages, Components, Dialogs)       │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────▼──────────────────────┐
+│         Services Layer               │
+│  (Business Logic, Orchestration)     │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────▼──────────────────────┐
+│       Repository Layer               │
+│   (Data Access Abstraction)          │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────▼──────────────────────┐
+│      Entity Framework Core           │
+│         (ORM Layer)                  │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────▼──────────────────────┐
+│       Azure SQL Database             │
+│        (Data Storage)                │
+└─────────────────────────────────────┘</code></pre>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5>SOLID Principles Applied</h5>
+                        <dl>
+                            <dt><i class="bi bi-check-circle text-success me-2"></i>Single Responsibility Principle (SRP)</dt>
+                            <dd>Each service has a focused purpose (e.g., <code>OntologyService</code>, <code>ConceptService</code>, <code>RelationshipService</code>)</dd>
+
+                            <dt><i class="bi bi-check-circle text-success me-2"></i>Open/Closed Principle (OCP)</dt>
+                            <dd>Services and repositories are extensible through interfaces without modifying existing code</dd>
+
+                            <dt><i class="bi bi-check-circle text-success me-2"></i>Liskov Substitution Principle (LSP)</dt>
+                            <dd>Repository implementations can be substituted without breaking functionality</dd>
+
+                            <dt><i class="bi bi-check-circle text-success me-2"></i>Interface Segregation Principle (ISP)</dt>
+                            <dd>Interfaces are focused and minimal (e.g., <code>IRepository&lt;T&gt;</code>, <code>IOntologyService</code>)</dd>
+
+                            <dt><i class="bi bi-check-circle text-success me-2"></i>Dependency Inversion Principle (DIP)</dt>
+                            <dd>Components depend on abstractions (interfaces), not concrete implementations</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5>Project Structure</h5>
+                        <pre class="bg-light p-3 rounded"><code>Eidos/
+├── Components/
+│   ├── Pages/              # Routable pages
+│   ├── Ontology/          # Ontology-specific components
+│   ├── Shared/            # Shared components (NavBar, etc.)
+│   └── Layout/            # Layout components
+├── Services/
+│   ├── Interfaces/        # Service contracts
+│   └── *.cs              # Service implementations
+├── Data/
+│   ├── Repositories/      # Data access layer
+│   ├── OntologyDbContext.cs
+│   └── ApplicationDbContext.cs
+├── Models/               # Domain entities
+├── Hubs/                # SignalR hubs
+├── Exceptions/          # Custom exceptions
+└── wwwroot/
+    ├── css/
+    ├── js/
+    └── lib/</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3: Core Concepts -->
+            <section id="core-concepts" class="mb-5">
+                <h2 class="border-bottom pb-2 mb-4">
+                    <i class="bi bi-box text-warning me-2"></i>
+                    Core Concepts
+                </h2>
+
+                <div class="accordion mb-4" id="coreConceptsAccordion">
+                    <!-- Ontology -->
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button @(expandedConcept != 1 ? "collapsed" : "")" type="button"
+                                    @onclick='() => ToggleConcept(1)'>
+                                <strong>1. Ontology</strong>
+                            </button>
+                        </h3>
+                        @if (expandedConcept == 1)
+                        {
+                            <div class="accordion-body">
+                                <p>The top-level container for organizing related concepts and relationships.</p>
+
+                                <h6>Properties:</h6>
+                                <ul>
+                                    <li><code>Name</code> - Display name of the ontology</li>
+                                    <li><code>Description</code> - Detailed description of purpose and scope</li>
+                                    <li><code>BaseUri</code> - Namespace URI for RDF export</li>
+                                    <li><code>Author</code> - Creator metadata</li>
+                                    <li><code>Version</code> - Version string</li>
+                                    <li><code>Visibility</code> - Private, Group, or Public</li>
+                                    <li><code>AllowPublicEdit</code> - Enable public collaboration</li>
+                                </ul>
+
+                                <h6>Relationships:</h6>
+                                <ul>
+                                    <li>Contains many <code>Concepts</code></li>
+                                    <li>Contains many <code>Relationships</code></li>
+                                    <li>Has many <code>OntologyActivity</code> records (version history)</li>
+                                    <li>Belongs to one <code>User</code> (owner)</li>
+                                    <li>Can be forked/cloned (tracked via <code>ForkedFromId</code>)</li>
+                                </ul>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Concept -->
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button @(expandedConcept != 2 ? "collapsed" : "")" type="button"
+                                    @onclick='() => ToggleConcept(2)'>
+                                <strong>2. Concept</strong>
+                            </button>
+                        </h3>
+                        @if (expandedConcept == 2)
+                        {
+                            <div class="accordion-body">
+                                <p>Represents an entity, class, or thing within an ontology (e.g., "Person", "Book", "Organization").</p>
+
+                                <h6>Properties:</h6>
+                                <ul>
+                                    <li><code>Name</code> - Concept identifier</li>
+                                    <li><code>Definition</code> - Formal definition</li>
+                                    <li><code>Description</code> - Detailed explanation</li>
+                                    <li><code>Category</code> - Entity, Process, Quality, Role, or Event</li>
+                                    <li><code>Uri</code> - RDF URI identifier</li>
+                                    <li><code>Color</code> - Visual representation color</li>
+                                    <li><code>Position</code> - Graph coordinates (X, Y)</li>
+                                    <li><code>CustomProperties</code> - JSON for additional metadata</li>
+                                </ul>
+
+                                <h6>Categories:</h6>
+                                <ul>
+                                    <li><span class="badge bg-primary">Entity</span> - Physical or abstract objects</li>
+                                    <li><span class="badge bg-warning text-dark">Process</span> - Actions or events</li>
+                                    <li><span class="badge bg-success">Quality</span> - Characteristics</li>
+                                    <li><span class="badge bg-info">Role</span> - Functions or positions</li>
+                                    <li><span class="badge bg-danger">Event</span> - Occurrences in time</li>
+                                </ul>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Relationship -->
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button @(expandedConcept != 3 ? "collapsed" : "")" type="button"
+                                    @onclick='() => ToggleConcept(3)'>
+                                <strong>3. Relationship</strong>
+                            </button>
+                        </h3>
+                        @if (expandedConcept == 3)
+                        {
+                            <div class="accordion-body">
+                                <p>Connects two concepts, describing how they relate to each other.</p>
+
+                                <h6>Properties:</h6>
+                                <ul>
+                                    <li><code>RelationType</code> - Type of relationship (e.g., "is-a", "part-of", "writes")</li>
+                                    <li><code>SourceConceptId</code> - Starting concept</li>
+                                    <li><code>TargetConceptId</code> - Ending concept</li>
+                                    <li><code>Description</code> - Explanation of the relationship</li>
+                                    <li><code>Uri</code> - RDF URI for the relationship type</li>
+                                    <li><code>Strength</code> - Weight (0.0 to 1.0)</li>
+                                    <li><code>CustomLabel</code> - Display override</li>
+                                </ul>
+
+                                <h6>Standard Relationship Types:</h6>
+                                <ul class="small">
+                                    <li><code>is-a</code> (rdfs:subClassOf) - Taxonomy/inheritance</li>
+                                    <li><code>part-of</code> (bfo:partOf) - Composition</li>
+                                    <li><code>has-part</code> (bfo:hasPart) - Decomposition</li>
+                                    <li><code>related-to</code> (owl:relatedTo) - General association</li>
+                                    <li><code>depends-on</code> - Dependency</li>
+                                    <li><code>equivalent-to</code> (owl:equivalentClass) - Equivalence</li>
+                                    <li>Custom domain-specific relationships</li>
+                                </ul>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- User & Authentication -->
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button @(expandedConcept != 4 ? "collapsed" : "")" type="button"
+                                    @onclick='() => ToggleConcept(4)'>
+                                <strong>4. User & Authentication</strong>
+                            </button>
+                        </h3>
+                        @if (expandedConcept == 4)
+                        {
+                            <div class="accordion-body">
+                                <p>Users and their authentication/authorization in the system.</p>
+
+                                <h6>ApplicationUser (extends IdentityUser):</h6>
+                                <ul>
+                                    <li><code>DisplayName</code> - User's display name</li>
+                                    <li><code>CreatedAt</code> - Account creation timestamp</li>
+                                    <li>Standard Identity properties (Email, PasswordHash, etc.)</li>
+                                </ul>
+
+                                <h6>User Roles:</h6>
+                                <ul>
+                                    <li><span class="badge bg-danger">Admin</span> - Full system access</li>
+                                    <li><span class="badge bg-warning text-dark">PowerUser</span> - Advanced features</li>
+                                    <li><span class="badge bg-primary">User</span> - Standard access</li>
+                                    <li><span class="badge bg-secondary">Guest</span> - Limited access</li>
+                                </ul>
+
+                                <h6>Authentication Methods:</h6>
+                                <ul>
+                                    <li>Email/Password (ASP.NET Core Identity)</li>
+                                    <li>OAuth 2.0 - GitHub</li>
+                                    <li>OAuth 2.0 - Google</li>
+                                    <li>OAuth 2.0 - Microsoft</li>
+                                </ul>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Groups & Permissions -->
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button @(expandedConcept != 5 ? "collapsed" : "")" type="button"
+                                    @onclick='() => ToggleConcept(5)'>
+                                <strong>5. Groups & Permissions</strong>
+                            </button>
+                        </h3>
+                        @if (expandedConcept == 5)
+                        {
+                            <div class="accordion-body">
+                                <p>Group-based access control for ontologies.</p>
+
+                                <h6>UserGroup:</h6>
+                                <ul>
+                                    <li><code>Name</code> - Group identifier</li>
+                                    <li><code>Description</code> - Purpose of the group</li>
+                                    <li><code>CreatedByUserId</code> - Group creator</li>
+                                    <li>Contains many <code>UserGroupMember</code> records</li>
+                                </ul>
+
+                                <h6>OntologyGroupPermission:</h6>
+                                <ul>
+                                    <li><code>OntologyId</code> - Target ontology</li>
+                                    <li><code>UserGroupId</code> - Authorized group</li>
+                                    <li><code>PermissionLevel</code> - View, Edit, or Admin</li>
+                                    <li><code>GrantedByUserId</code> - Who granted access</li>
+                                </ul>
+
+                                <h6>Permission Levels:</h6>
+                                <ul>
+                                    <li><span class="badge bg-info">View</span> - Read-only access</li>
+                                    <li><span class="badge bg-warning text-dark">Edit</span> - Can modify concepts and relationships</li>
+                                    <li><span class="badge bg-danger">Admin</span> - Full control (except ownership transfer)</li>
+                                </ul>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Activity Tracking -->
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button @(expandedConcept != 6 ? "collapsed" : "")" type="button"
+                                    @onclick='() => ToggleConcept(6)'>
+                                <strong>6. Activity Tracking & Version Control</strong>
+                            </button>
+                        </h3>
+                        @if (expandedConcept == 6)
+                        {
+                            <div class="accordion-body">
+                                <p>Complete version history with before/after snapshots.</p>
+
+                                <h6>OntologyActivity:</h6>
+                                <ul>
+                                    <li><code>OntologyId</code> - Parent ontology</li>
+                                    <li><code>UserId</code> - User who made the change</li>
+                                    <li><code>ActivityType</code> - Create, Update, or Delete</li>
+                                    <li><code>EntityType</code> - Concept, Relationship, or Property</li>
+                                    <li><code>EntityName</code> - Name of affected entity</li>
+                                    <li><code>BeforeSnapshot</code> - JSON of state before change</li>
+                                    <li><code>AfterSnapshot</code> - JSON of state after change</li>
+                                    <li><code>VersionNumber</code> - Auto-incremented version</li>
+                                    <li><code>Timestamp</code> - When the change occurred</li>
+                                </ul>
+
+                                <h6>Use Cases:</h6>
+                                <ul>
+                                    <li>Version history timeline</li>
+                                    <li>Diff viewer (before/after comparison)</li>
+                                    <li>Audit trail for compliance</li>
+                                    <li>Foundation for rollback/revert (future)</li>
+                                    <li>Contributor statistics</li>
+                                </ul>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 4: Data Models -->
+            <section id="data-models" class="mb-5">
+                <h2 class="border-bottom pb-2 mb-4">
+                    <i class="bi bi-database text-success me-2"></i>
+                    Data Models
+                </h2>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5>Entity Relationship Diagram</h5>
+                        <p>Simplified view of core entities and their relationships:</p>
+                        <pre class="bg-light p-3 rounded"><code>User (ApplicationUser)
+  │
+  ├── owns ──── Ontology
+  │                 │
+  │                 ├── contains ──── Concept
+  │                 │                      │
+  │                 ├── contains ──── Relationship
+  │                 │                      │
+  │                 ├── tracked by ── OntologyActivity
+  │                 │
+  │                 └── has permissions ── OntologyGroupPermission
+  │                                               │
+  │                                               │
+  ├── member of ── UserGroupMember ── in ── UserGroup
+  │
+  └── preferences ── UserPreferences</code></pre>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5>Database Tables</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Table</th>
+                                        <th>Purpose</th>
+                                        <th>Key Relationships</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>Ontologies</code></td>
+                                        <td>Top-level knowledge containers</td>
+                                        <td>User (owner), OntologyActivity, Concepts, Relationships</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Concepts</code></td>
+                                        <td>Entities/classes within ontologies</td>
+                                        <td>Ontology, Relationships (as source/target)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Relationships</code></td>
+                                        <td>Connections between concepts</td>
+                                        <td>Ontology, SourceConcept, TargetConcept</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>AspNetUsers</code></td>
+                                        <td>User accounts and authentication</td>
+                                        <td>Ontologies, UserGroupMembers, UserPreferences</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>UserGroups</code></td>
+                                        <td>Groups for permission management</td>
+                                        <td>UserGroupMembers, OntologyGroupPermissions</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>OntologyGroupPermissions</code></td>
+                                        <td>Group access grants for ontologies</td>
+                                        <td>Ontology, UserGroup</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>OntologyActivity</code></td>
+                                        <td>Version history and change tracking</td>
+                                        <td>Ontology, User</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>UserPreferences</code></td>
+                                        <td>User settings and preferences</td>
+                                        <td>User</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 5: Services Layer -->
+            <section id="services" class="mb-5">
+                <h2 class="border-bottom pb-2 mb-4">
+                    <i class="bi bi-gear text-primary me-2"></i>
+                    Services Layer
+                </h2>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5>Service Architecture</h5>
+                        <p>
+                            Services encapsulate business logic and orchestrate operations across repositories.
+                            All services implement interfaces for testability and dependency inversion.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <strong>OntologyService</strong>
+                            </div>
+                            <div class="card-body">
+                                <p class="small">Manages ontology lifecycle and operations.</p>
+                                <h6>Key Methods:</h6>
+                                <ul class="small">
+                                    <li><code>CreateOntologyAsync()</code></li>
+                                    <li><code>CloneOntologyAsync()</code></li>
+                                    <li><code>GetOntologyDescendantsAsync()</code></li>
+                                    <li><code>UpdateVisibilityAsync()</code></li>
+                                    <li><code>GetAccessibleOntologiesAsync()</code></li>
+                                </ul>
+                                <div class="alert alert-info small mb-0">
+                                    <strong>Optimization:</strong> Batch operations use AddRange() for 80% faster cloning
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <strong>ConceptService</strong>
+                            </div>
+                            <div class="card-body">
+                                <p class="small">Manages concepts within ontologies.</p>
+                                <h6>Key Methods:</h6>
+                                <ul class="small">
+                                    <li><code>CreateAsync()</code></li>
+                                    <li><code>GetByOntologyIdAsync()</code></li>
+                                    <li><code>GetParentConceptsAsync()</code></li>
+                                    <li><code>GetChildConceptsAsync()</code></li>
+                                    <li><code>UpdatePositionAsync()</code></li>
+                                </ul>
+                                <div class="alert alert-info small mb-0">
+                                    <strong>Optimization:</strong> Batch queries with WHERE IN reduce N+1 issues by 60-80%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-warning text-dark">
+                                <strong>RelationshipService</strong>
+                            </div>
+                            <div class="card-body">
+                                <p class="small">Manages relationships between concepts.</p>
+                                <h6>Key Methods:</h6>
+                                <ul class="small">
+                                    <li><code>CreateAsync()</code></li>
+                                    <li><code>GetByOntologyIdAsync()</code></li>
+                                    <li><code>GetBySourceConceptAsync()</code></li>
+                                    <li><code>GetByTargetConceptAsync()</code></li>
+                                    <li><code>ValidateRelationshipAsync()</code></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-info text-white">
+                                <strong>OntologyPermissionService</strong>
+                            </div>
+                            <div class="card-body">
+                                <p class="small">Manages group-based access control.</p>
+                                <h6>Key Methods:</h6>
+                                <ul class="small">
+                                    <li><code>CanViewAsync()</code></li>
+                                    <li><code>CanEditAsync()</code></li>
+                                    <li><code>CanManageAsync()</code></li>
+                                    <li><code>GrantGroupAccessAsync()</code></li>
+                                    <li><code>RevokeGroupAccessAsync()</code></li>
+                                    <li><code>GetAccessibleOntologiesAsync()</code></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-danger text-white">
+                                <strong>UserManagementService</strong>
+                            </div>
+                            <div class="card-body">
+                                <p class="small">Manages users, roles, and groups.</p>
+                                <h6>Key Methods:</h6>
+                                <ul class="small">
+                                    <li><code>GetAllUsersAsync()</code></li>
+                                    <li><code>AssignRoleAsync()</code></li>
+                                    <li><code>CreateGroupAsync()</code></li>
+                                    <li><code>AddUserToGroupAsync()</code></li>
+                                    <li><code>GetGroupMembersAsync()</code></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header" style="background-color: #6f42c1; color: white;">
+                                <strong>TtlExportService</strong>
+                            </div>
+                            <div class="card-body">
+                                <p class="small">Exports ontologies to Turtle (TTL) format.</p>
+                                <h6>Key Methods:</h6>
+                                <ul class="small">
+                                    <li><code>ExportOntologyToTtlAsync()</code></li>
+                                    <li><code>GenerateConceptTtl()</code></li>
+                                    <li><code>GenerateRelationshipTtl()</code></li>
+                                </ul>
+                                <div class="alert alert-info small mb-0">
+                                    <strong>Standards:</strong> Supports RDF, RDFS, OWL, BFO, PROV-O
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 6: Design Patterns -->
+            <section id="patterns" class="mb-5">
+                <h2 class="border-bottom pb-2 mb-4">
+                    <i class="bi bi-palette text-info me-2"></i>
+                    Design Patterns
+                </h2>
+
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <i class="bi bi-arrow-counterclockwise me-2"></i>
+                                <strong>Command Pattern</strong>
+                            </div>
+                            <div class="card-body">
+                                <p>Encapsulates actions as objects for undo/redo functionality.</p>
+                                <h6>Implementation:</h6>
+                                <ul class="small">
+                                    <li><code>ICommand</code> interface with Execute/Undo</li>
+                                    <li><code>CommandManager</code> with undo/redo stacks</li>
+                                    <li>6 command types: Create/Update/Delete Concept/Relationship</li>
+                                    <li>Per-ontology command history (max 50)</li>
+                                </ul>
+                                <p class="mb-0 small"><strong>Location:</strong> <code>Services/Commands/</code></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <i class="bi bi-stack me-2"></i>
+                                <strong>Repository Pattern</strong>
+                            </div>
+                            <div class="card-body">
+                                <p>Abstracts data access logic from business logic.</p>
+                                <h6>Implementation:</h6>
+                                <ul class="small">
+                                    <li><code>IRepository&lt;T&gt;</code> base interface</li>
+                                    <li><code>BaseRepository&lt;T&gt;</code> with common CRUD</li>
+                                    <li>Specialized: OntologyRepository, ConceptRepository, etc.</li>
+                                    <li>AsNoTracking() for read operations (10-20% faster)</li>
+                                </ul>
+                                <p class="mb-0 small"><strong>Location:</strong> <code>Data/Repositories/</code></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-warning text-dark">
+                                <i class="bi bi-gear-wide-connected me-2"></i>
+                                <strong>Factory Pattern</strong>
+                            </div>
+                            <div class="card-body">
+                                <p>Creates command objects based on operation type.</p>
+                                <h6>Implementation:</h6>
+                                <ul class="small">
+                                    <li><code>CommandFactory</code> creates appropriate command instances</li>
+                                    <li>Used by UI to create undoable operations</li>
+                                    <li>Dependency injection for service resolution</li>
+                                </ul>
+                                <p class="mb-0 small"><strong>Example:</strong> <code>CreateConceptCommand</code>, <code>DeleteRelationshipCommand</code></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-info text-white">
+                                <i class="bi bi-layers me-2"></i>
+                                <strong>Facade Pattern</strong>
+                            </div>
+                            <div class="card-body">
+                                <p>Simplifies complex subsystem interactions.</p>
+                                <h6>Implementation:</h6>
+                                <ul class="small">
+                                    <li>Services provide unified interface to repositories</li>
+                                    <li>OntologyService coordinates Concept + Relationship operations</li>
+                                    <li>UI components interact with services, not repositories</li>
+                                </ul>
+                                <p class="mb-0 small"><strong>Benefit:</strong> Reduced coupling, easier testing</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-danger text-white">
+                                <i class="bi bi-diagram-3 me-2"></i>
+                                <strong>Strategy Pattern</strong>
+                            </div>
+                            <div class="card-body">
+                                <p>Defines interchangeable algorithms (export strategies).</p>
+                                <h6>Implementation:</h6>
+                                <ul class="small">
+                                    <li>Export strategies for TTL, JSON, CSV formats</li>
+                                    <li>Template strategies for BFO, PROV-O, custom</li>
+                                    <li>Validation strategies by entity type</li>
+                                </ul>
+                                <p class="mb-0 small"><strong>Benefit:</strong> Easy to add new export formats</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header" style="background-color: #6f42c1; color: white;">
+                                <i class="bi bi-broadcast me-2"></i>
+                                <strong>Observer Pattern</strong>
+                            </div>
+                            <div class="card-body">
+                                <p>Event-driven updates for real-time collaboration.</p>
+                                <h6>Implementation:</h6>
+                                <ul class="small">
+                                    <li>SignalR broadcasts changes to connected clients</li>
+                                    <li>Components subscribe to ontology-specific groups</li>
+                                    <li>Automatic UI refresh on remote changes</li>
+                                </ul>
+                                <p class="mb-0 small"><strong>Hub:</strong> <code>OntologyHub</code></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 7: Security -->
+            <section id="security" class="mb-5">
+                <h2 class="border-bottom pb-2 mb-4">
+                    <i class="bi bi-shield-lock text-danger me-2"></i>
+                    Security
+                </h2>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-danger text-white">
+                        <strong>Security Architecture</strong>
+                    </div>
+                    <div class="card-body">
+                        <p>Multi-layered security approach with defense in depth.</p>
+
+                        <h6>Authentication:</h6>
+                        <ul>
+                            <li><strong>ASP.NET Core Identity</strong> - User account management</li>
+                            <li><strong>OAuth 2.0</strong> - Third-party authentication (GitHub, Google, Microsoft)</li>
+                            <li><strong>Strong Passwords</strong> - Min 8 chars, mixed case, numbers, special chars</li>
+                            <li><strong>Account Lockout</strong> - 5 failed attempts = 15 minute lockout</li>
+                            <li><strong>Secure Sessions</strong> - 24 hour expiration with sliding renewal</li>
+                        </ul>
+
+                        <h6>Authorization:</h6>
+                        <ul>
+                            <li><strong>Role-Based Access Control (RBAC)</strong> - Admin, PowerUser, User, Guest</li>
+                            <li><strong>Group-Based Permissions</strong> - View, Edit, Admin levels per ontology</li>
+                            <li><strong>Ownership Model</strong> - Creator has full control</li>
+                            <li><strong>Visibility Levels</strong> - Private, Group, Public</li>
+                            <li><strong>Permission Inheritance</strong> - Most restrictive wins</li>
+                        </ul>
+
+                        <h6>Infrastructure Security:</h6>
+                        <ul>
+                            <li><strong>HTTPS Only</strong> - All traffic encrypted with TLS 1.2+</li>
+                            <li><strong>HSTS</strong> - HTTP Strict Transport Security enabled</li>
+                            <li><strong>CSP</strong> - Content Security Policy headers</li>
+                            <li><strong>XSS Protection</strong> - X-XSS-Protection header</li>
+                            <li><strong>Frame Options</strong> - X-Frame-Options: DENY</li>
+                            <li><strong>Content Type Sniffing</strong> - X-Content-Type-Options: nosniff</li>
+                        </ul>
+
+                        <h6>Rate Limiting:</h6>
+                        <ul>
+                            <li>Authentication endpoints: 5 attempts / 15 minutes</li>
+                            <li>API endpoints: 100 requests / minute</li>
+                            <li>SignalR connections: 10 connections / user</li>
+                        </ul>
+
+                        <h6>Secrets Management:</h6>
+                        <ul>
+                            <li><strong>Azure Key Vault</strong> - Centralized secret storage</li>
+                            <li><strong>Managed Identity</strong> - No credentials in code</li>
+                            <li><strong>Environment Variables</strong> - Local development</li>
+                            <li>Never commit secrets to source control</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <strong>Security Best Practices</strong>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            <li>Always validate user permissions before operations</li>
+                            <li>Use parameterized queries (EF Core) to prevent SQL injection</li>
+                            <li>Sanitize user input in UI components</li>
+                            <li>Log security events (failed logins, permission violations)</li>
+                            <li>Regular security audits via Application Insights</li>
+                            <li>Keep dependencies updated for security patches</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 8: Collaboration -->
+            <section id="collaboration" class="mb-5">
+                <h2 class="border-bottom pb-2 mb-4">
+                    <i class="bi bi-people text-warning me-2"></i>
+                    Real-Time Collaboration
+                </h2>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <strong>SignalR Architecture</strong>
+                    </div>
+                    <div class="card-body">
+                        <p>Enables multiple users to work on the same ontology simultaneously with real-time updates.</p>
+
+                        <h6>OntologyHub:</h6>
+                        <pre class="bg-light p-3 rounded small"><code>public class OntologyHub : Hub
+{
+    // Join an ontology group
+    Task JoinOntologyGroup(int ontologyId);
+
+    // Broadcast concept changes
+    Task BroadcastConceptAdded(Concept concept);
+    Task BroadcastConceptUpdated(Concept concept);
+    Task BroadcastConceptDeleted(int conceptId);
+
+    // Broadcast relationship changes
+    Task BroadcastRelationshipAdded(Relationship rel);
+    Task BroadcastRelationshipUpdated(Relationship rel);
+    Task BroadcastRelationshipDeleted(int relId);
+}</code></pre>
+
+                        <h6>Client-Side Integration:</h6>
+                        <ul>
+                            <li>Components subscribe to hub on initialization</li>
+                            <li>Automatically join ontology-specific groups</li>
+                            <li>Listen for broadcast events and update UI</li>
+                            <li>Prevent echo (don't react to own changes)</li>
+                            <li>Graceful reconnection on disconnect</li>
+                        </ul>
+
+                        <h6>Permission Verification:</h6>
+                        <ul>
+                            <li>Hub validates user permissions before broadcasting</li>
+                            <li>Only authorized users receive updates</li>
+                            <li>Guest users tracked via session tokens</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <strong>Sharing & Guest Access</strong>
+                    </div>
+                    <div class="card-body">
+                        <h6>Share Link Generation:</h6>
+                        <ul>
+                            <li>Cryptographically secure token generation</li>
+                            <li>Permission levels: View, Comment, Edit, Admin</li>
+                            <li>Optional guest access toggle</li>
+                            <li>Time-based expiration support</li>
+                            <li>Access tracking and analytics</li>
+                        </ul>
+
+                        <h6>Guest Sessions:</h6>
+                        <ul>
+                            <li>Session tokens for anonymous users</li>
+                            <li>IP address and user agent tracking</li>
+                            <li>Activity monitoring</li>
+                            <li>Automatic cleanup of inactive sessions</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 9: UI Components -->
+            <section id="ui-components" class="mb-5">
+                <h2 class="border-bottom pb-2 mb-4">
+                    <i class="bi bi-layout-text-sidebar text-primary me-2"></i>
+                    UI Components
+                </h2>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5>Component Structure</h5>
+                        <p>Blazor components organized by feature area for maintainability.</p>
+
+                        <pre class="bg-light p-3 rounded small"><code>Components/
+├── Pages/                    # Routable pages (@@page directive)
+│   ├── Home.razor           # Dashboard
+│   ├── OntologyView.razor   # Main editor
+│   ├── Learn.razor          # Tutorial
+│   ├── Features.razor       # Feature showcase
+│   └── Documentation.razor  # This page
+├── Ontology/                # Ontology-specific components
+│   ├── ConceptDialog.razor
+│   ├── RelationshipDialog.razor
+│   ├── OntologySettingsDialog.razor
+│   ├── HistoryPanel.razor
+│   └── CollaboratorsPanel.razor
+├── Shared/                  # Shared components
+│   ├── NavMenu.razor
+│   ├── ToastContainer.razor
+│   └── ReleaseNotes.razor
+└── Layout/                  # Layout components
+    └── MainLayout.razor</code></pre>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <strong>OntologyView.razor</strong>
+                            </div>
+                            <div class="card-body small">
+                                <p>Main ontology editor with multiple view modes.</p>
+                                <h6>Features:</h6>
+                                <ul class="small mb-0">
+                                    <li>5 view modes (Graph, List, Hierarchy, TTL, Notes)</li>
+                                    <li>Real-time collaboration via SignalR</li>
+                                    <li>Undo/redo with command pattern</li>
+                                    <li>Permission-based editing</li>
+                                    <li>Keyboard shortcuts</li>
+                                    <li>Responsive design</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <strong>ConceptDialog.razor</strong>
+                            </div>
+                            <div class="card-body small">
+                                <p>Create/edit concepts with full metadata.</p>
+                                <h6>Fields:</h6>
+                                <ul class="small mb-0">
+                                    <li>Name, Definition, Description</li>
+                                    <li>Category (Entity, Process, Quality, Role, Event)</li>
+                                    <li>URI, Color</li>
+                                    <li>Custom properties (key-value pairs)</li>
+                                    <li>Template selection</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-warning text-dark">
+                                <strong>HistoryPanel.razor</strong>
+                            </div>
+                            <div class="card-body small">
+                                <p>Version history with before/after comparison.</p>
+                                <h6>Features:</h6>
+                                <ul class="small mb-0">
+                                    <li>Timeline view of all changes</li>
+                                    <li>Filter by entity type and activity</li>
+                                    <li>Statistics dashboard</li>
+                                    <li>Diff viewer</li>
+                                    <li>Contributor breakdown</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-info text-white">
+                                <strong>OntologySettingsDialog.razor</strong>
+                            </div>
+                            <div class="card-body small">
+                                <p>Manage ontology metadata and permissions.</p>
+                                <h6>Tabs:</h6>
+                                <ul class="small mb-0">
+                                    <li><strong>General:</strong> Name, description, author, version</li>
+                                    <li><strong>Permissions:</strong> Visibility, group access, permission levels</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header bg-secondary text-white">
+                        <strong>Graph Visualization</strong>
+                    </div>
+                    <div class="card-body">
+                        <p>Interactive graph powered by Cytoscape.js with D3.js force-directed layout.</p>
+                        <h6>Features:</h6>
+                        <ul>
+                            <li><strong>Pan & Zoom:</strong> Navigate large ontologies</li>
+                            <li><strong>Drag & Drop:</strong> Reposition concepts</li>
+                            <li><strong>Click Interactions:</strong> Select concepts/relationships</li>
+                            <li><strong>Context Menus:</strong> Quick actions on right-click</li>
+                            <li><strong>Auto-Layout:</strong> Automatic graph organization</li>
+                            <li><strong>Export:</strong> Save as PNG/SVG</li>
+                        </ul>
+                        <p class="mb-0"><strong>JavaScript Integration:</strong> <code>wwwroot/js/graphVisualization.js</code></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 10: Testing -->
+            <section id="testing" class="mb-5">
+                <h2 class="border-bottom pb-2 mb-4">
+                    <i class="bi bi-check-circle text-success me-2"></i>
+                    Testing
+                </h2>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <strong>Test Strategy</strong>
+                    </div>
+                    <div class="card-body">
+                        <p>Comprehensive test coverage with 157+ tests ensuring reliability.</p>
+
+                        <h6>Test Pyramid:</h6>
+                        <pre class="bg-light p-3 rounded"><code>         /\
+        /  \    Component Tests (36 tests)
+       /────\   - UI behavior, user interactions
+      /      \
+     /────────\ Integration Tests (65+ tests)
+    /          \ - Services with database
+   /────────────\ Unit Tests (56+ tests)
+  /              \ - Business logic, models
+ /────────────────\</code></pre>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <strong>Unit Tests (56+)</strong>
+                            </div>
+                            <div class="card-body small">
+                                <h6>Covered Areas:</h6>
+                                <ul class="small">
+                                    <li>Service unit tests (58 tests)</li>
+                                    <li>LoginModel tests (12 tests)</li>
+                                    <li>Command pattern tests</li>
+                                    <li>Validation logic</li>
+                                </ul>
+                                <p class="mb-0"><strong>Tools:</strong> xUnit, Moq</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <strong>Integration Tests (65+)</strong>
+                            </div>
+                            <div class="card-body small">
+                                <h6>Covered Areas:</h6>
+                                <ul class="small">
+                                    <li>Repository tests (19 tests)</li>
+                                    <li>Service integration tests (45+ tests)</li>
+                                    <li>OntologyPermissionService (20+ tests)</li>
+                                    <li>Database operations</li>
+                                </ul>
+                                <p class="mb-0"><strong>Tools:</strong> EF Core In-Memory Database</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-warning text-dark">
+                                <strong>Component Tests (36)</strong>
+                            </div>
+                            <div class="card-body small">
+                                <h6>Covered Areas:</h6>
+                                <ul class="small">
+                                    <li>Blazor component rendering</li>
+                                    <li>User interactions</li>
+                                    <li>Event handling</li>
+                                    <li>Parameter binding</li>
+                                </ul>
+                                <p class="mb-0"><strong>Tools:</strong> bUnit</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-info text-white">
+                                <strong>Workflow Tests (7)</strong>
+                            </div>
+                            <div class="card-body small">
+                                <h6>Covered Areas:</h6>
+                                <ul class="small">
+                                    <li>End-to-end scenarios</li>
+                                    <li>Multi-service workflows</li>
+                                    <li>Permission flows</li>
+                                    <li>User journeys</li>
+                                </ul>
+                                <p class="mb-0"><strong>Examples:</strong> Clone ontology, Permission grant</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <strong>Running Tests</strong>
+                    </div>
+                    <div class="card-body">
+                        <pre class="bg-light p-3 rounded"><code># Run all tests
+dotnet test
+
+# Run with coverage
+dotnet test --collect:"XPlat Code Coverage"
+
+# Run specific test category
+dotnet test --filter "FullyQualifiedName~Integration"
+dotnet test --filter "FullyQualifiedName~Unit"
+dotnet test --filter "FullyQualifiedName~Component"
+
+# Run specific test class
+dotnet test --filter "FullyQualifiedName~OntologyPermissionServiceTests"</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 11: Deployment -->
+            <section id="deployment" class="mb-5">
+                <h2 class="border-bottom pb-2 mb-4">
+                    <i class="bi bi-cloud-upload text-info me-2"></i>
+                    Deployment
+                </h2>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <strong>Azure Infrastructure</strong>
+                    </div>
+                    <div class="card-body">
+                        <h6>Resources:</h6>
+                        <ul>
+                            <li><strong>Azure App Service:</strong> Hosts the Blazor Server application</li>
+                            <li><strong>Azure SQL Database:</strong> GP_S_Gen5_1 (serverless, 0.5-1 vCore)</li>
+                            <li><strong>Azure Key Vault:</strong> Stores secrets and connection strings</li>
+                            <li><strong>Application Insights:</strong> Monitoring and telemetry</li>
+                            <li><strong>Managed Identity:</strong> Secure access to Azure resources</li>
+                        </ul>
+
+                        <h6>Configuration:</h6>
+                        <ul>
+                            <li>HTTPS-only with TLS 1.2</li>
+                            <li>Custom domain: <code>https://eidosonto.com</code></li>
+                            <li>Auto-scaling based on demand</li>
+                            <li>Database auto-pause after 60 minutes of inactivity</li>
+                            <li>Application Insights daily cap: 300 MB</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <strong>CI/CD Pipeline</strong>
+                    </div>
+                    <div class="card-body">
+                        <p>GitHub Actions workflow for automated deployment.</p>
+
+                        <h6>Workflow Steps:</h6>
+                        <ol class="small">
+                            <li>Trigger: Push to <code>main</code> branch or manual dispatch</li>
+                            <li>Checkout code</li>
+                            <li>Setup .NET 9</li>
+                            <li>Restore dependencies</li>
+                            <li>Build project (<code>dotnet build --no-restore</code>)</li>
+                            <li>Run tests (<code>dotnet test --no-build</code>)</li>
+                            <li>Publish release (<code>dotnet publish -c Release</code>)</li>
+                            <li>Deploy to Azure App Service</li>
+                            <li>Run health checks</li>
+                            <li>Post-deployment validation</li>
+                        </ol>
+
+                        <p class="mb-0"><strong>File:</strong> <code>.github/workflows/azure-deploy.yml</code></p>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <strong>Database Migrations</strong>
+                    </div>
+                    <div class="card-body">
+                        <h6>Entity Framework Core Migrations:</h6>
+                        <pre class="bg-light p-3 rounded"><code># Create migration
+dotnet ef migrations add MigrationName
+
+# Apply migrations
+dotnet ef database update
+
+# Generate SQL script
+dotnet ef migrations script
+
+# List migrations
+dotnet ef migrations list</code></pre>
+
+                        <h6>Production Deployment:</h6>
+                        <ul class="small mb-0">
+                            <li>Migrations run automatically during app startup</li>
+                            <li>Connection string loaded from Azure Key Vault</li>
+                            <li>Azure SQL firewall allows App Service access only</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <strong>Monitoring & Observability</strong>
+                    </div>
+                    <div class="card-body">
+                        <h6>Application Insights Tracking:</h6>
+                        <ul>
+                            <li>Request/response metrics</li>
+                            <li>Exception logging with stack traces</li>
+                            <li>Custom events for business metrics</li>
+                            <li>User session analytics</li>
+                            <li>Performance counters</li>
+                            <li>Dependency tracking (SQL, HTTP)</li>
+                        </ul>
+
+                        <h6>Health Checks:</h6>
+                        <ul class="mb-0">
+                            <li>Database connectivity</li>
+                            <li>SignalR hub status</li>
+                            <li>Endpoint: <code>/health</code></li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Final Summary -->
+            <div class="card bg-primary text-white mt-5">
+                <div class="card-body text-center py-5">
+                    <h3 class="mb-3">Questions or Need Help?</h3>
+                    <p class="mb-4">
+                        This documentation covers the core architecture and implementation details of Eidos.
+                        For additional information or support, please refer to the codebase or contact the development team.
+                    </p>
+                    <div class="d-flex gap-3 justify-content-center flex-wrap">
+                        <a href="/" class="btn btn-light btn-lg">
+                            <i class="bi bi-house"></i> Back to Dashboard
+                        </a>
+                        <a href="/features" class="btn btn-outline-light btn-lg">
+                            <i class="bi bi-star"></i> View Features
+                        </a>
+                        <a href="/learn" class="btn btn-outline-light btn-lg">
+                            <i class="bi bi-book"></i> Learn Tutorial
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private string activeSection = "overview";
+    private int expandedConcept = 0;
+
+    private async Task ScrollToSection(string section)
+    {
+        activeSection = section;
+        await JS.InvokeVoidAsync("eval", $"document.getElementById('{section}')?.scrollIntoView({{ behavior: 'smooth', block: 'start' }});");
+        StateHasChanged();
+    }
+
+    private void ToggleConcept(int concept)
+    {
+        expandedConcept = expandedConcept == concept ? 0 : concept;
+        StateHasChanged();
+    }
+}
+
+<style>
+    /* Sticky sidebar */
+    .documentation-page .sticky-top {
+        position: sticky;
+        top: 20px;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    /* Custom scrollbar for sidebar */
+    .documentation-page .sticky-top::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .documentation-page .sticky-top::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .documentation-page .sticky-top::-webkit-scrollbar-thumb {
+        background: var(--bs-secondary);
+        border-radius: 3px;
+    }
+
+    .documentation-page .sticky-top::-webkit-scrollbar-thumb:hover {
+        background: var(--bs-primary);
+    }
+
+    .documentation-page .doc-nav .nav-link {
+        padding: 0.5rem 1rem;
+        border-left: 3px solid transparent;
+        @* color: var(--bs-body-color); *@
+        background: none;
+        border-radius: 0;
+        text-align: left;
+        transition: all 0.2s;
+    }
+
+    .documentation-page .doc-nav .nav-link:hover {
+        background-color: var(--bs-light);
+        border-left-color: var(--bs-primary);
+    }
+
+    .documentation-page .doc-nav .nav-link.active {
+        background-color: var(--bs-primary);
+        color: white;
+        border-left-color: var(--bs-dark);
+    }
+
+    .documentation-page .doc-nav .nav-link i {
+        margin-right: 0.5rem;
+    }
+
+    .documentation-page pre {
+        overflow-x: auto;
+    }
+
+    .documentation-page code {
+        color: var(--bs-code-color);
+    }
+
+    .documentation-page h2 {
+        margin-top: 2rem;
+    }
+
+    .documentation-page h5 {
+        margin-top: 1.5rem;
+        color: var(--bs-primary);
+    }
+
+    .documentation-page h6 {
+        margin-top: 1rem;
+        font-weight: 600;
+    }
+
+    /* Dark mode support */
+    [data-bs-theme="dark"] .documentation-page .bg-light {
+        background-color: var(--bs-gray-800) !important;
+        color: var(--bs-light) !important;
+    }
+
+    [data-bs-theme="dark"] .documentation-page pre code {
+        color: var(--bs-light) !important;
+    }
+
+    [data-bs-theme="dark"] .documentation-page .doc-nav .nav-link:hover {
+        background-color: var(--bs-gray-700);
+    }
+
+    [data-bs-theme="dark"] .documentation-page .table {
+        color: var(--bs-body-color);
+    }
+
+    [data-bs-theme="dark"] .documentation-page .sticky-top::-webkit-scrollbar-thumb {
+        background: var(--bs-gray-600);
+    }
+
+    [data-bs-theme="dark"] .documentation-page .sticky-top::-webkit-scrollbar-thumb:hover {
+        background: var(--bs-primary);
+    }
+</style>

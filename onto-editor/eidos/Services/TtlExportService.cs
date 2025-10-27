@@ -1,3 +1,4 @@
+using Eidos.Constants;
 using Eidos.Models;
 using Eidos.Services.Interfaces;
 using VDS.RDF;
@@ -63,31 +64,28 @@ namespace Eidos.Services
         private IGraph BuildRdfGraph(Ontology ontology)
         {
             var graph = new Graph();
-            graph.NamespaceMap.AddNamespace("rdf", UriFactory.Create("http://www.w3.org/1999/02/22-rdf-syntax-ns#"));
-            graph.NamespaceMap.AddNamespace("rdfs", UriFactory.Create("http://www.w3.org/2000/01/rdf-schema#"));
-            graph.NamespaceMap.AddNamespace("owl", UriFactory.Create("http://www.w3.org/2002/07/owl#"));
-            graph.NamespaceMap.AddNamespace("dc", UriFactory.Create("http://purl.org/dc/elements/1.1/"));
+            graph.NamespaceMap.AddNamespace("rdf", UriFactory.Create(OntologyNamespaces.RdfSyntax));
+            graph.NamespaceMap.AddNamespace("rdfs", UriFactory.Create(OntologyNamespaces.RdfSchema));
+            graph.NamespaceMap.AddNamespace("owl", UriFactory.Create(OntologyNamespaces.Owl));
+            graph.NamespaceMap.AddNamespace("dc", UriFactory.Create(OntologyNamespaces.DublinCoreElements));
 
             if (ontology.UsesBFO)
             {
-                graph.NamespaceMap.AddNamespace("bfo", UriFactory.Create("http://purl.obolibrary.org/obo/BFO_"));
+                graph.NamespaceMap.AddNamespace("bfo", UriFactory.Create(OntologyNamespaces.BfoPrefix));
             }
 
             if (ontology.UsesProvO)
             {
-                graph.NamespaceMap.AddNamespace("prov", UriFactory.Create("http://www.w3.org/ns/prov#"));
+                graph.NamespaceMap.AddNamespace("prov", UriFactory.Create(OntologyNamespaces.ProvO));
             }
 
             // Create base URI for this ontology - use custom namespace if provided
             var baseUri = !string.IsNullOrWhiteSpace(ontology.Namespace)
                 ? ontology.Namespace
-                : $"http://example.org/ontology/{ontology.Name.ToLower().Replace(" ", "_")}/";
+                : OntologyNamespaces.CreateDefaultNamespace(ontology.Name);
 
             // Ensure namespace ends with / or #
-            if (!baseUri.EndsWith("/") && !baseUri.EndsWith("#"))
-            {
-                baseUri += "/";
-            }
+            baseUri = OntologyNamespaces.NormalizeNamespace(baseUri);
 
             graph.BaseUri = UriFactory.Create(baseUri);
 
@@ -254,7 +252,7 @@ namespace Eidos.Services
                                 restriction.MinCardinality == restriction.MaxCardinality)
                             {
                                 var cardinalityLiteral = graph.CreateLiteralNode(restriction.MinCardinality.Value.ToString(),
-                                    UriFactory.Create("http://www.w3.org/2001/XMLSchema#nonNegativeInteger"));
+                                    UriFactory.Create(OntologyNamespaces.Xsd.NonNegativeInteger));
                                 graph.Assert(restrictionNode, owlCardinality, cardinalityLiteral);
                             }
                             else
@@ -262,13 +260,13 @@ namespace Eidos.Services
                                 if (restriction.MinCardinality.HasValue)
                                 {
                                     var minLiteral = graph.CreateLiteralNode(restriction.MinCardinality.Value.ToString(),
-                                        UriFactory.Create("http://www.w3.org/2001/XMLSchema#nonNegativeInteger"));
+                                        UriFactory.Create(OntologyNamespaces.Xsd.NonNegativeInteger));
                                     graph.Assert(restrictionNode, owlMinCardinality, minLiteral);
                                 }
                                 if (restriction.MaxCardinality.HasValue)
                                 {
                                     var maxLiteral = graph.CreateLiteralNode(restriction.MaxCardinality.Value.ToString(),
-                                        UriFactory.Create("http://www.w3.org/2001/XMLSchema#nonNegativeInteger"));
+                                        UriFactory.Create(OntologyNamespaces.Xsd.NonNegativeInteger));
                                     graph.Assert(restrictionNode, owlMaxCardinality, maxLiteral);
                                 }
                             }
@@ -293,7 +291,7 @@ namespace Eidos.Services
                         case "Required":
                             // Required is expressed as minCardinality 1
                             var minOneLiteral = graph.CreateLiteralNode("1",
-                                UriFactory.Create("http://www.w3.org/2001/XMLSchema#nonNegativeInteger"));
+                                UriFactory.Create(OntologyNamespaces.Xsd.NonNegativeInteger));
                             graph.Assert(restrictionNode, owlMinCardinality, minOneLiteral);
                             break;
                     }
@@ -408,13 +406,13 @@ namespace Eidos.Services
         {
             return dataType.ToLower() switch
             {
-                "integer" or "int" => "http://www.w3.org/2001/XMLSchema#integer",
-                "decimal" or "number" => "http://www.w3.org/2001/XMLSchema#decimal",
-                "boolean" or "bool" => "http://www.w3.org/2001/XMLSchema#boolean",
-                "date" => "http://www.w3.org/2001/XMLSchema#date",
-                "datetime" => "http://www.w3.org/2001/XMLSchema#dateTime",
-                "uri" or "url" => "http://www.w3.org/2001/XMLSchema#anyURI",
-                _ => "http://www.w3.org/2001/XMLSchema#string"
+                "integer" or "int" => OntologyNamespaces.Xsd.Integer,
+                "decimal" or "number" => OntologyNamespaces.Xsd.Decimal,
+                "boolean" or "bool" => OntologyNamespaces.Xsd.Boolean,
+                "date" => OntologyNamespaces.Xsd.Date,
+                "datetime" => OntologyNamespaces.Xsd.DateTime,
+                "uri" or "url" => OntologyNamespaces.Xsd.AnyUri,
+                _ => OntologyNamespaces.Xsd.String
             };
         }
 
@@ -424,14 +422,14 @@ namespace Eidos.Services
             if (concept.Name.StartsWith("prov:"))
             {
                 var provName = concept.Name.Substring(5); // Remove "prov:" prefix
-                return $"http://www.w3.org/ns/prov#{provName}";
+                return OntologyNamespaces.CreateProvOUri(provName);
             }
 
             // Check if this is a BFO concept (simplified check)
             if (concept.SourceOntology == "BFO" || new[] { "Entity", "Continuant", "Occurrent", "Process", "Temporal Region", "Independent Continuant", "Dependent Continuant" }.Contains(concept.Name))
             {
                 var bfoName = concept.Name.Replace(" ", "");
-                return $"http://purl.obolibrary.org/obo/BFO_{bfoName}";
+                return OntologyNamespaces.CreateBfoUri(bfoName);
             }
 
             // Regular concept
@@ -444,7 +442,7 @@ namespace Eidos.Services
             // Check for PROV-O relationship types
             if (new[] { "wasGeneratedBy", "used", "wasAssociatedWith", "wasAttributedTo", "wasDerivedFrom" }.Contains(relationType))
             {
-                return $"http://www.w3.org/ns/prov#{relationType}";
+                return OntologyNamespaces.CreateProvOUri(relationType);
             }
 
             // Check for common OWL/RDFS properties

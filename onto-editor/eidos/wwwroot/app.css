@@ -392,6 +392,84 @@ h1:focus {
     background-color: var(--background);
 }
 
+/* Dark Mode Modal Support - Applied Globally to All Dialogs */
+[data-bs-theme="dark"] .modal-content {
+    background-color: var(--bs-gray-900);
+    color: var(--bs-light);
+    border-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .modal-header {
+    background-color: var(--bs-gray-800);
+    color: var(--bs-light);
+    border-bottom-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .modal-title {
+    color: var(--bs-light);
+}
+
+[data-bs-theme="dark"] .modal-footer {
+    background-color: var(--bs-gray-800);
+    color: var(--bs-light);
+    border-top-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .modal-body {
+    background-color: var(--bs-gray-900);
+    color: var(--bs-light);
+}
+
+[data-bs-theme="dark"] .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Dark mode for cards inside modals */
+[data-bs-theme="dark"] .modal .card {
+    background-color: var(--bs-gray-800);
+    color: var(--bs-light);
+    border-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .modal .card-header {
+    background-color: var(--bs-gray-700);
+    color: var(--bs-light);
+    border-bottom-color: var(--bs-gray-600);
+}
+
+[data-bs-theme="dark"] .modal .card-body {
+    color: var(--bs-light);
+}
+
+/* Dark mode for list groups inside modals */
+[data-bs-theme="dark"] .modal .list-group-item {
+    background-color: var(--bs-gray-800);
+    color: var(--bs-light);
+    border-color: var(--bs-gray-700);
+}
+
+/* Dark mode for forms inside modals */
+[data-bs-theme="dark"] .modal .form-label {
+    color: var(--bs-light);
+}
+
+[data-bs-theme="dark"] .modal .form-check-label {
+    color: var(--bs-light);
+}
+
+[data-bs-theme="dark"] .modal .text-muted {
+    color: var(--bs-gray-400) !important;
+}
+
+[data-bs-theme="dark"] .modal h1,
+[data-bs-theme="dark"] .modal h2,
+[data-bs-theme="dark"] .modal h3,
+[data-bs-theme="dark"] .modal h4,
+[data-bs-theme="dark"] .modal h5,
+[data-bs-theme="dark"] .modal h6 {
+    color: var(--bs-light);
+}
+
 /* Modern List Groups */
 .list-group-item {
     border-color: var(--border);

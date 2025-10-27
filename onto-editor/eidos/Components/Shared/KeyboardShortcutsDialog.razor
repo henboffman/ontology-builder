@@ -89,7 +89,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="Hide">Close</button>
+                    <button type="button" class="btn" @onclick="Hide">Close</button>
                 </div>
             </div>
         </div>
@@ -97,7 +97,8 @@
     <div class="modal-backdrop fade show"></div>
 }
 
-@code {
+@code
+{
     private bool isVisible = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -105,7 +106,7 @@
         if (firstRender)
         {
             await JSRuntime.InvokeVoidAsync("window.keyboardShortcuts.registerGlobalHandler",
-                DotNetObjectReference.Create(this));
+            DotNetObjectReference.Create(this));
         }
     }
 

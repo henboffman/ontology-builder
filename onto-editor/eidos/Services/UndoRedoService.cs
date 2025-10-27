@@ -1,3 +1,4 @@
+using Eidos.Constants;
 using Eidos.Models;
 
 namespace Eidos.Services
@@ -25,7 +26,7 @@ namespace Eidos.Services
     {
         private readonly Stack<Operation> _undoStack = new();
         private readonly Stack<Operation> _redoStack = new();
-        private readonly int _maxHistorySize = 50;
+        private readonly int _maxHistorySize = AppConstants.History.MaxHistorySize;
 
         public event Action? StateChanged;
 

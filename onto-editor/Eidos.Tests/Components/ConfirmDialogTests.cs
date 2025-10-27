@@ -126,7 +126,7 @@ public class ConfirmDialogTests : TestContext
         await Task.Delay(50);
         cut.Render();
 
-        var cancelButton = cut.Find("button.btn-secondary");
+        var cancelButton = cut.Find("button");
         await cancelButton.ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
 
         var result = await task;
@@ -182,7 +182,7 @@ public class ConfirmDialogTests : TestContext
         Assert.Contains("Second Dialog", cut.Markup);
         Assert.DoesNotContain("First Dialog", cut.Markup);
 
-        var cancelButton2 = cut.Find("button.btn-secondary");
+        var cancelButton2 = cut.Find("button");
         await cancelButton2.ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
         var result2 = await task2;
 

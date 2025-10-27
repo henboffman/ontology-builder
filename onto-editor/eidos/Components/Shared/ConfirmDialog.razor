@@ -17,7 +17,7 @@
                     @message
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                    <button type="button" class="btn" @onclick="Cancel">
                         <i class="bi bi-x-circle"></i> Cancel
                     </button>
                     <button type="button" class="btn @GetConfirmButtonClass()" @onclick="Confirm">
@@ -29,7 +29,8 @@
     </div>
 }
 
-@code {
+@code
+{
     private bool isVisible = false;
     private string title = string.Empty;
     private string message = string.Empty;
@@ -42,7 +43,8 @@
         ConfirmService.OnShow += ShowDialog;
     }
 
-    private void ShowDialog(string t, string m, string ct, ConfirmType confirmType, TaskCompletionSource<bool> taskCompletionSource)
+    private void ShowDialog(string t, string m, string ct, ConfirmType confirmType, TaskCompletionSource<bool>
+    taskCompletionSource)
     {
         title = t;
         message = m;

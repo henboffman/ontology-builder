@@ -75,7 +75,8 @@
                                                         </div>
                                                         @if (!isCurrentOntology)
                                                         {
-                                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => NavigateToOntology(item.Id)">
+                                                            <button class="btn btn-sm btn-outline-primary"
+                                                                @onclick="() => NavigateToOntology(item.Id)">
                                                                 <i class="bi bi-eye"></i> View
                                                             </button>
                                                         }
@@ -123,7 +124,8 @@
                                                             </div>
                                                         }
                                                     </div>
-                                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => NavigateToOntology(descendant.Id)">
+                                                    <button class="btn btn-sm btn-outline-primary"
+                                                        @onclick="() => NavigateToOntology(descendant.Id)">
                                                         <i class="bi bi-eye"></i> View
                                                     </button>
                                                 </div>
@@ -166,7 +168,7 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="Hide">Close</button>
+                    <button type="button" class="btn" @onclick="Hide">Close</button>
                 </div>
             </div>
         </div>
@@ -174,7 +176,8 @@
     <div class="modal-backdrop fade show"></div>
 }
 
-@code {
+@code
+{
     [Parameter] public Ontology? ontology { get; set; }
 
     private bool isVisible = false;

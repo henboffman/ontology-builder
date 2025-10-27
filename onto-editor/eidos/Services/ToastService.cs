@@ -1,3 +1,5 @@
+using Eidos.Constants;
+
 namespace Eidos.Services
 {
     public enum ToastType
@@ -12,22 +14,22 @@ namespace Eidos.Services
     {
         public event Action<string, ToastType, int>? OnShow;
 
-        public void ShowSuccess(string message, int duration = 3000)
+        public void ShowSuccess(string message, int duration = AppConstants.Toast.SuccessDuration)
         {
             OnShow?.Invoke(message, ToastType.Success, duration);
         }
 
-        public void ShowError(string message, int duration = 5000)
+        public void ShowError(string message, int duration = AppConstants.Toast.ErrorDuration)
         {
             OnShow?.Invoke(message, ToastType.Error, duration);
         }
 
-        public void ShowWarning(string message, int duration = 4000)
+        public void ShowWarning(string message, int duration = AppConstants.Toast.WarningDuration)
         {
             OnShow?.Invoke(message, ToastType.Warning, duration);
         }
 
-        public void ShowInfo(string message, int duration = 3000)
+        public void ShowInfo(string message, int duration = AppConstants.Toast.InfoDuration)
         {
             OnShow?.Invoke(message, ToastType.Info, duration);
         }

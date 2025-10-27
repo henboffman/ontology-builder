@@ -15,8 +15,8 @@
                 <i class="bi bi-plus-circle"></i> Add Concept
             </button>
         </div>
-        <div class="d-flex gap-2 align-items-center">
-            <div class="input-group input-group-sm flex-grow-1">
+        <div class="d-flex gap-2 align-items-stretch flex-wrap">
+            <div class="input-group input-group-sm flex-grow-1" style="min-width: 200px;">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                 <input type="text"
                        class="form-control form-control-sm"
@@ -31,7 +31,7 @@
                     </button>
                 }
             </div>
-            <div class="input-group input-group-sm" style="width: 200px;">
+            <div class="input-group input-group-sm flex-shrink-0" style="min-width: 200px;">
                 <span class="input-group-text"><i class="bi bi-sort-down"></i></span>
                 <select class="form-select form-select-sm" @bind="sortOption">
                     <option value="name">Sort by Name</option>
@@ -59,13 +59,13 @@
             <div class="list-group" style="max-height: 600px; overflow-y: auto;">
                 @foreach (var concept in SortedConcepts)
                 {
-                    <div class="list-group-item list-group-item-action"
+                    <div class="list-group-item list-group-item-action concept-list-item"
                          @onclick="() => OnConceptSelect.InvokeAsync(concept)"
                          style="cursor: pointer; border-left: 4px solid @(concept.Color ?? "#6c757d")">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center gap-2">
-                                    <h6 class="mb-1">@concept.Name</h6>
+                        <div class="concept-item-layout">
+                            <div class="concept-content">
+                                <div class="concept-header">
+                                    <h6 class="concept-name">@concept.Name</h6>
                                     @if (!string.IsNullOrWhiteSpace(concept.Category))
                                     {
                                         <span class="badge bg-secondary">@concept.Category</span>
@@ -73,11 +73,11 @@
                                 </div>
                                 @if (!string.IsNullOrWhiteSpace(concept.SimpleExplanation))
                                 {
-                                    <p class="mb-1 text-muted small">@concept.SimpleExplanation</p>
+                                    <p class="concept-description mb-1 text-muted small">@concept.SimpleExplanation</p>
                                 }
                                 @if (!string.IsNullOrWhiteSpace(concept.Examples))
                                 {
-                                    <p class="mb-0 small">
+                                    <p class="concept-examples mb-0 small">
                                         <i class="bi bi-lightbulb text-warning"></i>
                                         <em>Examples: @concept.Examples</em>
                                     </p>
@@ -89,41 +89,74 @@
                                 }
                                 @if (outgoing.Any() || incoming.Any())
                                 {
-                                    <div class="mt-2 small">
+                                    <div class="concept-relationships mt-2 small">
                                         @foreach (var rel in outgoing)
                                         {
-                                            <span class="badge bg-info me-1">
+                                            <span class="badge bg-info me-1 mb-1">
                                                 @rel.RelationType → @rel.TargetConcept.Name
                                             </span>
                                         }
                                         @foreach (var rel in incoming)
                                         {
-                                            <span class="badge bg-success me-1">
+                                            <span class="badge bg-success me-1 mb-1">
                                                 @rel.SourceConcept.Name → @rel.RelationType
                                             </span>
                                         }
                                     </div>
                                 }
                             </div>
-                            <div class="btn-group">
-                                <button class="btn btn-sm btn-outline-primary"
-                                        @onclick:stopPropagation="true"
-                                        @onclick="() => OnConceptEdit.InvokeAsync(concept)"
-                                        title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary"
-                                        @onclick:stopPropagation="true"
-                                        @onclick="() => OnConceptDuplicate.InvokeAsync(concept)"
-                                        title="Create a copy of this concept">
-                                    <i class="bi bi-files"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger"
-                                        @onclick:stopPropagation="true"
-                                        @onclick="() => OnConceptDelete.InvokeAsync(concept.Id)"
-                                        title="Delete">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                            <div class="concept-actions">
+                                <!-- Desktop: Horizontal button group -->
+                                <div class="btn-group d-none d-lg-flex">
+                                    <button class="btn btn-sm btn-outline-primary"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="() => OnConceptEdit.InvokeAsync(concept)"
+                                            title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="() => OnConceptDuplicate.InvokeAsync(concept)"
+                                            title="Duplicate">
+                                        <i class="bi bi-files"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="() => OnConceptDelete.InvokeAsync(concept.Id)"
+                                            title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Mobile/Tablet: Dropdown menu -->
+                                <div class="dropdown d-lg-none">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                                            type="button"
+                                            @onclick:stopPropagation="true"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false"
+                                            title="Actions">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" @onclick:stopPropagation="true">
+                                        <li>
+                                            <button class="dropdown-item" @onclick="() => OnConceptEdit.InvokeAsync(concept)">
+                                                <i class="bi bi-pencil me-2"></i> Edit
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button class="dropdown-item" @onclick="() => OnConceptDuplicate.InvokeAsync(concept)">
+                                                <i class="bi bi-files me-2"></i> Duplicate
+                                            </button>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <button class="dropdown-item text-danger" @onclick="() => OnConceptDelete.InvokeAsync(concept.Id)">
+                                                <i class="bi bi-trash me-2"></i> Delete
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>

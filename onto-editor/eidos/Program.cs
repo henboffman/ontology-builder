@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Eidos.Components;
 using Eidos.Components.Account;
+using Eidos.Constants;
 using Eidos.Data;
 using Eidos.Data.Repositories;
 using Eidos.Models;
@@ -188,38 +189,7 @@ authBuilder.AddGitHub(options =>
     options.CorrelationCookie.IsEssential = true;
 
     // Assign roles after successful authentication
-    options.Events.OnCreatingTicket = async context =>
-    {
-        try
-        {
-            var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
-            var seeder = context.HttpContext.RequestServices.GetRequiredService<DatabaseSeeder>();
-            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-
-            // Get the user email from claims
-            var email = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-            if (!string.IsNullOrEmpty(email))
-            {
-                // Find existing user (they may not exist yet on first login)
-                var user = await userManager.FindByEmailAsync(email);
-                if (user != null)
-                {
-                    await seeder.AssignDefaultRolesOnLoginAsync(user);
-                    logger.LogInformation("GitHub OAuth: Roles assigned for user: {Email}", email);
-                }
-                else
-                {
-                    logger.LogInformation("GitHub OAuth: User not found during OnCreatingTicket, will be created by framework: {Email}", email);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            // Log the error but don't break the login flow
-            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "Error in GitHub OAuth OnCreatingTicket event");
-        }
-    };
+    options.Events.OnCreatingTicket = async context => await ProgramHelpers.HandleOAuthTicketCreationAsync(context, "GitHub");
 });
 
 // Add Google OAuth provider (optional - only if configured)
@@ -243,38 +213,7 @@ if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientS
         options.CorrelationCookie.IsEssential = true;
 
         // Assign roles after successful authentication
-        options.Events.OnCreatingTicket = async context =>
-        {
-            try
-            {
-                var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
-                var seeder = context.HttpContext.RequestServices.GetRequiredService<DatabaseSeeder>();
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-
-                // Get the user email from claims
-                var email = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-                if (!string.IsNullOrEmpty(email))
-                {
-                    // Find existing user (they may not exist yet on first login)
-                    var user = await userManager.FindByEmailAsync(email);
-                    if (user != null)
-                    {
-                        await seeder.AssignDefaultRolesOnLoginAsync(user);
-                        logger.LogInformation("Google OAuth: Roles assigned for user: {Email}", email);
-                    }
-                    else
-                    {
-                        logger.LogInformation("Google OAuth: User not found during OnCreatingTicket, will be created by framework: {Email}", email);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Log the error but don't break the login flow
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                logger.LogError(ex, "Error in Google OAuth OnCreatingTicket event");
-            }
-        };
+        options.Events.OnCreatingTicket = async context => await ProgramHelpers.HandleOAuthTicketCreationAsync(context, "Google");
     });
 }
 
@@ -299,38 +238,7 @@ if (!string.IsNullOrEmpty(microsoftClientId) && !string.IsNullOrEmpty(microsoftC
         options.CorrelationCookie.IsEssential = true;
 
         // Assign roles after successful authentication
-        options.Events.OnCreatingTicket = async context =>
-        {
-            try
-            {
-                var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
-                var seeder = context.HttpContext.RequestServices.GetRequiredService<DatabaseSeeder>();
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-
-                // Get the user email from claims
-                var email = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-                if (!string.IsNullOrEmpty(email))
-                {
-                    // Find existing user (they may not exist yet on first login)
-                    var user = await userManager.FindByEmailAsync(email);
-                    if (user != null)
-                    {
-                        await seeder.AssignDefaultRolesOnLoginAsync(user);
-                        logger.LogInformation("Microsoft OAuth: Roles assigned for user: {Email}", email);
-                    }
-                    else
-                    {
-                        logger.LogInformation("Microsoft OAuth: User not found during OnCreatingTicket, will be created by framework: {Email}", email);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Log the error but don't break the login flow
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                logger.LogError(ex, "Error in Microsoft OAuth OnCreatingTicket event");
-            }
-        };
+        options.Events.OnCreatingTicket = async context => await ProgramHelpers.HandleOAuthTicketCreationAsync(context, "Microsoft");
     });
 }
 
@@ -346,8 +254,8 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
     options.Password.RequiredUniqueChars = 4;
 
     // Lockout settings - prevent brute force attacks
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(AppConstants.Security.LockoutDurationMinutes);
+    options.Lockout.MaxFailedAccessAttempts = AppConstants.Security.MaxLoginAttempts;
     options.Lockout.AllowedForNewUsers = true;
 
     // User settings
@@ -580,3 +488,51 @@ app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/ready");
 
 app.Run();
+
+/// <summary>
+/// Helper methods for Program.cs
+/// </summary>
+static partial class ProgramHelpers
+{
+    /// <summary>
+    /// Handles OAuth ticket creation for all OAuth providers.
+    /// Assigns default roles to users after successful authentication.
+    /// </summary>
+    /// <param name="context">The OAuth creating ticket context</param>
+    /// <param name="providerName">Name of the OAuth provider (GitHub, Google, Microsoft)</param>
+    public static async Task HandleOAuthTicketCreationAsync(
+        Microsoft.AspNetCore.Authentication.OAuth.OAuthCreatingTicketContext context,
+        string providerName)
+    {
+        try
+        {
+            var userManager = context.HttpContext.RequestServices.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<Eidos.Models.ApplicationUser>>();
+            var seeder = context.HttpContext.RequestServices.GetRequiredService<Eidos.Services.DatabaseSeeder>();
+            var logger = context.HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Program>>();
+
+            // Get the user email from claims
+            var email = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+            if (!string.IsNullOrEmpty(email))
+            {
+                // Find existing user (they may not exist yet on first login)
+                var user = await userManager.FindByEmailAsync(email);
+                if (user != null)
+                {
+                    await seeder.AssignDefaultRolesOnLoginAsync(user);
+                    logger.LogInformation("{Provider} OAuth: Roles assigned for user: {Email}", providerName, email);
+                }
+                else
+                {
+                    logger.LogInformation("{Provider} OAuth: User not found during OnCreatingTicket, will be created by framework: {Email}",
+                        providerName, email);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't break the login flow
+            var logger = context.HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Program>>();
+            logger.LogError(ex, "Error in {Provider} OAuth OnCreatingTicket event", providerName);
+        }
+    }
+}

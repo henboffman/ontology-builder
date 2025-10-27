@@ -152,6 +152,20 @@
     gap: 0.5rem;
 }
 
+/* Hamburger menu button styling */
+.topbar .dropdown .btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.topbar .dropdown-menu {
+    min-width: 200px;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .topbar-container {
@@ -170,11 +184,51 @@
         display: none;
     }
 
-    .nav-text {
+    .dropdown-text {
         display: none;
     }
 
-    .dropdown-text {
+    .topbar-nav {
+        gap: 0.5rem;
+    }
+
+    /* Larger touch targets on mobile */
+    .topbar-nav-link {
+        padding: 0.75rem;
+        min-width: 44px;
+        min-height: 44px;
+        justify-content: center;
+    }
+
+    .topbar-nav-link i {
+        font-size: 1.3rem;
+    }
+
+    .topbar-brand {
+        padding: 0.5rem;
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Mobile hamburger menu */
+    .topbar .dropdown .btn {
+        min-width: 48px;
+        min-height: 48px;
+    }
+
+    /* Ensure dropdown items are large enough for touch */
+    .topbar .dropdown-item {
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+    }
+
+    .topbar .dropdown-item i {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .nav-text {
         display: none;
     }
 
@@ -183,24 +237,6 @@
     }
 
     .topbar-nav-link {
-        padding: 0.5rem;
-    }
-
-    .topbar-brand {
-        padding: 0.5rem;
-    }
-}
-
-@media (max-width: 576px) {
-    .topbar {
-        height: 50px;
-    }
-
-    .topbar-nav-link:not(.active) {
-        display: none;
-    }
-
-    .topbar-left {
-        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
     }
 }
