@@ -85,6 +85,11 @@ namespace Eidos.Data
                 .HasForeignKey(c => c.OntologyId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // PERFORMANCE: Add index on OntologyId for efficient concept queries
+            modelBuilder.Entity<Concept>()
+                .HasIndex(c => c.OntologyId)
+                .HasDatabaseName("IX_Concept_OntologyId");
+
             // Configure Relationship - Source
             modelBuilder.Entity<Relationship>()
                 .HasOne(r => r.SourceConcept)
@@ -105,6 +110,11 @@ namespace Eidos.Data
                 .WithMany(o => o.Relationships)
                 .HasForeignKey(r => r.OntologyId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // PERFORMANCE: Add index on OntologyId for efficient relationship queries
+            modelBuilder.Entity<Relationship>()
+                .HasIndex(r => r.OntologyId)
+                .HasDatabaseName("IX_Relationship_OntologyId");
 
             // Configure Relationship - Strength decimal precision for SQL Server
             modelBuilder.Entity<Relationship>()
@@ -145,6 +155,11 @@ namespace Eidos.Data
                 .WithMany()
                 .HasForeignKey(i => i.ConceptId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // PERFORMANCE: Add index on OntologyId for efficient individual queries
+            modelBuilder.Entity<Individual>()
+                .HasIndex(i => i.OntologyId)
+                .HasDatabaseName("IX_Individual_OntologyId");
 
             // Configure IndividualProperty
             modelBuilder.Entity<IndividualProperty>()
@@ -188,6 +203,11 @@ namespace Eidos.Data
                 .HasForeignKey(r => r.AllowedConceptId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // PERFORMANCE: Add index on ConceptId for efficient restriction queries
+            modelBuilder.Entity<ConceptRestriction>()
+                .HasIndex(r => r.ConceptId)
+                .HasDatabaseName("IX_ConceptRestriction_ConceptId");
+
             // Configure OntologyShare
             modelBuilder.Entity<OntologyShare>()
                 .HasOne(s => s.Ontology)
@@ -206,6 +226,11 @@ namespace Eidos.Data
                 .HasIndex(s => s.ShareToken)
                 .IsUnique();
 
+            // PERFORMANCE: Add index on OntologyId for queries finding shares for an ontology
+            modelBuilder.Entity<OntologyShare>()
+                .HasIndex(s => s.OntologyId)
+                .HasDatabaseName("IX_OntologyShare_OntologyId");
+
             // Configure GuestSession
             modelBuilder.Entity<GuestSession>()
                 .HasOne(g => g.OntologyShare)
@@ -217,6 +242,11 @@ namespace Eidos.Data
             modelBuilder.Entity<GuestSession>()
                 .HasIndex(g => g.SessionToken)
                 .IsUnique();
+
+            // PERFORMANCE: Add index on OntologyShareId for efficient guest session queries
+            modelBuilder.Entity<GuestSession>()
+                .HasIndex(g => g.OntologyShareId)
+                .HasDatabaseName("IX_GuestSession_OntologyShareId");
 
             // Configure UserShareAccess
             modelBuilder.Entity<UserShareAccess>()
@@ -235,6 +265,11 @@ namespace Eidos.Data
             modelBuilder.Entity<UserShareAccess>()
                 .HasIndex(u => new { u.UserId, u.OntologyShareId })
                 .IsUnique();
+
+            // PERFORMANCE: Add index on OntologyShareId for queries filtering by share
+            modelBuilder.Entity<UserShareAccess>()
+                .HasIndex(u => u.OntologyShareId)
+                .HasDatabaseName("IX_UserShareAccess_OntologyShareId");
 
             // Configure UserPreferences
             modelBuilder.Entity<UserPreferences>()

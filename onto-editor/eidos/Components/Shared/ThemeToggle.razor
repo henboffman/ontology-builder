@@ -30,17 +30,21 @@
 
     private bool isDarkMode = false;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Get current theme from JavaScript
-        try
+        if (firstRender)
         {
-            var theme = await JSRuntime.InvokeAsync<string>("ThemeHandler.getTheme");
-            isDarkMode = theme == "dark";
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error getting initial theme: {ex.Message}");
+            // Get current theme from JavaScript (only after first render when JS is available)
+            try
+            {
+                var theme = await JSRuntime.InvokeAsync<string>("ThemeHandler.getTheme");
+                isDarkMode = theme == "dark";
+                StateHasChanged(); // Trigger re-render with correct theme
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting initial theme: {ex.Message}");
+            }
         }
     }
 

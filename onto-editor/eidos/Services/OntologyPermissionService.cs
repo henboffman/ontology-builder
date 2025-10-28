@@ -20,31 +20,41 @@ public class OntologyPermissionService
 
     /// <summary>
     /// Check if user can view an ontology
+    /// PERFORMANCE: Optimized to only query required fields instead of loading full ontology with nested includes
     /// </summary>
     public async Task<bool> CanViewAsync(int ontologyId, string? userId)
     {
-        var ontology = await _context.Ontologies
-            .Include(o => o.GroupPermissions)
-            .ThenInclude(gp => gp.UserGroup)
-            .ThenInclude(g => g.Members)
-            .FirstOrDefaultAsync(o => o.Id == ontologyId);
+        // Query only the fields needed for permission check (no navigation properties loaded)
+        var ontologyInfo = await _context.Ontologies
+            .Where(o => o.Id == ontologyId)
+            .Select(o => new
+            {
+                o.UserId,
+                o.Visibility,
+                o.Id
+            })
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
 
-        if (ontology == null)
+        if (ontologyInfo == null)
             return false;
 
         // Owner can always view
-        if (!string.IsNullOrEmpty(userId) && ontology.UserId == userId)
+        if (!string.IsNullOrEmpty(userId) && ontologyInfo.UserId == userId)
             return true;
 
         // Check visibility
-        if (ontology.Visibility == OntologyVisibility.Public)
+        if (ontologyInfo.Visibility == OntologyVisibility.Public)
             return true;
 
-        if (ontology.Visibility == OntologyVisibility.Group && !string.IsNullOrEmpty(userId))
+        if (ontologyInfo.Visibility == OntologyVisibility.Group && !string.IsNullOrEmpty(userId))
         {
-            // Check if user is in any group that has access
-            return ontology.GroupPermissions.Any(gp =>
-                gp.UserGroup.Members.Any(m => m.UserId == userId));
+            // Efficient query: Check if user is in any group that has access to this ontology
+            var hasGroupAccess = await _context.OntologyGroupPermissions
+                .Where(gp => gp.OntologyId == ontologyId)
+                .AnyAsync(gp => gp.UserGroup.Members.Any(m => m.UserId == userId));
+
+            return hasGroupAccess;
         }
 
         // Private ontologies are only visible to owner
@@ -53,40 +63,48 @@ public class OntologyPermissionService
 
     /// <summary>
     /// Check if user can edit an ontology
+    /// PERFORMANCE: Optimized to only query required fields instead of loading full ontology with nested includes
     /// </summary>
     public async Task<bool> CanEditAsync(int ontologyId, string? userId)
     {
         if (string.IsNullOrEmpty(userId))
             return false;
 
-        var ontology = await _context.Ontologies
-            .Include(o => o.GroupPermissions)
-            .ThenInclude(gp => gp.UserGroup)
-            .ThenInclude(g => g.Members)
-            .FirstOrDefaultAsync(o => o.Id == ontologyId);
+        // Query only the fields needed for permission check (no navigation properties loaded)
+        var ontologyInfo = await _context.Ontologies
+            .Where(o => o.Id == ontologyId)
+            .Select(o => new
+            {
+                o.UserId,
+                o.Visibility,
+                o.AllowPublicEdit,
+                o.Id
+            })
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
 
-        if (ontology == null)
+        if (ontologyInfo == null)
             return false;
 
         // Owner can always edit
-        if (ontology.UserId == userId)
+        if (ontologyInfo.UserId == userId)
             return true;
 
         // Check if public editing is allowed
-        if (ontology.Visibility == OntologyVisibility.Public && ontology.AllowPublicEdit)
+        if (ontologyInfo.Visibility == OntologyVisibility.Public && ontologyInfo.AllowPublicEdit)
             return true;
 
         // Check group permissions for edit access
-        if (ontology.Visibility == OntologyVisibility.Group)
+        if (ontologyInfo.Visibility == OntologyVisibility.Group)
         {
-            var userGroupPermission = ontology.GroupPermissions.FirstOrDefault(gp =>
-                gp.UserGroup.Members.Any(m => m.UserId == userId));
+            // Efficient query: Check if user is in any group with Edit or Admin permission for this ontology
+            var hasEditAccess = await _context.OntologyGroupPermissions
+                .Where(gp => gp.OntologyId == ontologyId)
+                .Where(gp => gp.PermissionLevel == PermissionLevels.Edit ||
+                             gp.PermissionLevel == PermissionLevels.Admin)
+                .AnyAsync(gp => gp.UserGroup.Members.Any(m => m.UserId == userId));
 
-            if (userGroupPermission != null)
-            {
-                return userGroupPermission.PermissionLevel == PermissionLevels.Edit ||
-                       userGroupPermission.PermissionLevel == PermissionLevels.Admin;
-            }
+            return hasEditAccess;
         }
 
         return false;
@@ -94,35 +112,42 @@ public class OntologyPermissionService
 
     /// <summary>
     /// Check if user can manage an ontology (change settings, permissions, delete)
+    /// PERFORMANCE: Optimized to only query required fields instead of loading full ontology with nested includes
     /// </summary>
     public async Task<bool> CanManageAsync(int ontologyId, string? userId)
     {
         if (string.IsNullOrEmpty(userId))
             return false;
 
-        var ontology = await _context.Ontologies
-            .Include(o => o.GroupPermissions)
-            .ThenInclude(gp => gp.UserGroup)
-            .ThenInclude(g => g.Members)
-            .FirstOrDefaultAsync(o => o.Id == ontologyId);
+        // Query only the fields needed for permission check (no navigation properties loaded)
+        var ontologyInfo = await _context.Ontologies
+            .Where(o => o.Id == ontologyId)
+            .Select(o => new
+            {
+                o.UserId,
+                o.Visibility,
+                o.Id
+            })
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
 
-        if (ontology == null)
+        if (ontologyInfo == null)
             return false;
 
         // Only owner or group admins can manage
-        if (ontology.UserId == userId)
+        if (ontologyInfo.UserId == userId)
             return true;
 
         // Check if user has admin permission through a group
-        if (ontology.Visibility == OntologyVisibility.Group)
+        if (ontologyInfo.Visibility == OntologyVisibility.Group)
         {
-            var userGroupPermission = ontology.GroupPermissions.FirstOrDefault(gp =>
-                gp.UserGroup.Members.Any(m => m.UserId == userId));
+            // Efficient query: Check if user is in any group with Admin permission for this ontology
+            var hasAdminAccess = await _context.OntologyGroupPermissions
+                .Where(gp => gp.OntologyId == ontologyId)
+                .Where(gp => gp.PermissionLevel == PermissionLevels.Admin)
+                .AnyAsync(gp => gp.UserGroup.Members.Any(m => m.UserId == userId));
 
-            if (userGroupPermission != null)
-            {
-                return userGroupPermission.PermissionLevel == PermissionLevels.Admin;
-            }
+            return hasAdminAccess;
         }
 
         return false;
@@ -169,40 +194,52 @@ public class OntologyPermissionService
 
     /// <summary>
     /// Get permission level for a user on an ontology
+    /// PERFORMANCE: Optimized to only query required fields instead of loading full ontology with nested includes
     /// </summary>
     public async Task<string> GetPermissionLevelAsync(int ontologyId, string? userId)
     {
         if (string.IsNullOrEmpty(userId))
             return "none";
 
-        var ontology = await _context.Ontologies
-            .Include(o => o.GroupPermissions)
-            .ThenInclude(gp => gp.UserGroup)
-            .ThenInclude(g => g.Members)
-            .FirstOrDefaultAsync(o => o.Id == ontologyId);
+        // Query only the fields needed for permission check (no navigation properties loaded)
+        var ontologyInfo = await _context.Ontologies
+            .Where(o => o.Id == ontologyId)
+            .Select(o => new
+            {
+                o.UserId,
+                o.Visibility,
+                o.AllowPublicEdit,
+                o.Id
+            })
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
 
-        if (ontology == null)
+        if (ontologyInfo == null)
             return "none";
 
         // Owner has admin level
-        if (ontology.UserId == userId)
+        if (ontologyInfo.UserId == userId)
             return PermissionLevels.Admin;
 
         // Public access
-        if (ontology.Visibility == OntologyVisibility.Public)
+        if (ontologyInfo.Visibility == OntologyVisibility.Public)
         {
-            return ontology.AllowPublicEdit ? PermissionLevels.Edit : PermissionLevels.View;
+            return ontologyInfo.AllowPublicEdit ? PermissionLevels.Edit : PermissionLevels.View;
         }
 
         // Group access
-        if (ontology.Visibility == OntologyVisibility.Group)
+        if (ontologyInfo.Visibility == OntologyVisibility.Group)
         {
-            var userGroupPermission = ontology.GroupPermissions.FirstOrDefault(gp =>
-                gp.UserGroup.Members.Any(m => m.UserId == userId));
+            // Efficient query: Get the user's permission level through group membership
+            var permissionLevel = await _context.OntologyGroupPermissions
+                .Where(gp => gp.OntologyId == ontologyId)
+                .Where(gp => gp.UserGroup.Members.Any(m => m.UserId == userId))
+                .Select(gp => gp.PermissionLevel)
+                .FirstOrDefaultAsync();
 
-            if (userGroupPermission != null)
+            if (permissionLevel != null)
             {
-                return userGroupPermission.PermissionLevel;
+                return permissionLevel;
             }
         }
 

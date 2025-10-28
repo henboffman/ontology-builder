@@ -422,7 +422,9 @@ public class OntologyShareService : IOntologyShareService
 
         var collaborators = new List<CollaboratorInfo>();
 
-        // Get authenticated users who have accessed this ontology via share links
+        // PERFORMANCE OPTIMIZATION: Load all data in 3 queries instead of N+1 queries
+
+        // Query 1: Get authenticated users who have accessed this ontology via share links
         var userAccesses = await context.UserShareAccesses
             .Include(ua => ua.User)
             .Include(ua => ua.OntologyShare)
@@ -431,14 +433,42 @@ public class OntologyShareService : IOntologyShareService
                          ua.OntologyShare.IsActive)
             .ToListAsync();
 
+        // Query 2: Get active guest sessions for this ontology
+        var guestSessions = await context.GuestSessions
+            .Include(g => g.OntologyShare)
+            .Where(g => g.IsActive &&
+                       g.OntologyShare != null &&
+                       g.OntologyShare.OntologyId == ontologyId &&
+                       g.OntologyShare.IsActive)
+            .ToListAsync();
+
+        // Query 3: Batch load ALL activities for this ontology (instead of querying per user/guest)
+        var allActivities = await context.OntologyActivities
+            .Where(a => a.OntologyId == ontologyId)
+            .OrderByDescending(a => a.CreatedAt)
+            .AsNoTracking()
+            .ToListAsync();
+
+        // Group activities by user in memory (much faster than N queries)
+        var activitiesByUser = allActivities
+            .Where(a => a.UserId != null)
+            .GroupBy(a => a.UserId!)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var activitiesByGuest = allActivities
+            .Where(a => a.GuestSessionToken != null)
+            .GroupBy(a => a.GuestSessionToken!)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Process authenticated users
         foreach (var userAccess in userAccesses)
         {
             if (userAccess.User == null || userAccess.OntologyShare == null) continue;
 
-            // Get recent activities for this user
-            var recentActivities = await context.OntologyActivities
-                .Where(a => a.OntologyId == ontologyId && a.UserId == userAccess.UserId)
-                .OrderByDescending(a => a.CreatedAt)
+            // Get user activities from pre-loaded data
+            var userActivities = activitiesByUser.GetValueOrDefault(userAccess.UserId) ?? new List<OntologyActivity>();
+
+            var recentActivities = userActivities
                 .Take(recentActivityLimit)
                 .Select(a => new CollaboratorActivity
                 {
@@ -450,10 +480,10 @@ public class OntologyShareService : IOntologyShareService
                     CreatedAt = a.CreatedAt,
                     VersionNumber = a.VersionNumber
                 })
-                .ToListAsync();
+                .ToList();
 
-            // Calculate edit statistics
-            var editStats = await CalculateEditStatsAsync(context, ontologyId, userAccess.UserId);
+            // Calculate edit statistics from pre-loaded data
+            var editStats = CalculateEditStatsFromActivities(userActivities);
 
             collaborators.Add(new CollaboratorInfo
             {
@@ -470,23 +500,15 @@ public class OntologyShareService : IOntologyShareService
             });
         }
 
-        // Get active guest sessions for this ontology
-        var guestSessions = await context.GuestSessions
-            .Include(g => g.OntologyShare)
-            .Where(g => g.IsActive &&
-                       g.OntologyShare != null &&
-                       g.OntologyShare.OntologyId == ontologyId &&
-                       g.OntologyShare.IsActive)
-            .ToListAsync();
-
+        // Process guest sessions
         foreach (var guestSession in guestSessions)
         {
             if (guestSession.OntologyShare == null) continue;
 
-            // Get recent activities for this guest
-            var recentActivities = await context.OntologyActivities
-                .Where(a => a.OntologyId == ontologyId && a.GuestSessionToken == guestSession.SessionToken)
-                .OrderByDescending(a => a.CreatedAt)
+            // Get guest activities from pre-loaded data
+            var guestActivities = activitiesByGuest.GetValueOrDefault(guestSession.SessionToken) ?? new List<OntologyActivity>();
+
+            var recentActivities = guestActivities
                 .Take(recentActivityLimit)
                 .Select(a => new CollaboratorActivity
                 {
@@ -498,10 +520,10 @@ public class OntologyShareService : IOntologyShareService
                     CreatedAt = a.CreatedAt,
                     VersionNumber = a.VersionNumber
                 })
-                .ToListAsync();
+                .ToList();
 
-            // Calculate edit statistics for guest
-            var editStats = await CalculateEditStatsForGuestAsync(context, ontologyId, guestSession.SessionToken);
+            // Calculate edit statistics from pre-loaded data
+            var editStats = CalculateEditStatsFromActivities(guestActivities);
 
             collaborators.Add(new CollaboratorInfo
             {
@@ -518,7 +540,7 @@ public class OntologyShareService : IOntologyShareService
             });
         }
 
-        _logger.LogInformation("Retrieved {Count} collaborators for ontology {OntologyId}",
+        _logger.LogInformation("Retrieved {Count} collaborators for ontology {OntologyId} (optimized query)",
             collaborators.Count, ontologyId);
 
         return collaborators.OrderByDescending(c => c.LastAccessedAt).ToList();
@@ -556,15 +578,12 @@ public class OntologyShareService : IOntologyShareService
     /// <summary>
     /// Calculate edit statistics for a user
     /// </summary>
-    private async Task<CollaboratorEditStats> CalculateEditStatsAsync(
-        OntologyDbContext context,
-        int ontologyId,
-        string userId)
+    /// <summary>
+    /// Calculate edit statistics from a pre-loaded list of activities (no database query)
+    /// PERFORMANCE: Used to avoid N+1 queries in GetCollaboratorsAsync
+    /// </summary>
+    private CollaboratorEditStats CalculateEditStatsFromActivities(List<OntologyActivity> activities)
     {
-        var activities = await context.OntologyActivities
-            .Where(a => a.OntologyId == ontologyId && a.UserId == userId)
-            .ToListAsync();
-
         return new CollaboratorEditStats
         {
             TotalEdits = activities.Count,
@@ -582,7 +601,25 @@ public class OntologyShareService : IOntologyShareService
     }
 
     /// <summary>
-    /// Calculate edit statistics for a guest user
+    /// Calculate edit statistics for a single user (database query version - for backward compatibility)
+    /// NOTE: Prefer CalculateEditStatsFromActivities with pre-loaded data to avoid N+1 queries
+    /// </summary>
+    private async Task<CollaboratorEditStats> CalculateEditStatsAsync(
+        OntologyDbContext context,
+        int ontologyId,
+        string userId)
+    {
+        var activities = await context.OntologyActivities
+            .Where(a => a.OntologyId == ontologyId && a.UserId == userId)
+            .AsNoTracking()
+            .ToListAsync();
+
+        return CalculateEditStatsFromActivities(activities);
+    }
+
+    /// <summary>
+    /// Calculate edit statistics for a guest user (database query version - for backward compatibility)
+    /// NOTE: Prefer CalculateEditStatsFromActivities with pre-loaded data to avoid N+1 queries
     /// </summary>
     private async Task<CollaboratorEditStats> CalculateEditStatsForGuestAsync(
         OntologyDbContext context,
@@ -591,22 +628,10 @@ public class OntologyShareService : IOntologyShareService
     {
         var activities = await context.OntologyActivities
             .Where(a => a.OntologyId == ontologyId && a.GuestSessionToken == guestSessionToken)
+            .AsNoTracking()
             .ToListAsync();
 
-        return new CollaboratorEditStats
-        {
-            TotalEdits = activities.Count,
-            ConceptsCreated = activities.Count(a => a.EntityType == EntityTypes.Concept && a.ActivityType == ActivityTypes.Create),
-            ConceptsUpdated = activities.Count(a => a.EntityType == EntityTypes.Concept && a.ActivityType == ActivityTypes.Update),
-            ConceptsDeleted = activities.Count(a => a.EntityType == EntityTypes.Concept && a.ActivityType == ActivityTypes.Delete),
-            RelationshipsCreated = activities.Count(a => a.EntityType == EntityTypes.Relationship && a.ActivityType == ActivityTypes.Create),
-            RelationshipsUpdated = activities.Count(a => a.EntityType == EntityTypes.Relationship && a.ActivityType == ActivityTypes.Update),
-            RelationshipsDeleted = activities.Count(a => a.EntityType == EntityTypes.Relationship && a.ActivityType == ActivityTypes.Delete),
-            PropertiesCreated = activities.Count(a => a.EntityType == EntityTypes.Property && a.ActivityType == ActivityTypes.Create),
-            PropertiesUpdated = activities.Count(a => a.EntityType == EntityTypes.Property && a.ActivityType == ActivityTypes.Update),
-            PropertiesDeleted = activities.Count(a => a.EntityType == EntityTypes.Property && a.ActivityType == ActivityTypes.Delete),
-            LastEditDate = activities.Any() ? activities.Max(a => a.CreatedAt) : null
-        };
+        return CalculateEditStatsFromActivities(activities);
     }
 
     /// <summary>
