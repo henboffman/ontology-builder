@@ -129,6 +129,7 @@ public class UserPreferencesService : IUserPreferencesService
         existing.TextSizeScale = preferences.TextSizeScale;
         existing.Theme = preferences.Theme;
         existing.LayoutStyle = preferences.LayoutStyle;
+        existing.ShowKeyboardShortcuts = preferences.ShowKeyboardShortcuts;
 
         existing.UpdatedAt = DateTime.UtcNow;
 
@@ -183,6 +184,7 @@ public class UserPreferencesService : IUserPreferencesService
         preferences.TextSizeScale = defaults.TextSizeScale;
         preferences.Theme = defaults.Theme;
         preferences.LayoutStyle = defaults.LayoutStyle;
+        preferences.ShowKeyboardShortcuts = defaults.ShowKeyboardShortcuts;
 
         preferences.UpdatedAt = DateTime.UtcNow;
 
@@ -239,5 +241,42 @@ public class UserPreferencesService : IUserPreferencesService
 
         // Invalidate cache
         _cache.Remove($"{CACHE_KEY_PREFIX}{currentUser.Id}");
+    }
+
+    /// <summary>
+    /// Update ShowKeyboardShortcuts preference for a specific user
+    /// </summary>
+    public async Task UpdateShowKeyboardShortcutsAsync(string userId, bool showShortcuts)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        var preferences = await context.UserPreferences
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (preferences == null)
+        {
+            // Create new preferences with the setting
+            preferences = new UserPreferences
+            {
+                UserId = userId,
+                ShowKeyboardShortcuts = showShortcuts,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            context.UserPreferences.Add(preferences);
+        }
+        else
+        {
+            preferences.ShowKeyboardShortcuts = showShortcuts;
+            preferences.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await context.SaveChangesAsync();
+
+        _logger.LogInformation("Updated ShowKeyboardShortcuts to {ShowShortcuts} for user {UserId}", showShortcuts, userId);
+
+        // Invalidate cache
+        _cache.Remove($"{CACHE_KEY_PREFIX}{userId}");
     }
 }

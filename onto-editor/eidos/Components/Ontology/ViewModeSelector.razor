@@ -6,49 +6,49 @@
         <!-- Desktop: View mode buttons -->
         <div class="btn-group" role="group">
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Graph)"
-                disabled="@(CurrentViewMode == ViewMode.Graph)" title="Graph View">
+                disabled="@(CurrentViewMode == ViewMode.Graph)" title="💡 Graph View - Interactive visual diagram of your ontology. Ctrl+Click nodes to quick-add concepts">
                 <i class="bi bi-diagram-3"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.List)"
-                disabled="@(CurrentViewMode == ViewMode.List)" title="List View">
+                disabled="@(CurrentViewMode == ViewMode.List)" title="List View - Tabular view with sorting and filtering">
                 <i class="bi bi-list-ul"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Hierarchy)"
-                disabled="@(CurrentViewMode == ViewMode.Hierarchy)" title="Hierarchy View">
+                disabled="@(CurrentViewMode == ViewMode.Hierarchy)" title="Hierarchy View - Tree structure showing is-a relationships">
                 <i class="bi bi-diagram-2"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Instances)"
-                disabled="@(CurrentViewMode == ViewMode.Instances)" title="Instances">
+                disabled="@(CurrentViewMode == ViewMode.Instances)" title="Instances - Individual examples of concepts">
                 <i class="bi bi-person"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Ttl)"
-                disabled="@(CurrentViewMode == ViewMode.Ttl)" title="Export/View TTL">
+                disabled="@(CurrentViewMode == ViewMode.Ttl)" title="Export/View TTL - View RDF/OWL representation">
                 <i class="bi bi-file-code"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)"
-                disabled="@(CurrentViewMode == ViewMode.Notes)" title="Notes">
+                disabled="@(CurrentViewMode == ViewMode.Notes)" title="Notes - Personal documentation and markdown notes">
                 <i class="bi bi-journal-text"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Templates)"
-                disabled="@(CurrentViewMode == ViewMode.Templates)" title="Templates">
+                disabled="@(CurrentViewMode == ViewMode.Templates)" title="Templates - Reusable concept patterns for quick creation">
                 <i class="bi bi-journal-code"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Links)"
-                disabled="@(CurrentViewMode == ViewMode.Links)" title="Linked Ontologies">
+                disabled="@(CurrentViewMode == ViewMode.Links)" title="Linked Ontologies - Connections to other ontologies">
                 <i class="bi bi-link-45deg"></i>
             </button>
             <button class="btn btn-outline-primary"
                 @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Collaborators)"
-                disabled="@(CurrentViewMode == ViewMode.Collaborators)" title="Collaborators">
+                disabled="@(CurrentViewMode == ViewMode.Collaborators)" title="Collaborators - View who has access and recent activity">
                 <i class="bi bi-people-fill"></i>
             </button>
             <button class="btn btn-outline-primary"
                 @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.VersionHistory)"
-                disabled="@(CurrentViewMode == ViewMode.VersionHistory)" title="Version History">
+                disabled="@(CurrentViewMode == ViewMode.VersionHistory)" title="Version History - Track changes and revert if needed">
                 <i class="bi bi-clock-history"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Help)"
-                disabled="@(CurrentViewMode == ViewMode.Help)" title="Help">
+                disabled="@(CurrentViewMode == ViewMode.Help)" title="Help - Learn about ontology concepts and usage">
                 <i class="bi bi-question-circle"></i>
             </button>
         </div>

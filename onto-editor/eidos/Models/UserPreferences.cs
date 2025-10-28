@@ -140,6 +140,13 @@ public class UserPreferences
     [StringLength(20)]
     public string LayoutStyle { get; set; } = "topbar";
 
+    // === User Interface Preferences ===
+
+    /// <summary>
+    /// Whether to show the keyboard shortcuts banner
+    /// </summary>
+    public bool ShowKeyboardShortcuts { get; set; } = true;
+
     // === Metadata ===
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

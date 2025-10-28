@@ -68,6 +68,8 @@ namespace Eidos.Services
             graph.NamespaceMap.AddNamespace("rdfs", UriFactory.Create(OntologyNamespaces.RdfSchema));
             graph.NamespaceMap.AddNamespace("owl", UriFactory.Create(OntologyNamespaces.Owl));
             graph.NamespaceMap.AddNamespace("dc", UriFactory.Create(OntologyNamespaces.DublinCoreElements));
+            graph.NamespaceMap.AddNamespace("dcterms", UriFactory.Create(OntologyNamespaces.DublinCoreTerms));
+            graph.NamespaceMap.AddNamespace("skos", UriFactory.Create(OntologyNamespaces.Skos));
             graph.NamespaceMap.AddNamespace("xsd", UriFactory.Create("http://www.w3.org/2001/XMLSchema#"));
 
             if (ontology.UsesBFO)
@@ -95,6 +97,43 @@ namespace Eidos.Services
             var rdfType = graph.CreateUriNode("rdf:type");
             var owlOntology = graph.CreateUriNode("owl:Ontology");
             graph.Assert(ontologyNode, rdfType, owlOntology);
+
+            // Add owl:imports for imported ontologies (standards-compliant)
+            var owlImports = graph.CreateUriNode("owl:imports");
+            if (ontology.UsesBFO)
+            {
+                var bfoImport = graph.CreateUriNode(UriFactory.Create("http://purl.obolibrary.org/obo/bfo.owl"));
+                graph.Assert(ontologyNode, owlImports, bfoImport);
+            }
+
+            if (ontology.UsesProvO)
+            {
+                var provImport = graph.CreateUriNode(UriFactory.Create("http://www.w3.org/ns/prov-o"));
+                graph.Assert(ontologyNode, owlImports, provImport);
+            }
+
+            // Add version IRI if version is specified
+            if (!string.IsNullOrWhiteSpace(ontology.Version))
+            {
+                var owlVersionIRI = graph.CreateUriNode("owl:versionIRI");
+                var versionUri = baseUri.TrimEnd('/') + "/" + ontology.Version;
+                var versionNode = graph.CreateUriNode(UriFactory.Create(versionUri));
+                graph.Assert(ontologyNode, owlVersionIRI, versionNode);
+            }
+
+            // Add creation and modification dates with proper XSD types
+            var dctermsCreated = graph.CreateUriNode("dcterms:created");
+            var dctermsModified = graph.CreateUriNode("dcterms:modified");
+
+            var createdLiteral = graph.CreateLiteralNode(
+                ontology.CreatedAt.ToString("yyyy-MM-dd"),
+                UriFactory.Create(OntologyNamespaces.Xsd.Date));
+            graph.Assert(ontologyNode, dctermsCreated, createdLiteral);
+
+            var modifiedLiteral = graph.CreateLiteralNode(
+                ontology.UpdatedAt.ToString("yyyy-MM-dd"),
+                UriFactory.Create(OntologyNamespaces.Xsd.Date));
+            graph.Assert(ontologyNode, dctermsModified, modifiedLiteral);
 
             if (!string.IsNullOrWhiteSpace(ontology.Description))
             {
@@ -149,37 +188,46 @@ namespace Eidos.Services
                 var labelLiteral = graph.CreateLiteralNode(concept.Name);
                 graph.Assert(conceptNode, rdfsLabel, labelLiteral);
 
-                // Definition as comment
+                // Definition as comment (primary definition)
                 if (!string.IsNullOrWhiteSpace(concept.Definition))
                 {
                     var definitionLiteral = graph.CreateLiteralNode(concept.Definition);
                     graph.Assert(conceptNode, rdfsComment, definitionLiteral);
                 }
 
-                // Simple explanation
+                // Simple explanation using SKOS definition (standards-compliant alternative explanation)
                 if (!string.IsNullOrWhiteSpace(concept.SimpleExplanation))
                 {
-                    var explanationPredicate = graph.CreateUriNode(UriFactory.Create(baseUri + "simpleExplanation"));
+                    var skosDefinition = graph.CreateUriNode("skos:definition");
                     var explanationLiteral = graph.CreateLiteralNode(concept.SimpleExplanation);
-                    graph.Assert(conceptNode, explanationPredicate, explanationLiteral);
+                    graph.Assert(conceptNode, skosDefinition, explanationLiteral);
                 }
 
-                // Examples
+                // Examples using SKOS example (supports multiple values)
                 if (!string.IsNullOrWhiteSpace(concept.Examples))
                 {
-                    var examplesPredicate = graph.CreateUriNode(UriFactory.Create(baseUri + "examples"));
-                    var examplesLiteral = graph.CreateLiteralNode(concept.Examples);
-                    graph.Assert(conceptNode, examplesPredicate, examplesLiteral);
+                    // Split examples by comma and create separate assertions for each
+                    var examplesList = concept.Examples.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    var skosExample = graph.CreateUriNode("skos:example");
+
+                    foreach (var example in examplesList)
+                    {
+                        var exampleLiteral = graph.CreateLiteralNode(example);
+                        graph.Assert(conceptNode, skosExample, exampleLiteral);
+                    }
                 }
 
-                // Category
+                // Category using Dublin Core subject
                 if (!string.IsNullOrWhiteSpace(concept.Category))
                 {
-                    var categoryPredicate = graph.CreateUriNode(UriFactory.Create(baseUri + "category"));
+                    var dcSubject = graph.CreateUriNode("dc:subject");
                     var categoryLiteral = graph.CreateLiteralNode(concept.Category);
-                    graph.Assert(conceptNode, categoryPredicate, categoryLiteral);
+                    graph.Assert(conceptNode, dcSubject, categoryLiteral);
                 }
             }
+
+            // Export property declarations for all relationship types
+            ExportPropertyDeclarations(graph, ontology, baseUri, rdfType, rdfsLabel, rdfsComment);
 
             // Export relationships
             foreach (var relationship in ontology.Relationships)
@@ -211,6 +259,68 @@ namespace Eidos.Services
             ExportIndividuals(graph, ontology, baseUri, rdfType);
 
             return graph;
+        }
+
+        /// <summary>
+        /// Export property declarations for all custom relationship types.
+        /// This ensures all properties are properly declared as owl:ObjectProperty
+        /// with labels and descriptions for semantic web compliance.
+        /// </summary>
+        private void ExportPropertyDeclarations(IGraph graph, Ontology ontology, string baseUri,
+            IUriNode rdfType, IUriNode rdfsLabel, IUriNode rdfsComment)
+        {
+            var owlObjectProperty = graph.CreateUriNode("owl:ObjectProperty");
+            var rdfsDomain = graph.CreateUriNode("rdfs:domain");
+            var rdfsRange = graph.CreateUriNode("rdfs:range");
+
+            // Get all unique relationship types (excluding "is-a" which uses rdfs:subClassOf)
+            var relationshipTypes = ontology.Relationships
+                .Where(r => r.RelationType.ToLower() != "is-a")
+                .GroupBy(r => r.RelationType)
+                .Select(g => new {
+                    Type = g.Key,
+                    FirstRelationship = g.First(),
+                    SourceConcepts = g.Select(r => r.SourceConcept).Distinct().ToList(),
+                    TargetConcepts = g.Select(r => r.TargetConcept).Distinct().ToList()
+                })
+                .ToList();
+
+            foreach (var relType in relationshipTypes)
+            {
+                var propertyUri = CreatePropertyUri(baseUri, relType.Type);
+                var propertyNode = graph.CreateUriNode(UriFactory.Create(propertyUri));
+
+                // Declare as owl:ObjectProperty
+                graph.Assert(propertyNode, rdfType, owlObjectProperty);
+
+                // Add human-readable label
+                var label = relType.Type.Replace("_", " ").Replace("-", " ");
+                var labelLiteral = graph.CreateLiteralNode(label);
+                graph.Assert(propertyNode, rdfsLabel, labelLiteral);
+
+                // Add description/comment if available
+                if (relType.FirstRelationship != null && !string.IsNullOrWhiteSpace(relType.FirstRelationship.Description))
+                {
+                    var commentLiteral = graph.CreateLiteralNode(relType.FirstRelationship.Description);
+                    graph.Assert(propertyNode, rdfsComment, commentLiteral);
+                }
+
+                // Add domain and range if there's a clear pattern
+                // (Only add if all uses of this property have the same source/target concepts)
+                if (relType.SourceConcepts.Count == 1)
+                {
+                    var domainUri = CreateConceptUri(baseUri, relType.SourceConcepts[0]);
+                    var domainNode = graph.CreateUriNode(UriFactory.Create(domainUri));
+                    graph.Assert(propertyNode, rdfsDomain, domainNode);
+                }
+
+                if (relType.TargetConcepts.Count == 1)
+                {
+                    var rangeUri = CreateConceptUri(baseUri, relType.TargetConcepts[0]);
+                    var rangeNode = graph.CreateUriNode(UriFactory.Create(rangeUri));
+                    graph.Assert(propertyNode, rdfsRange, rangeNode);
+                }
+            }
         }
 
         private void ExportConceptRestrictions(IGraph graph, Ontology ontology, string baseUri)

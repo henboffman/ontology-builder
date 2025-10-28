@@ -31,4 +31,9 @@ public interface IUserPreferencesService
     /// Update theme preference for the current user
     /// </summary>
     Task UpdateThemeAsync(string theme);
+
+    /// <summary>
+    /// Update ShowKeyboardShortcuts preference for a specific user
+    /// </summary>
+    Task UpdateShowKeyboardShortcutsAsync(string userId, bool showShortcuts);
 }

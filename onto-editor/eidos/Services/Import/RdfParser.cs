@@ -9,15 +9,50 @@ namespace Eidos.Services.Import;
 /// </summary>
 public class RdfParser : IRdfParser
 {
+    // Maximum file size: 10MB (defense-in-depth, matches frontend validation)
+    private const long MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
     public Task<TtlImportResult> ParseAsync(Stream fileStream)
     {
         try
         {
             var graph = new Graph();
 
-            // Read the content to detect format
+            // Security: Validate stream size before reading to prevent DoS attacks
+            if (fileStream.CanSeek && fileStream.Length > MAX_FILE_SIZE_BYTES)
+            {
+                return Task.FromResult(new TtlImportResult
+                {
+                    Success = false,
+                    ErrorMessage = $"File size exceeds maximum allowed size of {MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB"
+                });
+            }
+
+            // Read the content to detect format with size limit enforcement
             using var memoryStream = new MemoryStream();
-            fileStream.CopyTo(memoryStream);
+
+            // Security: Copy with buffer to prevent memory exhaustion from large files
+            var buffer = new byte[8192]; // 8KB buffer
+            long totalBytesRead = 0;
+            int bytesRead;
+
+            while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                totalBytesRead += bytesRead;
+
+                // Security: Enforce size limit during copy for non-seekable streams
+                if (totalBytesRead > MAX_FILE_SIZE_BYTES)
+                {
+                    return Task.FromResult(new TtlImportResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"File size exceeds maximum allowed size of {MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB"
+                    });
+                }
+
+                memoryStream.Write(buffer, 0, bytesRead);
+            }
+
             memoryStream.Position = 0;
 
             var content = System.Text.Encoding.UTF8.GetString(memoryStream.ToArray());

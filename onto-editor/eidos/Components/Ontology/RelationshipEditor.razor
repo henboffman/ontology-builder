@@ -34,17 +34,38 @@
             <label class="form-label small">
                 Relationship Type <span class="text-danger">*</span>
                 <i class="bi bi-info-circle" title="The type of connection between concepts (e.g., 'is-a', 'part-of', 'causes')"></i>
-            </label>
-            <select class="form-select form-select-sm" @bind="relationType">
-                <option value="">-- Select or type below --</option>
-                @foreach (var template in CommonRelationshipTypes.Templates)
+                @if (ExistingRelationshipTypes != null && ExistingRelationshipTypes.Any())
                 {
-                    <option value="@template.Type">@template.Type (@template.Category)</option>
+                    <i class="bi bi-arrow-repeat text-success" title="💡 Tip: Your previously used custom types are now available in the dropdown!"></i>
+                }
+            </label>
+            <select class="form-select form-select-sm" @bind="relationType"
+                    title="Choose from common types or your custom types">
+                <option value="">-- Select or type below --</option>
+                <optgroup label="Common Types">
+                    @foreach (var template in CommonRelationshipTypes.Templates)
+                    {
+                        <option value="@template.Type">@template.Type (@template.Category)</option>
+                    }
+                </optgroup>
+                @if (ExistingRelationshipTypes != null && ExistingRelationshipTypes.Any())
+                {
+                    <optgroup label="Your Custom Types">
+                        @foreach (var existingType in ExistingRelationshipTypes.OrderBy(t => t))
+                        {
+                            // Only show if not already in common types
+                            if (!CommonRelationshipTypes.Templates.Any(t => t.Type.Equals(existingType, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                <option value="@existingType">@existingType (custom)</option>
+                            }
+                        }
+                    </optgroup>
                 }
             </select>
             <input type="text" class="form-control form-control-sm mt-1"
                    @bind="customType"
-                   placeholder="Or enter custom type (e.g., manages, creates, influences)" />
+                   placeholder="Or enter new custom type (e.g., manages, creates, influences)"
+                   title="💡 Tip: Custom types you create will be saved and reusable for other relationships" />
         </div>
         <div class="mb-2">
             <label class="form-label small">
@@ -114,6 +135,9 @@
 
     [Parameter, EditorRequired]
     public ICollection<Concept> Concepts { get; set; } = new List<Concept>();
+
+    [Parameter]
+    public IEnumerable<string>? ExistingRelationshipTypes { get; set; }
 
     [Parameter]
     public int SourceConceptId { get; set; }

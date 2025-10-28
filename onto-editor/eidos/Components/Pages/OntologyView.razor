@@ -78,6 +78,41 @@ else
             </div>
         }
 
+        <!-- Keyboard Shortcuts Banner -->
+        @if (showKeyboardShortcutsBanner)
+        {
+            <div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-lightning-charge-fill me-2 text-warning fs-5"></i>
+                    <div class="flex-grow-1">
+                        <strong>💡 Keyboard Shortcuts & Quick Tips</strong>
+                        <div class="row mt-2 small">
+                            <div class="col-12 col-md-6">
+                                <ul class="mb-1">
+                                    <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> - Quickly add multiple concepts</li>
+                                    <li><kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Ctrl</kbd> + <kbd>Y</kbd> - Undo/Redo</li>
+                                    <li><kbd>Ctrl</kbd> + <kbd>Click</kbd> node - Quick-add related concept</li>
+                                </ul>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <ul class="mb-1">
+                                    <li>Custom relationship types are saved for reuse</li>
+                                    <li>Click concepts to view connections</li>
+                                    <li>Templates help create concepts faster</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="DismissKeyboardShortcutsPermanently">
+                                <i class="bi bi-x-circle me-1"></i> Don't show again
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="DismissKeyboardShortcutsTemporarily" aria-label="Close"></button>
+                </div>
+            </div>
+        }
+
         <!-- Header -->
         <OntologyHeader Ontology="@ontology"
                        OnBackClick="@GoBack"
@@ -290,6 +325,7 @@ else
                     <RelationshipEditor IsEditing="@(editingRelationship != null)"
                                        ShouldPulse="@shouldPulseSidebar"
                                        Concepts="@ontology.Concepts"
+                                       ExistingRelationshipTypes="@GetExistingRelationshipTypes()"
                                        SourceConceptId="@newRelationship.SourceConceptId"
                                        SourceConceptIdChanged="@((value) => newRelationship.SourceConceptId = value)"
                                        TargetConceptId="@newRelationship.TargetConceptId"
@@ -353,6 +389,49 @@ else
                                     <strong>Examples:</strong><br/>
                                     <em>@selectedConcept.Examples</em>
                                 </p>
+                            }
+
+                            @* Connected Concepts Section *@
+                            @{
+                                var connectedConcepts = GetConnectedConcepts(selectedConcept.Id);
+                                if (connectedConcepts.Any())
+                                {
+                                    <hr class="my-3" />
+                                    <div class="mb-3">
+                                        <h6 class="mb-2"><i class="bi bi-diagram-3 me-1"></i>Connected Concepts</h6>
+                                        <div class="list-group list-group-flush">
+                                            @foreach (var connection in connectedConcepts)
+                                            {
+                                                <div class="list-group-item px-0 py-2">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div style="width: 20px; height: 20px; background-color: @connection.ConceptColor; border-radius: 3px;"></div>
+                                                        <div class="flex-grow-1">
+                                                            <strong>@connection.ConceptName</strong>
+                                                            <br/>
+                                                            <small class="text-muted">
+                                                                @if (connection.IsOutgoing)
+                                                                {
+                                                                    <span>@selectedConcept.Name <i class="bi bi-arrow-right mx-1"></i> @connection.ConceptName</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span>@connection.ConceptName <i class="bi bi-arrow-right mx-1"></i> @selectedConcept.Name</span>
+                                                                }
+                                                                <br/>
+                                                                <span class="badge bg-secondary">@connection.RelationType</span>
+                                                            </small>
+                                                        </div>
+                                                        <button class="btn btn-sm btn-outline-primary"
+                                                                @onclick="() => SelectConcept(ontology!.Concepts.First(c => c.Id == connection.ConceptId))"
+                                                                title="View this concept">
+                                                            <i class="bi bi-eye"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
                             }
 
                             <hr class="my-3" />
@@ -570,6 +649,7 @@ else
                             <RelationshipEditor IsEditing="@(editingRelationship != null)"
                                                ShouldPulse="@shouldPulseSidebar"
                                                Concepts="@ontology.Concepts"
+                                               ExistingRelationshipTypes="@GetExistingRelationshipTypes()"
                                                SourceConceptId="@newRelationship.SourceConceptId"
                                                SourceConceptIdChanged="@((value) => newRelationship.SourceConceptId = value)"
                                                TargetConceptId="@newRelationship.TargetConceptId"
@@ -630,6 +710,49 @@ else
                                             <strong>Examples:</strong><br/>
                                             <em>@selectedConcept.Examples</em>
                                         </p>
+                                    }
+
+                                    @* Connected Concepts Section *@
+                                    @{
+                                        var connectedConceptsMobile = GetConnectedConcepts(selectedConcept.Id);
+                                        if (connectedConceptsMobile.Any())
+                                        {
+                                            <hr class="my-3" />
+                                            <div class="mb-3">
+                                                <h6 class="mb-2"><i class="bi bi-diagram-3 me-1"></i>Connected Concepts</h6>
+                                                <div class="list-group list-group-flush">
+                                                    @foreach (var connection in connectedConceptsMobile)
+                                                    {
+                                                        <div class="list-group-item px-0 py-2">
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <div style="width: 20px; height: 20px; background-color: @connection.ConceptColor; border-radius: 3px;"></div>
+                                                                <div class="flex-grow-1">
+                                                                    <strong>@connection.ConceptName</strong>
+                                                                    <br/>
+                                                                    <small class="text-muted">
+                                                                        @if (connection.IsOutgoing)
+                                                                        {
+                                                                            <span>@selectedConcept.Name <i class="bi bi-arrow-right mx-1"></i> @connection.ConceptName</span>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span>@connection.ConceptName <i class="bi bi-arrow-right mx-1"></i> @selectedConcept.Name</span>
+                                                                        }
+                                                                        <br/>
+                                                                        <span class="badge bg-secondary">@connection.RelationType</span>
+                                                                    </small>
+                                                                </div>
+                                                                <button class="btn btn-sm btn-outline-primary"
+                                                                        @onclick="() => SelectConcept(ontology!.Concepts.First(c => c.Id == connection.ConceptId))"
+                                                                        title="View this concept">
+                                                                    <i class="bi bi-eye"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
                                     }
 
                                     <hr class="my-3" />
@@ -779,6 +902,9 @@ else
     private DotNetObjectReference<OntologyView>? dotNetRef;
     private bool hasRendered = false;
 
+    // Keyboard shortcuts banner
+    private bool showKeyboardShortcutsBanner = true;
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -786,6 +912,13 @@ else
             // Get current user ID
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            // Load user preferences for keyboard shortcuts banner
+            if (!string.IsNullOrEmpty(currentUserId))
+            {
+                var preferences = await PreferencesService.GetPreferencesAsync(currentUserId);
+                showKeyboardShortcutsBanner = preferences.ShowKeyboardShortcuts;
+            }
 
             ontology = await OntologyService.GetOntologyAsync(Id);
 
@@ -2324,6 +2457,99 @@ else
         editingIndividual = null;
         selectedConcept = null;
         selectedRelationship = null;
+    }
+
+    // Helper class for connected concept information
+    private class ConnectedConceptInfo
+    {
+        public int ConceptId { get; set; }
+        public string ConceptName { get; set; } = string.Empty;
+        public string ConceptColor { get; set; } = "#6c757d";
+        public string RelationType { get; set; } = string.Empty;
+        public bool IsOutgoing { get; set; }
+    }
+
+    // Get all concepts connected to the given concept via relationships
+    private List<ConnectedConceptInfo> GetConnectedConcepts(int conceptId)
+    {
+        if (ontology == null)
+            return new List<ConnectedConceptInfo>();
+
+        var connections = new List<ConnectedConceptInfo>();
+
+        // Find all relationships where this concept is either source or target
+        foreach (var relationship in ontology.Relationships)
+        {
+            int? connectedConceptId = null;
+            bool isOutgoing = false;
+
+            if (relationship.SourceConceptId == conceptId)
+            {
+                connectedConceptId = relationship.TargetConceptId;
+                isOutgoing = true;
+            }
+            else if (relationship.TargetConceptId == conceptId)
+            {
+                connectedConceptId = relationship.SourceConceptId;
+                isOutgoing = false;
+            }
+
+            if (connectedConceptId.HasValue)
+            {
+                var connectedConcept = ontology.Concepts.FirstOrDefault(c => c.Id == connectedConceptId.Value);
+                if (connectedConcept != null)
+                {
+                    connections.Add(new ConnectedConceptInfo
+                    {
+                        ConceptId = connectedConcept.Id,
+                        ConceptName = connectedConcept.Name,
+                        ConceptColor = connectedConcept.Color ?? "#6c757d",
+                        RelationType = relationship.RelationType,
+                        IsOutgoing = isOutgoing
+                    });
+                }
+            }
+        }
+
+        return connections.OrderBy(c => c.ConceptName).ToList();
+    }
+
+    // Get all unique relationship types used in the current ontology
+    private IEnumerable<string> GetExistingRelationshipTypes()
+    {
+        if (ontology == null)
+            return Enumerable.Empty<string>();
+
+        return ontology.Relationships
+            .Select(r => r.RelationType)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct()
+            .OrderBy(t => t);
+    }
+
+    // Keyboard shortcuts banner dismiss methods
+    private void DismissKeyboardShortcutsTemporarily()
+    {
+        showKeyboardShortcutsBanner = false;
+    }
+
+    private async Task DismissKeyboardShortcutsPermanently()
+    {
+        showKeyboardShortcutsBanner = false;
+
+        if (!string.IsNullOrEmpty(currentUserId))
+        {
+            try
+            {
+                await PreferencesService.UpdateShowKeyboardShortcutsAsync(currentUserId, false);
+                ToastService.ShowSuccess("Keyboard shortcuts banner will no longer be shown");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to save keyboard shortcuts preference for user {UserId}", currentUserId);
+                ToastService.ShowError("Failed to save preference");
+            }
+        }
     }
 
 }
