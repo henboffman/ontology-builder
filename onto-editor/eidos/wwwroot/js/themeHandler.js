@@ -31,8 +31,8 @@ const ThemeHandler = {
             return stored;
         }
 
-        // Check document attribute
-        const docTheme = document.documentElement.getAttribute('data-theme');
+        // Check Bootstrap data-bs-theme attribute
+        const docTheme = document.documentElement.getAttribute('data-bs-theme');
         if (docTheme) {
             return docTheme;
         }
@@ -47,7 +47,7 @@ const ThemeHandler = {
     },
 
     /**
-     * Apply a theme to the document
+     * Apply a theme to the document using Bootstrap 5.3+ data-bs-theme attribute
      * @param {string} theme - 'light' or 'dark'
      */
     applyTheme: function(theme) {
@@ -62,20 +62,20 @@ const ThemeHandler = {
         // Set expected theme for the observer to enforce
         window.expectedTheme = theme;
 
-        // Apply to document
+        // Apply to document using Bootstrap 5.3+ data-bs-theme attribute
         window.isApplying = true;
         if (theme === 'dark') {
-            console.log('[ThemeHandler.applyTheme] Setting data-theme="dark"');
-            document.documentElement.setAttribute('data-theme', 'dark');
+            console.log('[ThemeHandler.applyTheme] Setting data-bs-theme="dark"');
+            document.documentElement.setAttribute('data-bs-theme', 'dark');
         } else {
-            console.log('[ThemeHandler.applyTheme] Removing data-theme (light mode)');
-            document.documentElement.removeAttribute('data-theme');
+            console.log('[ThemeHandler.applyTheme] Setting data-bs-theme="light"');
+            document.documentElement.setAttribute('data-bs-theme', 'light');
         }
         window.isApplying = false;
 
         // Verify it was set
-        const actualTheme = document.documentElement.getAttribute('data-theme');
-        console.log('[ThemeHandler.applyTheme] Verified DOM attribute data-theme:', actualTheme);
+        const actualTheme = document.documentElement.getAttribute('data-bs-theme');
+        console.log('[ThemeHandler.applyTheme] Verified DOM attribute data-bs-theme:', actualTheme);
 
         // Save to localStorage
         localStorage.setItem('theme', theme);
@@ -143,32 +143,23 @@ if (window.matchMedia) {
     });
 }
 
-// Auto-fix: Automatically reapply theme when Blazor removes it
+// Auto-fix: Automatically reapply theme when Blazor changes it
 window.expectedTheme = null;
 window.isApplying = false;
 
 const observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
-            const currentValue = document.documentElement.getAttribute('data-theme');
-            const currentTheme = currentValue || 'light';
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-bs-theme') {
+            const currentValue = document.documentElement.getAttribute('data-bs-theme');
 
-            console.log('[ThemeHandler] DOM MUTATION DETECTED: data-theme changed to:', currentValue || '(removed/light)');
+            console.log('[ThemeHandler] DOM MUTATION DETECTED: data-bs-theme changed to:', currentValue);
 
-            // If Blazor removed our dark theme, reapply it instantly
-            if (!window.isApplying && window.expectedTheme === 'dark' && currentValue !== 'dark') {
-                console.log('[ThemeHandler] AUTO-FIX: Blazor removed dark theme, reapplying immediately!');
+            // If Blazor changed our theme, reapply it instantly
+            if (!window.isApplying && window.expectedTheme && currentValue !== window.expectedTheme) {
+                console.log('[ThemeHandler] AUTO-FIX: Blazor changed theme to', currentValue, 'but expected', window.expectedTheme, '- reapplying!');
                 window.isApplying = true;
-                document.documentElement.setAttribute('data-theme', 'dark');
-                localStorage.setItem('theme', 'dark');
-                window.isApplying = false;
-            }
-            // If Blazor set dark theme when we want light, fix it
-            else if (!window.isApplying && window.expectedTheme === 'light' && currentValue === 'dark') {
-                console.log('[ThemeHandler] AUTO-FIX: Blazor set dark theme, removing for light mode!');
-                window.isApplying = true;
-                document.documentElement.removeAttribute('data-theme');
-                localStorage.setItem('theme', 'light');
+                document.documentElement.setAttribute('data-bs-theme', window.expectedTheme);
+                localStorage.setItem('theme', window.expectedTheme);
                 window.isApplying = false;
             }
         }
@@ -177,7 +168,7 @@ const observer = new MutationObserver(function(mutations) {
 
 observer.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ['data-theme']
+    attributeFilter: ['data-bs-theme']
 });
 
-console.log('[ThemeHandler] Auto-fix monitoring enabled');
+console.log('[ThemeHandler] Auto-fix monitoring enabled for data-bs-theme');

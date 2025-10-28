@@ -148,7 +148,10 @@
     private GraphVisualization? graphVisualization;
     private bool showGraphHelp = false;
 
-    private static readonly string[] PredefinedColors = { "#4A90E2", "#E94B3C", "#6BCF7F", "#F4A261", "#9B59B6", "#E67E22", "#1ABC9C", "#3498DB" };
+    // Predefined color palette for graph nodes - matches CSS variables in themes.css
+    // These correspond to: entity, function, quality, attribute, role, process, related, information
+    // Note: Dark mode brightness adjustments are handled by CSS when these colors are applied to nodes
+    private static readonly string[] PredefinedColors = { "#4A90E2", "#E74C3C", "#6BCF7F", "#F4A261", "#9B59B6", "#E67E22", "#1ABC9C", "#3498DB" };
 
     public async Task RefreshGraph()
     {

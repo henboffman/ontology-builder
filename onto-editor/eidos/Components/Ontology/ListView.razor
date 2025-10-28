@@ -61,7 +61,7 @@
                 {
                     <div class="list-group-item list-group-item-action concept-list-item"
                          @onclick="() => OnConceptSelect.InvokeAsync(concept)"
-                         style="cursor: pointer; border-left: 4px solid @(concept.Color ?? "#6c757d")">
+                         style="cursor: pointer; border-left: 4px solid @(concept.Color ?? "var(--concept-secondary)")">
                         <div class="concept-item-layout">
                             <div class="concept-content">
                                 <div class="concept-header">

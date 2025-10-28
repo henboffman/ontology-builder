@@ -62,10 +62,35 @@
     --scrollbar-track: #f1f1f1;
     --scrollbar-thumb: #c1c1c1;
     --scrollbar-thumb-hover: #a8a8a8;
+
+    /* Concept/Graph Colors */
+    --concept-default: #4A90E2;        /* Blue - default concept color */
+    --concept-secondary: #6c757d;      /* Gray - fallback color */
+    --concept-entity: #4A90E2;         /* Blue */
+    --concept-process: #E67E22;        /* Orange */
+    --concept-quality: #6BCF7F;        /* Green */
+    --concept-role: #9B59B6;           /* Purple */
+    --concept-function: #E74C3C;       /* Red */
+    --concept-information: #3498DB;    /* Light Blue */
+    --concept-event: #F39C12;          /* Amber */
+    --concept-related: #1ABC9C;        /* Teal */
+    --concept-attribute: #F4A261;      /* Peach */
+
+    /* Code/Pre Colors */
+    --code-bg-block: #f8f9fa;          /* Light gray for code blocks */
+    --code-text: #212529;              /* Dark text */
+
+    /* Border/Divider Colors */
+    --divider-light: #dee2e6;          /* Light border */
+    --divider-medium: #ced4da;         /* Medium border */
+
+    /* Accent Colors */
+    --accent-purple: #6f42c1;          /* Purple accent for headers */
+    --accent-blue: #0d6efd;            /* Blue accent */
 }
 
-/* Dark Theme */
-[data-theme="dark"] {
+/* Dark Theme - Using Bootstrap 5.3+ data-bs-theme attribute */
+[data-bs-theme="dark"] {
     /* Background colors */
     --bg-primary: #1a1d23;
     --bg-secondary: #2d3139;
@@ -124,6 +149,31 @@
     --scrollbar-track: #2d3139;
     --scrollbar-thumb: #4a4f5a;
     --scrollbar-thumb-hover: #5a5f6a;
+
+    /* Concept/Graph Colors - Brighter for dark mode visibility */
+    --concept-default: #5FA3F0;        /* Brighter blue */
+    --concept-secondary: #8a8f98;      /* Lighter gray */
+    --concept-entity: #5FA3F0;         /* Brighter blue */
+    --concept-process: #F39746;        /* Brighter orange */
+    --concept-quality: #7FDB95;        /* Brighter green */
+    --concept-role: #B077D6;           /* Brighter purple */
+    --concept-function: #F46B5E;       /* Brighter red */
+    --concept-information: #4AA9E8;    /* Brighter light blue */
+    --concept-event: #FFB038;          /* Brighter amber */
+    --concept-related: #2DCFB3;        /* Brighter teal */
+    --concept-attribute: #FFB88C;      /* Brighter peach */
+
+    /* Code/Pre Colors - Dark mode appropriate */
+    --code-bg-block: #1e2127;          /* Dark background for code */
+    --code-text: #e8eaed;              /* Light text */
+
+    /* Border/Divider Colors - Visible in dark mode */
+    --divider-light: #3a3f4a;          /* Darker border */
+    --divider-medium: #4a4f5a;         /* Medium-dark border */
+
+    /* Accent Colors - Adjusted for dark mode */
+    --accent-purple: #8B5FD6;          /* Lighter purple */
+    --accent-blue: #4A90E2;            /* Lighter blue */
 }
 
 /* ========================================
@@ -197,25 +247,25 @@ body {
 }
 
 /* Fix for list-group-item-action hover in dark mode */
-[data-theme="dark"] .list-group-item-action:hover,
-[data-theme="dark"] .list-group-item-action:focus {
+[data-bs-theme="dark"] .list-group-item-action:hover,
+[data-bs-theme="dark"] .list-group-item-action:focus {
     background-color: var(--list-hover-bg);
     color: var(--text-primary) !important;
 }
 
-[data-theme="dark"] .list-group-item-action:hover h6,
-[data-theme="dark"] .list-group-item-action:hover p,
-[data-theme="dark"] .list-group-item-action:hover span,
-[data-theme="dark"] .list-group-item-action:hover em,
-[data-theme="dark"] .list-group-item-action:hover div {
+[data-bs-theme="dark"] .list-group-item-action:hover h6,
+[data-bs-theme="dark"] .list-group-item-action:hover p,
+[data-bs-theme="dark"] .list-group-item-action:hover span,
+[data-bs-theme="dark"] .list-group-item-action:hover em,
+[data-bs-theme="dark"] .list-group-item-action:hover div {
     color: inherit !important;
 }
 
-[data-theme="dark"] .list-group-item-action:hover .text-muted {
+[data-bs-theme="dark"] .list-group-item-action:hover .text-muted {
     color: var(--text-secondary) !important;
 }
 
-[data-theme="dark"] .list-group-item-action:hover .badge {
+[data-bs-theme="dark"] .list-group-item-action:hover .badge {
     opacity: 0.9;
 }
 
@@ -273,11 +323,11 @@ body {
 }
 
 /* Dark mode: Light gray border for better visibility */
-[data-theme="dark"] .btn-outline-secondary {
+[data-bs-theme="dark"] .btn-outline-secondary {
     border-color: #9ca3af; /* Light gray border for dark mode */
 }
 
-[data-theme="dark"] .btn-outline-secondary:hover {
+[data-bs-theme="dark"] .btn-outline-secondary:hover {
     background-color: var(--btn-secondary-bg);
     border-color: var(--btn-secondary-bg);
 }
@@ -287,7 +337,7 @@ body {
     border-color: #0dcaf0; /* Solid cyan border for light mode */
 }
 
-[data-theme="dark"] .btn-outline-info {
+[data-bs-theme="dark"] .btn-outline-info {
     border-color: #3dd5f3; /* Brighter cyan for dark mode */
 }
 
@@ -295,7 +345,7 @@ body {
     border-color: #198754; /* Solid green border for light mode */
 }
 
-[data-theme="dark"] .btn-outline-success {
+[data-bs-theme="dark"] .btn-outline-success {
     border-color: #20c997; /* Brighter green for dark mode */
 }
 
@@ -303,7 +353,7 @@ body {
     border-color: #ffc107; /* Solid yellow/orange border for light mode */
 }
 
-[data-theme="dark"] .btn-outline-warning {
+[data-bs-theme="dark"] .btn-outline-warning {
     border-color: #ffca2c; /* Brighter yellow for dark mode */
 }
 
@@ -362,26 +412,26 @@ code {
 }
 
 /* Custom scrollbar for dark mode */
-[data-theme="dark"] ::-webkit-scrollbar {
+[data-bs-theme="dark"] ::-webkit-scrollbar {
     width: 12px;
     height: 12px;
 }
 
-[data-theme="dark"] ::-webkit-scrollbar-track {
+[data-bs-theme="dark"] ::-webkit-scrollbar-track {
     background: var(--scrollbar-track);
 }
 
-[data-theme="dark"] ::-webkit-scrollbar-thumb {
+[data-bs-theme="dark"] ::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb);
     border-radius: 6px;
 }
 
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+[data-bs-theme="dark"] ::-webkit-scrollbar-thumb:hover {
     background: var(--scrollbar-thumb-hover);
 }
 
 /* Graph visualization adjustments */
-[data-theme="dark"] #cy {
+[data-bs-theme="dark"] #cy {
     background-color: var(--canvas-bg);
 }
 
