@@ -2212,7 +2212,7 @@ else
     {
         var confirmed = await ConfirmService.ShowAsync(
             "Revert to Version",
-            $"Are you sure you want to revert this ontology to version {versionNumber}? This action cannot be undone automatically.",
+            $"Are you sure you want to revert this ontology to version {versionNumber}? This will restore all concepts and relationships to their state at that version. This action cannot be undone.",
             "Revert",
             ConfirmType.Warning
         );
@@ -2223,27 +2223,37 @@ else
             {
                 ToastService.ShowInfo($"Reverting to version {versionNumber}...");
 
-                // Note: This is a placeholder for the full revert logic
-                // Full implementation would need to:
-                // 1. Capture current state snapshot
-                // 2. Retrieve the target version's data
-                // 3. Apply the changes to all affected entities
-                // 4. Record the revert activity
+                Logger.LogInformation("Reverting ontology {OntologyId} to version {VersionNumber}", Id, versionNumber);
 
-                Logger.LogWarning("Revert to version {VersionNumber} requested for ontology {OntologyId}", versionNumber, Id);
+                // Call the revert service
+                var revertedOntology = await OntologyService.RevertToVersionAsync(Id, versionNumber);
 
-                ToastService.ShowWarning("Version revert functionality is in development. This feature will restore the ontology to its previous state.");
+                // Reload the ontology with all data
+                ontology = await OntologyService.GetOntologyAsync(Id);
+                if (ontology == null)
+                {
+                    throw new InvalidOperationException("Failed to reload ontology after revert");
+                }
 
-                // TODO: Implement full revert logic
-                // This would involve:
-                // - Loading the target version's snapshot
-                // - Applying changes to concepts, relationships, properties, etc.
-                // - Using the ActivityService to record the revert
-                // - Refreshing the UI
+                // Refresh the UI
+                StateHasChanged();
+
+                ToastService.ShowSuccess($"Successfully reverted to version {versionNumber}. Please refresh the page to see the changes.");
+                Logger.LogInformation("Successfully reverted ontology {OntologyId} to version {VersionNumber}", Id, versionNumber);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                ToastService.ShowError("You do not have permission to revert this ontology.");
+                Logger.LogWarning("Unauthorized revert attempt for ontology {OntologyId}", Id);
+            }
+            catch (ArgumentException ex)
+            {
+                ToastService.ShowError($"Invalid version: {ex.Message}");
+                Logger.LogWarning(ex, "Invalid version {VersionNumber} for ontology {OntologyId}", versionNumber, Id);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error reverting to version {VersionNumber}", versionNumber);
+                Logger.LogError(ex, "Error reverting ontology {OntologyId} to version {VersionNumber}", Id, versionNumber);
                 ToastService.ShowError($"Failed to revert to version {versionNumber}: {ex.Message}");
             }
         }

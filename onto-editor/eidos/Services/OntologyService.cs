@@ -431,5 +431,246 @@ namespace Eidos.Services
 
             return result;
         }
+
+        public async Task<Ontology> RevertToVersionAsync(int ontologyId, int versionNumber)
+        {
+            // Get the ontology
+            var ontology = await GetOntologyAsync(ontologyId);
+            if (ontology == null)
+            {
+                throw new ArgumentException($"Ontology with ID {ontologyId} not found");
+            }
+
+            // Verify user has permission
+            var currentUser = await _userService.GetCurrentUserAsync();
+            if (currentUser == null)
+            {
+                throw new InvalidOperationException("User must be authenticated to revert an ontology");
+            }
+
+            if (ontology.UserId != currentUser.Id)
+            {
+                throw new UnauthorizedAccessException("You do not have permission to revert this ontology");
+            }
+
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            // Get all activities up to the target version
+            var activities = await context.OntologyActivities
+                .Where(a => a.OntologyId == ontologyId && a.VersionNumber <= versionNumber)
+                .OrderBy(a => a.VersionNumber)
+                .ToListAsync();
+
+            if (!activities.Any(a => a.VersionNumber == versionNumber))
+            {
+                throw new ArgumentException($"Version {versionNumber} not found for ontology {ontologyId}");
+            }
+
+            // Group activities by entity to get the latest state of each entity at the target version
+            var conceptSnapshots = activities
+                .Where(a => a.EntityType == EntityTypes.Concept && a.EntityId.HasValue)
+                .GroupBy(a => a.EntityId!.Value)
+                .Select(g => g.OrderByDescending(a => a.VersionNumber).First())
+                .Where(a => a.ActivityType != ActivityTypes.Delete && a.AfterSnapshot != null)
+                .ToList();
+
+            var relationshipSnapshots = activities
+                .Where(a => a.EntityType == EntityTypes.Relationship && a.EntityId.HasValue)
+                .GroupBy(a => a.EntityId!.Value)
+                .Select(g => g.OrderByDescending(a => a.VersionNumber).First())
+                .Where(a => a.ActivityType != ActivityTypes.Delete && a.AfterSnapshot != null)
+                .ToList();
+
+            // Check if we have any data to restore
+            if (!conceptSnapshots.Any() && !relationshipSnapshots.Any())
+            {
+                throw new InvalidOperationException(
+                    $"No activity snapshots found for version {versionNumber}. " +
+                    "This may indicate that activity tracking was not enabled when this ontology was created, " +
+                    "or that version {versionNumber} represents an empty ontology state.");
+            }
+
+            // Delete all current data in correct order to respect foreign key constraints
+            // Order: ConceptRestrictions -> Individuals -> Relationships -> Concepts
+            var currentRestrictions = await context.ConceptRestrictions
+                .Where(cr => cr.Concept.OntologyId == ontologyId)
+                .ToListAsync();
+            var currentIndividuals = await context.Individuals.Where(i => i.OntologyId == ontologyId).ToListAsync();
+            var currentRelationships = await context.Relationships.Where(r => r.OntologyId == ontologyId).ToListAsync();
+            var currentConcepts = await context.Concepts.Where(c => c.OntologyId == ontologyId).ToListAsync();
+
+            var deletionCounts = new
+            {
+                Restrictions = currentRestrictions.Count,
+                Individuals = currentIndividuals.Count,
+                Relationships = currentRelationships.Count,
+                Concepts = currentConcepts.Count
+            };
+
+            // Delete concept restrictions first (they reference concepts)
+            if (currentRestrictions.Any())
+            {
+                context.ConceptRestrictions.RemoveRange(currentRestrictions);
+                await context.SaveChangesAsync();
+            }
+
+            // Delete individuals second (they reference concepts)
+            if (currentIndividuals.Any())
+            {
+                context.Individuals.RemoveRange(currentIndividuals);
+                await context.SaveChangesAsync();
+            }
+
+            // Delete relationships third (they reference concepts)
+            if (currentRelationships.Any())
+            {
+                context.Relationships.RemoveRange(currentRelationships);
+                await context.SaveChangesAsync();
+            }
+
+            // Finally delete concepts
+            if (currentConcepts.Any())
+            {
+                context.Concepts.RemoveRange(currentConcepts);
+                await context.SaveChangesAsync();
+            }
+
+            // Verify deletion worked
+            var remainingConcepts = await context.Concepts.Where(c => c.OntologyId == ontologyId).CountAsync();
+            if (remainingConcepts > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to delete all concepts. {remainingConcepts} concepts still remain after deletion.");
+            }
+
+            // Recreate concepts from snapshots
+            var restoredConcepts = new Dictionary<int, int>(); // old ID -> new ID mapping
+            var restorationErrors = new List<string>();
+
+            foreach (var snapshot in conceptSnapshots)
+            {
+                try
+                {
+                    var conceptData = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(snapshot.AfterSnapshot!);
+
+                    // Get old ID - handle null case
+                    if (!conceptData.TryGetProperty("Id", out var idProp) || idProp.ValueKind == System.Text.Json.JsonValueKind.Null)
+                    {
+                        restorationErrors.Add($"Concept snapshot has null or missing Id");
+                        continue;
+                    }
+                    var oldId = idProp.GetInt32();
+
+                    // Helper to get double value safely
+                    double GetDoubleOrDefault(System.Text.Json.JsonElement element, string propertyName, double defaultValue = 0)
+                    {
+                        if (element.TryGetProperty(propertyName, out var prop) &&
+                            prop.ValueKind != System.Text.Json.JsonValueKind.Null)
+                        {
+                            return prop.GetDouble();
+                        }
+                        return defaultValue;
+                    }
+
+                    var concept = new Concept
+                    {
+                        OntologyId = ontologyId,
+                        Name = conceptData.GetProperty("Name").GetString() ?? "",
+                        Definition = conceptData.TryGetProperty("Definition", out var def) && def.ValueKind != System.Text.Json.JsonValueKind.Null ? def.GetString() : null,
+                        SimpleExplanation = conceptData.TryGetProperty("SimpleExplanation", out var exp) && exp.ValueKind != System.Text.Json.JsonValueKind.Null ? exp.GetString() : null,
+                        Examples = conceptData.TryGetProperty("Examples", out var ex) && ex.ValueKind != System.Text.Json.JsonValueKind.Null ? ex.GetString() : null,
+                        Color = conceptData.TryGetProperty("Color", out var col) && col.ValueKind != System.Text.Json.JsonValueKind.Null ? col.GetString() : null,
+                        PositionX = GetDoubleOrDefault(conceptData, "PositionX", 0),
+                        PositionY = GetDoubleOrDefault(conceptData, "PositionY", 0),
+                        Category = conceptData.TryGetProperty("Category", out var cat) && cat.ValueKind != System.Text.Json.JsonValueKind.Null ? cat.GetString() : null
+                    };
+
+                    context.Concepts.Add(concept);
+                    await context.SaveChangesAsync(); // Save to get new ID
+
+                    restoredConcepts[oldId] = concept.Id;
+                }
+                catch (Exception ex)
+                {
+                    restorationErrors.Add($"Concept snapshot error: {ex.Message}");
+                    continue;
+                }
+            }
+
+            // Check if any concepts were restored
+            if (conceptSnapshots.Any() && !restoredConcepts.Any())
+            {
+                throw new InvalidOperationException(
+                    $"Failed to restore any concepts from {conceptSnapshots.Count} snapshot(s). Errors: " +
+                    string.Join("; ", restorationErrors.Take(3)));
+            }
+
+            // Recreate relationships from snapshots
+            var restoredRelationshipsCount = 0;
+            foreach (var snapshot in relationshipSnapshots)
+            {
+                try
+                {
+                    var relData = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(snapshot.AfterSnapshot!);
+
+                    var oldSourceId = relData.GetProperty("SourceConceptId").GetInt32();
+                    var oldTargetId = relData.GetProperty("TargetConceptId").GetInt32();
+
+                    // Map old IDs to new IDs
+                    if (!restoredConcepts.ContainsKey(oldSourceId) || !restoredConcepts.ContainsKey(oldTargetId))
+                    {
+                        continue; // Skip if referenced concepts don't exist
+                    }
+
+                    // Helper to get nullable int safely
+                    int? GetNullableInt(System.Text.Json.JsonElement element, string propertyName)
+                    {
+                        if (element.TryGetProperty(propertyName, out var prop) &&
+                            prop.ValueKind != System.Text.Json.JsonValueKind.Null)
+                        {
+                            return prop.GetInt32();
+                        }
+                        return null;
+                    }
+
+                    var relationship = new Relationship
+                    {
+                        OntologyId = ontologyId,
+                        SourceConceptId = restoredConcepts[oldSourceId],
+                        TargetConceptId = restoredConcepts[oldTargetId],
+                        RelationType = relData.GetProperty("RelationType").GetString() ?? "",
+                        Label = relData.TryGetProperty("Label", out var lbl) && lbl.ValueKind != System.Text.Json.JsonValueKind.Null ? lbl.GetString() : null,
+                        Description = relData.TryGetProperty("Description", out var desc) && desc.ValueKind != System.Text.Json.JsonValueKind.Null ? desc.GetString() : null,
+                        OntologyUri = relData.TryGetProperty("OntologyUri", out var uri) && uri.ValueKind != System.Text.Json.JsonValueKind.Null ? uri.GetString() : null,
+                        Strength = GetNullableInt(relData, "Strength")
+                    };
+
+                    context.Relationships.Add(relationship);
+                    restoredRelationshipsCount++;
+                }
+                catch (Exception ex)
+                {
+                    restorationErrors.Add($"Relationship snapshot error: {ex.Message}");
+                    continue;
+                }
+            }
+
+            await context.SaveChangesAsync();
+
+            // Log restoration summary
+            if (restorationErrors.Any())
+            {
+                // Some errors occurred but we still restored some data
+                System.Diagnostics.Debug.WriteLine(
+                    $"Revert completed with {restorationErrors.Count} error(s). " +
+                    $"Restored {restoredConcepts.Count} concepts and {restoredRelationshipsCount} relationships.");
+            }
+
+            // Update ontology's UpdatedAt timestamp
+            ontology.UpdatedAt = DateTime.UtcNow;
+            await UpdateOntologyAsync(ontology);
+
+            return await GetOntologyAsync(ontologyId) ?? ontology;
+        }
     }
 }

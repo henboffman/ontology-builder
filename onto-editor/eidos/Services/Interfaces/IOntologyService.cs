@@ -38,6 +38,9 @@ public interface IOntologyService
     bool CanUndo();
     bool CanRedo();
 
+    // Version control operations
+    Task<Ontology> RevertToVersionAsync(int ontologyId, int versionNumber);
+
     // Fork/Clone/Provenance operations
     Task<Ontology> CloneOntologyAsync(int sourceOntologyId, string newName, string? provenanceNotes = null);
     Task<Ontology> ForkOntologyAsync(int sourceOntologyId, string newName, string? provenanceNotes = null);
