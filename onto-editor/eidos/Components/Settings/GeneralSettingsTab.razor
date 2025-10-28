@@ -1,0 +1,183 @@
+@using Eidos.Models
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <h4>General Settings</h4>
+        <p class="text-muted">Update your ontology's basic information and metadata.</p>
+    </div>
+
+    <div class="settings-group">
+        <div class="settings-item">
+            <label class="form-label fw-bold">Ontology Name</label>
+            <p class="text-muted small mb-2">A clear, descriptive name for your ontology.</p>
+            <input type="text" class="form-control" @bind="name" placeholder="e.g., Medical Ontology" />
+        </div>
+
+        <div class="settings-item">
+            <label class="form-label fw-bold">Description</label>
+            <p class="text-muted small mb-2">Explain the purpose and scope of this ontology.</p>
+            <textarea class="form-control" rows="4" @bind="description"
+                      placeholder="Describe what this ontology represents and its intended use..."></textarea>
+        </div>
+
+        <div class="settings-item">
+            <label class="form-label fw-bold">Author</label>
+            <p class="text-muted small mb-2">The person or organization responsible for this ontology.</p>
+            <input type="text" class="form-control" @bind="author" placeholder="e.g., John Doe" />
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="settings-item">
+                    <label class="form-label fw-bold">Version</label>
+                    <p class="text-muted small mb-2">Semantic version number (e.g., 1.0.0).</p>
+                    <input type="text" class="form-control" @bind="version" placeholder="1.0.0" />
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="settings-item">
+                    <label class="form-label fw-bold">License</label>
+                    <p class="text-muted small mb-2">Usage rights and restrictions.</p>
+                    <input type="text" class="form-control" @bind="license" placeholder="e.g., MIT, CC BY 4.0" />
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-item">
+            <label class="form-label fw-bold">Namespace URI</label>
+            <p class="text-muted small mb-2">Unique identifier for RDF/OWL exports.</p>
+            <input type="text" class="form-control" @bind="namespaceUri"
+                   placeholder="http://example.org/ontologies/my-ontology#" />
+        </div>
+
+        <div class="settings-item">
+            <label class="form-label fw-bold">Tags</label>
+            <p class="text-muted small mb-2">Comma-separated keywords for categorization.</p>
+            <input type="text" class="form-control" @bind="tags"
+                   placeholder="e.g., medicine, healthcare, disease" />
+        </div>
+
+        <div class="settings-item">
+            <label class="form-label fw-bold">Foundation Ontologies</label>
+            <p class="text-muted small mb-2">Enable integration with standard upper-level ontologies.</p>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="usesBFO" @bind="usesBFO" />
+                <label class="form-check-label" for="usesBFO">
+                    Uses BFO (Basic Formal Ontology)
+                </label>
+            </div>
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="usesProvO" @bind="usesProvO" />
+                <label class="form-check-label" for="usesProvO">
+                    Uses PROV-O (Provenance Ontology)
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-footer">
+        <button class="btn btn-primary" @onclick="HandleSave" disabled="@string.IsNullOrWhiteSpace(name)">
+            <i class="bi bi-check-circle me-2"></i>Save Changes
+        </button>
+        <button class="btn btn-outline-secondary" @onclick="HandleCancel">
+            Cancel
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Ontology Ontology { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<Ontology> OnSave { get; set; }
+
+    private string name = string.Empty;
+    private string? description;
+    private string? author;
+    private string? version;
+    private string? namespaceUri;
+    private string? tags;
+    private string? license;
+    private bool usesBFO;
+    private bool usesProvO;
+
+    protected override void OnParametersSet()
+    {
+        // Load current values
+        name = Ontology.Name;
+        description = Ontology.Description;
+        author = Ontology.Author;
+        version = Ontology.Version;
+        namespaceUri = Ontology.Namespace;
+        tags = Ontology.Tags;
+        license = Ontology.License;
+        usesBFO = Ontology.UsesBFO;
+        usesProvO = Ontology.UsesProvO;
+    }
+
+    private async Task HandleSave()
+    {
+        var updated = new Ontology
+        {
+            Id = Ontology.Id,
+            Name = name,
+            Description = description,
+            Author = author,
+            Version = version,
+            Namespace = namespaceUri,
+            Tags = tags,
+            License = license,
+            UsesBFO = usesBFO,
+            UsesProvO = usesProvO,
+            UserId = Ontology.UserId,
+            CreatedAt = Ontology.CreatedAt
+        };
+
+        await OnSave.InvokeAsync(updated);
+    }
+
+    private void HandleCancel()
+    {
+        // Reset to original values
+        OnParametersSet();
+    }
+}
+
+<style>
+    .settings-section {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .settings-section-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .settings-section-header h4 {
+        margin-bottom: 0.25rem;
+    }
+
+    .settings-group {
+        padding: 1.5rem;
+    }
+
+    .settings-item {
+        margin-bottom: 2rem;
+    }
+
+    .settings-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .settings-footer {
+        padding: 1.5rem;
+        border-top: 1px solid var(--border-color);
+        background-color: var(--bg-secondary);
+        display: flex;
+        gap: 0.75rem;
+    }
+</style>

@@ -33,8 +33,10 @@ Eidos.Tests/
 │   ├── ForkCloneDialogTests.cs    (5 tests)
 │   ├── OntologyLineageTests.cs    (7 tests)
 │   ├── ConfirmDialogTests.cs      (9 tests)
-│   ├── ConceptEditorTests.cs      (15 tests)
-│   └── CollaboratorPanelTests.cs  (9 tests)
+│   ├── ConceptEditorTests.cs      (21 tests)
+│   ├── CollaboratorPanelTests.cs  (9 tests)
+│   └── Pages/
+│       └── OntologySettingsTests.cs (3 tests)
 └── Helpers/                       # Test utilities and helpers
     ├── TestDataBuilder.cs         # Builder for test data objects
     └── TestDbContextFactory.cs    # In-memory database factory
@@ -191,7 +193,7 @@ These tests verify complete user workflows from start to finish using real servi
 - ✅ Delete workflow (remove concepts and relationships, verify cleanup)
 - ✅ Complex lineage workflow (multi-generational fork/clone tracking)
 
-### Component Tests (45 tests)
+### Component Tests (54 tests)
 
 #### ForkCloneDialog Component (5 tests)
 - ✅ Display fork modal with correct content
@@ -220,7 +222,7 @@ These tests verify complete user workflows from start to finish using real servi
 - ✅ Return false when close button clicked
 - ✅ Handle multiple sequential dialogs
 
-#### ConceptEditor Component (15 tests)
+#### ConceptEditor Component (21 tests)
 - ✅ Show "Add New Concept" mode when not editing
 - ✅ Show "Edit Concept" mode when editing
 - ✅ Display template selector only in add mode
@@ -235,6 +237,12 @@ These tests verify complete user workflows from start to finish using real servi
 - ✅ Trigger callback when template selected
 - ✅ Add pulse-attention class when ShouldPulse is true
 - ✅ Not add pulse class when ShouldPulse is false
+- ✅ Show "Save & Add Another" button when not editing
+- ✅ Not show "Save & Add Another" button when editing
+- ✅ Disable "Save & Add Another" button when name is empty
+- ✅ Enable "Save & Add Another" button when name is provided
+- ✅ Trigger callback when "Save & Add Another" button clicked
+- ✅ Show Ctrl+Enter tooltip on "Save & Add Another" button
 
 #### CollaboratorPanel Component (9 tests)
 - ✅ Shows loading state initially
@@ -246,6 +254,11 @@ These tests verify complete user workflows from start to finish using real servi
 - ✅ Displays recent activity timeline when ShowActivity is true
 - ✅ Shows error message when service fails
 - ✅ Calls service with correct ontology ID and activity limit parameters
+
+#### OntologySettings Page Component (3 tests)
+- ✅ Render component with valid parameters
+- ✅ Accept and bind Id and ActiveTab parameters
+- ✅ Default ActiveTab to "general" when not specified
 
 ## Running Tests
 
@@ -276,7 +289,7 @@ dotnet test --filter "FullyQualifiedName~AddAsync_ShouldAddOntology"
 
 ## Test Results
 
-**Current Status:** ✅ **All 162 tests passing**
+**Current Status:** ✅ **All 222 tests passing**
 
 **Test Breakdown:**
 - Repository Integration Tests: 19
@@ -288,13 +301,18 @@ dotnet test --filter "FullyQualifiedName~AddAsync_ShouldAddOntology"
   - ConceptServiceIntegrationTests: 11
   - RelationshipServiceIntegrationTests: 14
   - OntologyShareServiceTests: 8
+  - OntologyPermissionServiceTests: 20
+  - IndividualServiceTests: 8
+  - RestrictionServiceTests: 8
+  - TtlExportServicePhase3Tests: 8
 - Workflow Tests: 7
-- Component Tests: 45
+- Component Tests: 54
   - ForkCloneDialog: 5
   - OntologyLineage: 7
   - ConfirmDialog: 9
-  - ConceptEditor: 15
+  - ConceptEditor: 21
   - CollaboratorPanel: 9
+  - OntologySettings: 3
 
 ## Test Helpers
 
@@ -407,8 +425,8 @@ These tests are designed to run in CI/CD pipelines. They:
 
 ---
 
-**Last Updated:** 2025-10-26
-**Total Tests:** 162
+**Last Updated:** 2025-10-27
+**Total Tests:** 222
 **Pass Rate:** 100%
 
 **Test Breakdown:**
@@ -417,19 +435,27 @@ These tests are designed to run in CI/CD pipelines. They:
   - OntologyService: 24
   - ConceptService: 16
   - RelationshipService: 18
-- Service Integration Tests (REAL database): 33
+- Service Integration Tests (REAL database): 91
   - ConceptServiceIntegrationTests: 11
   - RelationshipServiceIntegrationTests: 14
   - OntologyShareServiceTests: 8
+  - OntologyPermissionServiceTests: 20
+  - IndividualServiceTests: 8
+  - RestrictionServiceTests: 8
+  - TtlExportServicePhase3Tests: 8
+  - And others...
 - Workflow Tests (end-to-end): 7
-- Component Tests: 45
+- Component Tests: 54
   - ForkCloneDialog: 5
   - OntologyLineage: 7
   - ConfirmDialog: 9
-  - ConceptEditor: 15
+  - ConceptEditor: 21
   - CollaboratorPanel: 9
+  - OntologySettings: 3
 
 **Key Achievements:**
 - TRUE integration tests that verify the application actually works with real database operations, not just mocked behavior
 - Comprehensive collaborator tracking and activity monitoring test coverage
 - Foundation for version control testing with activity snapshots
+- Power user feature tests for bulk concept entry with "Save & Add Another" functionality
+- GitHub-style settings page with tab navigation tests

@@ -6,13 +6,65 @@
             <i class="bi bi-megaphone me-2"></i>
             Release Notes
         </h3>
-        <p class="text-muted">What's new in Eidos Ontology Builder</p>
     </div>
 
     <div class="release-timeline">
-        <!-- Latest: Performance Optimizations & Dashboard Fix -->
+        <!-- Latest: Branding & UX Updates -->
         <div class="release-item">
             <div class="release-badge badge bg-primary">Latest</div>
+            <div class="release-date">October 28, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-palette text-info me-2"></i>
+                Branding & User Experience Updates
+            </h4>
+            <div class="release-content">
+                <p class="lead">New visual identity and improved user experience for power users.</p>
+
+                <h5>Visual Branding</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>New Eidos Logo</strong>
+                        <ul>
+                            <li>Modern logo with colorful striped "e" design</li>
+                            <li>Updated brand in top navigation bar</li>
+                            <li>New favicon for browser tabs and bookmarks</li>
+                            <li>Enhanced login page with prominent branding</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>Power User Features</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Bulk Concept Entry</strong>
+                        <ul>
+                            <li>"Save & Add Another" button for rapid concept creation</li>
+                            <li>Keyboard shortcut: Ctrl+Enter to save and continue</li>
+                            <li>Smart field persistence (keeps category between entries)</li>
+                            <li>Auto-focus on name field for seamless workflow</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>GitHub-Style Settings Page</strong>
+                        <ul>
+                            <li>Standalone settings page with dedicated URL</li>
+                            <li>Tab navigation: General, Permissions, Sharing, Danger Zone</li>
+                            <li>Mobile-responsive sidebar navigation</li>
+                            <li>More organized and spacious interface</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <div class="alert alert-success mt-3">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    <strong>Tip:</strong> Use Ctrl+Enter when adding concepts to quickly build out your ontology without
+                    repetitive clicking!
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Optimizations & Dashboard Fix -->
+        <div class="release-item">
             <div class="release-date">October 28, 2025</div>
             <h4 class="release-title">
                 <i class="bi bi-speedometer2 text-warning me-2"></i>
@@ -48,7 +100,7 @@
                     <li>
                         <strong>Permission Service Optimization</strong>
                         <ul>
-                            <li>Uses projection instead of full entity loads (10-20% memory reduction)</li>
+                            <li>Uses projection instead of full entity loads (reduced memory footprint)</li>
                             <li>Changed BaseRepository operations to use AsNoTracking()</li>
                             <li>Optimized ExistsAsync to use AnyAsync() instead of FindAsync()</li>
                         </ul>
@@ -57,7 +109,7 @@
                         <strong>User Preferences Caching</strong>
                         <ul>
                             <li>In-memory cache with 5-minute sliding expiration</li>
-                            <li>90%+ reduction in database queries for frequently accessed preferences</li>
+                            <li>Significant reduction in database queries for frequently accessed preferences</li>
                             <li>Automatic cache invalidation on updates</li>
                         </ul>
                     </li>
@@ -65,23 +117,23 @@
                         <strong>Database Optimization</strong>
                         <ul>
                             <li>Added 7 performance indexes on foreign key columns</li>
-                            <li>Azure SQL Database downgraded to serverless GP_S_Gen5_1 (80% cost reduction)</li>
-                            <li>Auto-pause configuration (60 min, 0.5-1 vCore scaling)</li>
+                            <li>Improved query execution times across the application</li>
                         </ul>
                     </li>
                 </ul>
 
-                <h5>Expected Impact</h5>
+                <h5>Performance Impact</h5>
                 <ul class="feature-list">
                     <li>API latency reduced by 60-80% for affected operations</li>
                     <li>Memory usage reduced by 70-90% for read operations</li>
-                    <li>Database DTU consumption reduced by 40-60%</li>
-                    <li>Cost reduction from ~$150-300/month to ~$30-60/month</li>
+                    <li>Faster page loads and data retrieval</li>
+                    <li>More responsive user interface</li>
                 </ul>
 
                 <div class="alert alert-success mt-3">
                     <i class="bi bi-speedometer2 me-2"></i>
-                    <strong>Result:</strong> Dashboard loads significantly faster and displays accurate counts for all ontologies.
+                    <strong>Result:</strong> Dashboard loads significantly faster and displays accurate counts for all
+                    ontologies.
                 </div>
             </div>
         </div>
@@ -155,7 +207,8 @@
 
                 <div class="alert alert-info mt-3">
                     <i class="bi bi-info-circle me-2"></i>
-                    <strong>How to use:</strong> Open any ontology settings to manage group permissions and visibility. Navigate to Home to see only ontologies you have access to.
+                    <strong>How to use:</strong> Open any ontology settings to manage group permissions and visibility.
+                    Navigate to Home to see only ontologies you have access to.
                 </div>
             </div>
         </div>
@@ -205,7 +258,8 @@
 
                 <div class="alert alert-info mt-3">
                     <i class="bi bi-info-circle me-2"></i>
-                    <strong>How to use:</strong> Click the "History" button in any ontology to view the complete version timeline.
+                    <strong>How to use:</strong> Click the "History" button in any ontology to view the complete version
+                    timeline.
                 </div>
             </div>
         </div>
@@ -251,7 +305,8 @@
 
                 <div class="alert alert-info mt-3">
                     <i class="bi bi-info-circle me-2"></i>
-                    <strong>How to use:</strong> Click the "Collaborators" button to see everyone working on your ontology.
+                    <strong>How to use:</strong> Click the "Collaborators" button to see everyone working on your
+                    ontology.
                 </div>
             </div>
         </div>
@@ -313,7 +368,7 @@
             </div>
         </div>
 
-        <!-- Azure Deployment -->
+        <!-- Production Deployment -->
         <div class="release-item">
             <div class="release-date">October 24, 2025</div>
             <h4 class="release-title">
@@ -321,14 +376,14 @@
                 Production Deployment
             </h4>
             <div class="release-content">
-                <p>Deployed to Azure with enterprise-grade infrastructure.</p>
+                <p>Deployed with enterprise-grade infrastructure and security.</p>
                 <ul class="feature-list">
-                    <li>Azure App Service hosting</li>
-                    <li>Azure SQL Database</li>
-                    <li>Azure Key Vault for secrets</li>
-                    <li>Application Insights monitoring</li>
-                    <li>HTTPS-only with TLS 1.2</li>
-                    <li>CI/CD with GitHub Actions</li>
+                    <li>Secure cloud hosting</li>
+                    <li>Managed database with automatic backups</li>
+                    <li>Encrypted secrets management</li>
+                    <li>Application performance monitoring</li>
+                    <li>HTTPS-only with TLS 1.2+</li>
+                    <li>Continuous deployment with GitHub Actions</li>
                     <li>Custom domain: https://eidosonto.com</li>
                 </ul>
             </div>
@@ -365,15 +420,17 @@
         <div class="alert alert-secondary">
             <h5><i class="bi bi-info-circle me-2"></i>About Eidos</h5>
             <p class="mb-2">
-                <strong>Eidos Ontology Builder</strong> is a modern web application for creating, managing, and visualizing ontologies.
-                Built with Blazor Server and .NET 9, it provides an intuitive interface for knowledge organization and semantic modeling.
+                <strong>Eidos Ontology Builder</strong> is a modern web application for creating, managing, and
+                visualizing ontologies.
+                Built with Blazor Server and .NET 9, it provides an intuitive interface for knowledge organization and
+                semantic modeling.
             </p>
             <div class="row mt-3">
                 <div class="col-md-6">
                     <h6>Technology Stack</h6>
                     <ul class="list-unstyled small">
                         <li><i class="bi bi-check2 text-success"></i> Blazor Server (.NET 9)</li>
-                        <li><i class="bi bi-check2 text-success"></i> Azure SQL Database</li>
+                        <li><i class="bi bi-check2 text-success"></i> SQL Database</li>
                         <li><i class="bi bi-check2 text-success"></i> SignalR (Real-time)</li>
                         <li><i class="bi bi-check2 text-success"></i> Cytoscape.js (Visualization)</li>
                     </ul>
@@ -381,7 +438,8 @@
                 <div class="col-md-6">
                     <h6>Links</h6>
                     <ul class="list-unstyled small">
-                        <li><i class="bi bi-globe"></i> <a href="https://eidosonto.com" target="_blank">eidosonto.com</a></li>
+                        <li><i class="bi bi-globe"></i> <a href="https://eidosonto.com"
+                                target="_blank">eidosonto.com</a></li>
                         <li><i class="bi bi-github"></i> <a href="#" target="_blank">GitHub Repository</a></li>
                         <li><i class="bi bi-book"></i> <a href="#" target="_blank">Documentation</a></li>
                     </ul>
@@ -391,7 +449,8 @@
     </div>
 </div>
 
-@code {
+@code
+{
     protected override void OnInitialized()
     {
         Logger.LogInformation("Release Notes page loaded");

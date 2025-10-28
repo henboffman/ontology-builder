@@ -262,4 +262,87 @@ public class ConceptEditorTests : TestContext
         // Assert
         Assert.DoesNotContain("pulse-attention", cut.Markup);
     }
+
+    [Fact]
+    public void Render_ShouldShowSaveAndAddAnotherButton_WhenNotEditing()
+    {
+        // Act
+        var cut = RenderComponent<ConceptEditor>(parameters => parameters
+            .Add(p => p.IsEditing, false));
+
+        // Assert
+        Assert.Contains("Save & Add Another", cut.Markup);
+    }
+
+    [Fact]
+    public void Render_ShouldNotShowSaveAndAddAnotherButton_WhenEditing()
+    {
+        // Act
+        var cut = RenderComponent<ConceptEditor>(parameters => parameters
+            .Add(p => p.IsEditing, true));
+
+        // Assert
+        Assert.DoesNotContain("Save & Add Another", cut.Markup);
+    }
+
+    [Fact]
+    public void Render_ShouldDisableSaveAndAddAnotherButton_WhenNameIsEmpty()
+    {
+        // Act
+        var cut = RenderComponent<ConceptEditor>(parameters => parameters
+            .Add(p => p.IsEditing, false)
+            .Add(p => p.ConceptName, ""));
+
+        // Assert
+        var button = cut.Find("button.btn-success");
+        Assert.NotNull(button.GetAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Render_ShouldEnableSaveAndAddAnotherButton_WhenNameIsProvided()
+    {
+        // Act
+        var cut = RenderComponent<ConceptEditor>(parameters => parameters
+            .Add(p => p.IsEditing, false)
+            .Add(p => p.ConceptName, "Test Concept"));
+
+        // Assert
+        var button = cut.Find("button.btn-success");
+        Assert.Null(button.GetAttribute("disabled"));
+    }
+
+    [Fact]
+    public void ClickSaveAndAddAnotherButton_ShouldTriggerCallback()
+    {
+        // Arrange
+        var callbackInvoked = false;
+
+        var cut = RenderComponent<ConceptEditor>(parameters => parameters
+            .Add(p => p.IsEditing, false)
+            .Add(p => p.ConceptName, "Test Concept")
+            .Add(p => p.OnSaveAndAddAnotherClick, EventCallback.Factory.Create(
+                this, () => callbackInvoked = true)));
+
+        // Act
+        var button = cut.Find("button.btn-success");
+        button.Click();
+
+        // Assert
+        Assert.True(callbackInvoked);
+    }
+
+    [Fact]
+    public void SaveAndAddAnotherButton_ShouldShowCtrlEnterTooltip()
+    {
+        // Act
+        var cut = RenderComponent<ConceptEditor>(parameters => parameters
+            .Add(p => p.IsEditing, false)
+            .Add(p => p.ConceptName, "Test Concept"));
+
+        // Assert
+        var button = cut.Find("button.btn-success");
+        var title = button.GetAttribute("title");
+        Assert.NotNull(title);
+        Assert.Contains("Ctrl+Enter", title);
+    }
 }

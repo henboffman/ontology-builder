@@ -1,0 +1,48 @@
+@using Eidos.Models
+@using Eidos.Services
+@inject ToastService ToastService
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <h4>Sharing & Collaboration</h4>
+        <p class="text-muted">Create and manage share links for this ontology.</p>
+    </div>
+
+    <div class="settings-group">
+        <div class="settings-item">
+            <label class="form-label fw-bold">Share Links</label>
+            <p class="text-muted small mb-3">
+                Generate secure links to share this ontology with others. Links can have different permission levels and expiration dates.
+            </p>
+
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                Share link functionality is currently being managed from the ontology view.
+                Advanced sharing management will be available here soon.
+            </div>
+
+            <p class="text-muted small">
+                <strong>Current Share URL:</strong><br/>
+                <code>https://eidosonto.com/ontology/@OntologyId</code>
+            </p>
+        </div>
+
+        <div class="settings-item">
+            <label class="form-label fw-bold">Collaboration Tips</label>
+            <ul class="text-muted small">
+                <li>Use the <strong>Permissions</strong> tab to control visibility</li>
+                <li>Enable public editing for open collaboration</li>
+                <li>View collaborators in the ontology's Collaborators view</li>
+                <li>Track changes in the Version History view</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int OntologyId { get; set; }
+
+    [Parameter]
+    public string OntologyName { get; set; } = string.Empty;
+}

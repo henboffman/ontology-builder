@@ -1,5 +1,6 @@
 @using Eidos.Models
 @using Eidos.Components.Shared
+@inject NavigationManager Navigation
 
 <div class="row mb-3">
     <div class="col-12">
@@ -71,7 +72,7 @@
                         <i class="bi bi-share"></i> Share
                     </button>
                     <button class="btn btn-outline-secondary"
-                            @onclick="OnSettingsClick"
+                            @onclick="NavigateToSettings"
                             disabled="@(!CanShare)"
                             title="Edit ontology settings and metadata">
                         <i class="bi bi-gear"></i> Settings
@@ -123,7 +124,7 @@
                         </button>
                     </li>
                     <li>
-                        <button class="dropdown-item" @onclick="OnSettingsClick" disabled="@(!CanShare)">
+                        <button class="dropdown-item" @onclick="NavigateToSettings" disabled="@(!CanShare)">
                             <i class="bi bi-gear me-2"></i> Settings
                         </button>
                     </li>
@@ -165,9 +166,6 @@
     public EventCallback OnBackClick { get; set; }
 
     [Parameter]
-    public EventCallback OnSettingsClick { get; set; }
-
-    [Parameter]
     public EventCallback OnImportClick { get; set; }
 
     [Parameter]
@@ -204,5 +202,10 @@
     private void ShowCloneDialog()
     {
         forkCloneDialog?.ShowClone(Ontology);
+    }
+
+    private void NavigateToSettings()
+    {
+        Navigation.NavigateTo($"/ontology/{Ontology.Id}/settings/general");
     }
 }

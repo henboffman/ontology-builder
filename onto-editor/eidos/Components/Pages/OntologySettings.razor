@@ -1,0 +1,295 @@
+@page "/ontology/{id:int}/settings"
+@page "/ontology/{id:int}/settings/{activeTab}"
+@using Eidos.Models
+@using Eidos.Models.Enums
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@using Eidos.Components.Settings
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IOntologyService OntologyService
+@inject IOntologyShareService ShareService
+@inject OntologyPermissionService PermissionService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ToastService ToastService
+@inject ConfirmService ConfirmService
+@inject ILogger<OntologySettings> Logger
+
+<PageTitle>Settings - @(ontology?.Name ?? "Ontology")</PageTitle>
+
+@if (loadError != null)
+{
+    <div class="container mt-5">
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            @loadError
+        </div>
+        <a href="/" class="btn btn-primary">Back to Dashboard</a>
+    </div>
+}
+else if (ontology == null)
+{
+    <div class="container mt-5">
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="settings-container">
+        <!-- Header -->
+        <div class="settings-header">
+            <div class="container-fluid">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <a href="/ontology/@Id" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Ontology
+                        </a>
+                        <div>
+                            <h3 class="mb-0">@ontology.Name</h3>
+                            <p class="text-muted mb-0 small">Settings</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="settings-content">
+            <div class="container-fluid">
+                <div class="row">
+                    <!-- Sidebar Navigation -->
+                    <div class="col-12 col-md-3 settings-sidebar">
+                        <nav class="nav flex-column">
+                            <a class="nav-link @(ActiveTab == "general" ? "active" : "")"
+                               href="/ontology/@Id/settings/general">
+                                <i class="bi bi-gear me-2"></i>General
+                            </a>
+                            <a class="nav-link @(ActiveTab == "permissions" ? "active" : "")"
+                               href="/ontology/@Id/settings/permissions">
+                                <i class="bi bi-shield-lock me-2"></i>Permissions
+                            </a>
+                            <a class="nav-link @(ActiveTab == "sharing" ? "active" : "")"
+                               href="/ontology/@Id/settings/sharing">
+                                <i class="bi bi-share me-2"></i>Sharing
+                            </a>
+                            <a class="nav-link @(ActiveTab == "danger" ? "active" : "")"
+                               href="/ontology/@Id/settings/danger">
+                                <i class="bi bi-exclamation-triangle me-2"></i>Danger Zone
+                            </a>
+                        </nav>
+                    </div>
+
+                    <!-- Main Content Area -->
+                    <div class="col-12 col-md-9 settings-main">
+                        @if (ActiveTab == "general")
+                        {
+                            <GeneralSettingsTab Ontology="@ontology"
+                                              OnSave="@SaveGeneralSettings" />
+                        }
+                        else if (ActiveTab == "permissions")
+                        {
+                            <PermissionsSettingsTab OntologyId="@ontology.Id"
+                                                   CurrentUserId="@currentUserId"
+                                                   Visibility="@ontology.Visibility"
+                                                   AllowPublicEdit="@ontology.AllowPublicEdit"
+                                                   OnSave="@permissionSaveCallback" />
+                        }
+                        else if (ActiveTab == "sharing")
+                        {
+                            <SharingSettingsTab OntologyId="@ontology.Id"
+                                              OntologyName="@ontology.Name" />
+                        }
+                        else if (ActiveTab == "danger")
+                        {
+                            <DangerZoneTab OntologyId="@ontology.Id"
+                                         OntologyName="@ontology.Name"
+                                         OnDelete="@HandleDeleteOntology" />
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [Parameter]
+    public string ActiveTab { get; set; } = "general";
+
+    private Ontology? ontology;
+    private string? loadError;
+    private string? currentUserId;
+
+    private EventCallback<(string, bool)> permissionSaveCallback => EventCallback.Factory.Create<(string, bool)>(this, tuple => SavePermissionSettings(tuple.Item1, tuple.Item2));
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            ontology = await OntologyService.GetOntologyAsync(Id);
+
+            if (ontology == null)
+            {
+                loadError = "Ontology not found.";
+                return;
+            }
+
+            // Check if user has permission to access settings (must be owner)
+            if (ontology.UserId != currentUserId)
+            {
+                loadError = "You do not have permission to access these settings.";
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading ontology settings");
+            loadError = $"Error loading settings: {ex.Message}";
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Default to "general" tab if no tab specified
+        if (string.IsNullOrWhiteSpace(ActiveTab))
+        {
+            ActiveTab = "general";
+        }
+    }
+
+    private async Task SaveGeneralSettings(Ontology updatedOntology)
+    {
+        try
+        {
+            ontology!.Name = updatedOntology.Name;
+            ontology.Description = updatedOntology.Description;
+            ontology.Author = updatedOntology.Author;
+            ontology.Version = updatedOntology.Version;
+            ontology.Namespace = updatedOntology.Namespace;
+            ontology.Tags = updatedOntology.Tags;
+            ontology.License = updatedOntology.License;
+            ontology.UsesBFO = updatedOntology.UsesBFO;
+            ontology.UsesProvO = updatedOntology.UsesProvO;
+            ontology.UpdatedAt = DateTime.UtcNow;
+
+            await OntologyService.UpdateOntologyAsync(ontology);
+            ToastService.ShowSuccess("General settings saved successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving general settings");
+            ToastService.ShowError($"Failed to save settings: {ex.Message}");
+        }
+    }
+
+    private async Task SavePermissionSettings(string visibility, bool allowPublicEdit)
+    {
+        try
+        {
+            ontology!.Visibility = visibility;
+            ontology.AllowPublicEdit = allowPublicEdit;
+            ontology.UpdatedAt = DateTime.UtcNow;
+
+            await OntologyService.UpdateOntologyAsync(ontology);
+            ToastService.ShowSuccess("Permission settings saved successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving permission settings");
+            ToastService.ShowError($"Failed to save permissions: {ex.Message}");
+        }
+    }
+
+    private async Task HandleDeleteOntology()
+    {
+        var confirmed = await ConfirmService.ShowAsync(
+            "Delete Ontology",
+            $"Are you sure you want to permanently delete \"{ontology!.Name}\"? This action cannot be undone and will delete all concepts, relationships, and data.",
+            "Delete Forever",
+            ConfirmType.Danger
+        );
+
+        if (confirmed)
+        {
+            try
+            {
+                await OntologyService.DeleteOntologyAsync(Id);
+                ToastService.ShowSuccess($"Deleted ontology \"{ontology.Name}\"");
+                Navigation.NavigateTo("/");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting ontology");
+                ToastService.ShowError($"Failed to delete ontology: {ex.Message}");
+            }
+        }
+    }
+}
+
+<style>
+    .settings-container {
+        min-height: 100vh;
+        background-color: var(--bg-secondary);
+    }
+
+    .settings-header {
+        background-color: var(--bg-primary);
+        border-bottom: 1px solid var(--border-color);
+        padding: 1.5rem 0;
+        margin-bottom: 2rem;
+    }
+
+    .settings-sidebar {
+        padding-top: 1rem;
+    }
+
+    .settings-sidebar .nav-link {
+        color: var(--text-primary);
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        margin-bottom: 0.25rem;
+        transition: background-color 0.2s;
+    }
+
+    .settings-sidebar .nav-link:hover {
+        background-color: var(--bg-hover);
+        text-decoration: none;
+    }
+
+    .settings-sidebar .nav-link.active {
+        background-color: var(--list-active-bg);
+        font-weight: 600;
+    }
+
+    .settings-main {
+        padding-top: 1rem;
+    }
+
+    @@media (max-width: 767px) {
+        .settings-sidebar {
+            margin-bottom: 2rem;
+        }
+
+        .settings-sidebar .nav {
+            flex-direction: row;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .settings-sidebar .nav-link {
+            display: inline-block;
+        }
+    }
+</style>

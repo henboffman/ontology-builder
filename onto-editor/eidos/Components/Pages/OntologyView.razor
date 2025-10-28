@@ -81,7 +81,6 @@ else
         <!-- Header -->
         <OntologyHeader Ontology="@ontology"
                        OnBackClick="@GoBack"
-                       OnSettingsClick="@GetConditionalCallback(CanFullAccess(), ShowSettingsDialog)"
                        OnImportClick="@GetConditionalCallback(CanEdit(), ShowImportDialog)"
                        OnExportClick="@ShowExportDialog"
                        CanShare="@CanFullAccess()"

@@ -66,28 +66,41 @@
             <!-- Header Section -->
             <div class="d-flex justify-content-between align-items-start mb-3">
                 <div>
-                    <h1 class="display-4 mb-2">🧠 Eidos</h1>
+                    <h1 class="display-4 mb-2">Eidos</h1>
                     <p class="lead text-muted mb-0">Shape the essence of knowledge</p>
-                </div>
-                <div class="d-flex gap-3 align-items-center">
-                    <UserSelector />
-                    @if (isAuthenticated)
-                    {
-                        <FeatureToggleManager OnToggleChanged="HandleFeatureToggleChanged" />
-                    }
                 </div>
             </div>
 
             <!-- Action Bar -->
             <div class="d-flex justify-content-between align-items-center">
-                <div class="btn-group" role="group" aria-label="Help and tutorial actions">
-                    <button class="btn btn-outline-secondary" @onclick="() => showGettingStarted = !showGettingStarted" title="View quick start guide">
-                        <i class="bi bi-question-circle"></i> Getting Started
-                    </button>
-                    <button class="btn btn-outline-secondary" @onclick="RestartTutorial" title="Restart interactive tutorial">
-                        <i class="bi bi-play-circle"></i> Tutorial
-                    </button>
+                <!-- Navigation Links (from TopBar) -->
+                <div class="d-flex gap-3 align-items-center">
+                    <a href="" class="btn btn-outline-secondary">
+                        <i class="bi bi-house"></i> Home
+                    </a>
+                    <a href="learn" class="btn btn-outline-secondary">
+                        <i class="bi bi-book"></i> Learn
+                    </a>
+                    <a href="documentation" class="btn btn-outline-secondary">
+                        <i class="bi bi-file-text"></i> Documentation
+                    </a>
+                    <a href="release-notes" class="btn btn-outline-secondary">
+                        <i class="bi bi-megaphone"></i> What's New
+                    </a>
                 </div>
+
+                <!-- Hidden buttons for future use -->
+                <div class="d-none">
+                    <div class="btn-group" role="group" aria-label="Help and tutorial actions">
+                        <button class="btn btn-outline-secondary" @onclick="() => showGettingStarted = !showGettingStarted" title="View quick start guide">
+                            <i class="bi bi-question-circle"></i> Getting Started
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="RestartTutorial" title="Restart interactive tutorial">
+                            <i class="bi bi-play-circle"></i> Tutorial
+                        </button>
+                    </div>
+                </div>
+
                 <div>
                     @if (!isAuthenticated)
                     {
