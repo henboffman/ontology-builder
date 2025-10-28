@@ -82,6 +82,7 @@ public class ConceptService : IConceptService
             concept.CreatedAt = DateTime.UtcNow;
             await _conceptRepository.AddAsync(concept);
             await _ontologyRepository.UpdateTimestampAsync(concept.OntologyId);
+            await _ontologyRepository.IncrementConceptCountAsync(concept.OntologyId);
         }
 
         // Record activity for version control
@@ -163,6 +164,7 @@ public class ConceptService : IConceptService
         {
             await _conceptRepository.DeleteAsync(id);
             await _ontologyRepository.UpdateTimestampAsync(ontologyId);
+            await _ontologyRepository.DecrementConceptCountAsync(ontologyId);
         }
 
         // Record activity for version control

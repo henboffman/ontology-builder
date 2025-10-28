@@ -285,7 +285,7 @@
                                         <option value="0">-- Select an ontology --</option>
                                         @foreach (var ont in ontologies)
                                         {
-                                            <option value="@ont.Id">@ont.Name (@ont.Concepts.Count concepts)</option>
+                                            <option value="@ont.Id">@ont.Name (@ont.ConceptCount concepts)</option>
                                         }
                                     </select>
                                 </div>
@@ -488,8 +488,8 @@
                                     </p>
                                     <div class="d-flex justify-content-between align-items-center mt-3">
                                         <small class="text-muted">
-                                            <i class="bi bi-circle-fill"></i> @ontology.Concepts.Count concepts
-                                            <i class="bi bi-arrow-left-right ms-2"></i> @ontology.Relationships.Count relationships
+                                            <i class="bi bi-circle-fill"></i> @ontology.ConceptCount concepts
+                                            <i class="bi bi-arrow-left-right ms-2"></i> @ontology.RelationshipCount relationships
                                         </small>
                                     </div>
                                     <div class="mt-2">
@@ -578,8 +578,8 @@
                                         </td>
                                         <td>
                                             <small>
-                                                <span class="badge bg-secondary">@ontology.Concepts.Count concepts</span>
-                                                <span class="badge bg-secondary">@ontology.Relationships.Count links</span>
+                                                <span class="badge bg-secondary">@ontology.ConceptCount concepts</span>
+                                                <span class="badge bg-secondary">@ontology.RelationshipCount links</span>
                                             </small>
                                         </td>
                                         <td>
@@ -809,8 +809,8 @@
                 "created-asc" => filtered.OrderBy(o => o.CreatedAt),
                 "name-asc" => filtered.OrderBy(o => o.Name),
                 "name-desc" => filtered.OrderByDescending(o => o.Name),
-                "concepts-desc" => filtered.OrderByDescending(o => o.Concepts.Count),
-                "concepts-asc" => filtered.OrderBy(o => o.Concepts.Count),
+                "concepts-desc" => filtered.OrderByDescending(o => o.ConceptCount),
+                "concepts-asc" => filtered.OrderBy(o => o.ConceptCount),
                 _ => filtered.OrderByDescending(o => o.UpdatedAt)
             };
 

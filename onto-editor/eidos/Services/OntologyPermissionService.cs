@@ -158,16 +158,27 @@ public class OntologyPermissionService
     /// </summary>
     public async Task<List<Ontology>> GetAccessibleOntologiesAsync(string? userId)
     {
-        // Load ontologies with minimal includes to avoid in-memory provider issues
+        // Load ontologies without navigation properties to avoid performance issues
         var ontologies = await _context.Ontologies.ToListAsync();
 
-        // Load group permissions separately if needed for group visibility checks
+        // Load group permissions with members for group visibility checks
         if (ontologies.Any(o => o.Visibility == OntologyVisibility.Group))
         {
             var ontologyIds = ontologies.Select(o => o.Id).ToList();
             var groupPerms = await _context.OntologyGroupPermissions
+                .Include(gp => gp.UserGroup)
+                .ThenInclude(g => g.Members)
                 .Where(gp => ontologyIds.Contains(gp.OntologyId))
+                .AsNoTracking()
                 .ToListAsync();
+
+            // Manually populate the GroupPermissions navigation property
+            foreach (var ontology in ontologies)
+            {
+                ontology.GroupPermissions = groupPerms
+                    .Where(gp => gp.OntologyId == ontology.Id)
+                    .ToList();
+            }
         }
 
         return ontologies.Where(o =>

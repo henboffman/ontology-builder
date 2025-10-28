@@ -26,4 +26,24 @@ public interface IOntologyRepository : IRepository<Ontology>
     /// Update the UpdatedAt timestamp for an ontology
     /// </summary>
     Task UpdateTimestampAsync(int ontologyId);
+
+    /// <summary>
+    /// Increment the concept count for an ontology
+    /// </summary>
+    Task IncrementConceptCountAsync(int ontologyId);
+
+    /// <summary>
+    /// Decrement the concept count for an ontology
+    /// </summary>
+    Task DecrementConceptCountAsync(int ontologyId);
+
+    /// <summary>
+    /// Increment the relationship count for an ontology
+    /// </summary>
+    Task IncrementRelationshipCountAsync(int ontologyId);
+
+    /// <summary>
+    /// Decrement the relationship count for an ontology
+    /// </summary>
+    Task DecrementRelationshipCountAsync(int ontologyId);
 }

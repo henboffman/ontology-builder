@@ -74,6 +74,7 @@ public class RelationshipService : IRelationshipService
             relationship.CreatedAt = DateTime.UtcNow;
             await _relationshipRepository.AddAsync(relationship);
             await _ontologyRepository.UpdateTimestampAsync(relationship.OntologyId);
+            await _ontologyRepository.IncrementRelationshipCountAsync(relationship.OntologyId);
         }
 
         // Record activity for version control
@@ -155,6 +156,7 @@ public class RelationshipService : IRelationshipService
         {
             await _relationshipRepository.DeleteAsync(id);
             await _ontologyRepository.UpdateTimestampAsync(ontologyId);
+            await _ontologyRepository.DecrementRelationshipCountAsync(ontologyId);
         }
 
         // Record activity for version control

@@ -40,6 +40,10 @@ namespace Eidos.Models
         public string? Author { get; set; }
         public string? Version { get; set; }
 
+        // Denormalized counts for performance (updated on concept/relationship changes)
+        public int ConceptCount { get; set; } = 0;
+        public int RelationshipCount { get; set; } = 0;
+
         // Ontology framework tracking
         public bool UsesBFO { get; set; } = false; // Uses Basic Formal Ontology as foundation
         public bool UsesProvO { get; set; } = false; // Uses PROV-O for provenance tracking
