@@ -1,5 +1,6 @@
 .collaborator-panel {
-    background: var(--surface-color, #ffffff);
+    /* background: var(--surface-color, var(--background-color, #ffffff)); */
+    background-color: var(--bg-secondary);
     border-radius: 8px;
     padding: 1.5rem;
 }
@@ -10,7 +11,7 @@
 }
 
 .collaborator-card {
-    background: var(--card-background, #f8f9fa);
+    background: var(--bg-tertiary, #f8f9fa);
     border: 1px solid var(--border-color, #dee2e6);
     border-radius: 8px;
     padding: 1rem;
@@ -129,11 +130,11 @@
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
     .collaborator-panel {
-        background: var(--surface-color, #1a1a1a);
+        background-color: var(--bg-secondary);
     }
 
     .collaborator-card {
-        background: var(--card-background, #2a2a2a);
+        background: var(--bg-tertiary, #f8f9fa);
         border-color: var(--border-color, #444);
     }
 
@@ -144,7 +145,7 @@
     .stat-card,
     .edit-stats,
     .activity-content {
-        background: var(--surface-color, #1a1a1a);
+        background: var(--bg-secondary);
         border-color: var(--border-color, #444);
     }
 }

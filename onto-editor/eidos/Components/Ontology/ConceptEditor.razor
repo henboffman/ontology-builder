@@ -51,6 +51,8 @@
         <div class="mb-2">
             <label class="form-label small">Name <span class="text-danger">*</span></label>
             <input type="text" class="form-control form-control-sm" @bind="conceptName"
+                   @onkeydown="HandleKeyDown"
+                   @ref="nameInputRef"
                    placeholder="e.g., Mammal" />
         </div>
         <div class="mb-2">
@@ -91,12 +93,22 @@
                     disabled="@string.IsNullOrWhiteSpace(ConceptName)">
                 <i class="bi bi-check-circle"></i> @(IsEditing ? "Save" : "Add")
             </button>
+            @if (!IsEditing)
+            {
+                <button class="btn btn-sm btn-success" @onclick="OnSaveAndAddAnotherClick"
+                        disabled="@string.IsNullOrWhiteSpace(ConceptName)"
+                        title="Save this concept and immediately add another (Ctrl+Enter)">
+                    <i class="bi bi-plus-circle"></i> Save & Add Another
+                </button>
+            }
             <button class="btn btn-sm btn-outline-secondary" @onclick="OnCancelClick">
                 Cancel
             </button>
         </div>
     </div>
 </div>
+
+@inject IJSRuntime JSRuntime
 
 @code {
     [Parameter]
@@ -106,6 +118,7 @@
     public bool ShouldPulse { get; set; }
 
     private bool showConceptHelp = false;
+    private ElementReference nameInputRef;
 
     [Parameter]
     public ICollection<CustomConceptTemplate> CustomTemplates { get; set; } = new List<CustomConceptTemplate>();
@@ -142,6 +155,9 @@
 
     [Parameter]
     public EventCallback OnSaveClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnSaveAndAddAnotherClick { get; set; }
 
     [Parameter]
     public EventCallback OnCancelClick { get; set; }
@@ -220,6 +236,28 @@
         if (!string.IsNullOrWhiteSpace(templateValue))
         {
             await OnTemplateSelected.InvokeAsync(templateValue);
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        // Ctrl+Enter triggers "Save & Add Another" (only when not editing)
+        if (e.CtrlKey && e.Key == "Enter" && !IsEditing && !string.IsNullOrWhiteSpace(ConceptName))
+        {
+            await OnSaveAndAddAnotherClick.InvokeAsync();
+        }
+    }
+
+    public async Task FocusNameInput()
+    {
+        try
+        {
+            await Task.Delay(100); // Small delay to ensure form is ready
+            await JSRuntime.InvokeVoidAsync("eval", "document.querySelector('input[placeholder*=\"Mammal\"]')?.focus()");
+        }
+        catch
+        {
+            // Silently fail if focus doesn't work
         }
     }
 }

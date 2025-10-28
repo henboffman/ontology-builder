@@ -13,7 +13,8 @@
 .shortcut-section-title {
     font-size: 1rem;
     font-weight: 600;
-    color: var(--bs-body-color);
+    /* color: var(--bs-body-color); */
+    color: var(--text-primary);
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid var(--bs-border-color);
@@ -57,7 +58,7 @@
 }
 
 .shortcut-description {
-    color: var(--bs-secondary-color);
+    color: var(--text-primary);
     font-size: 0.9375rem;
     flex: 1;
     text-align: right;

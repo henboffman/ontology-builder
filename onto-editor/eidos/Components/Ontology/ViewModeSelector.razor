@@ -3,77 +3,62 @@
 <div class="row mb-3">
     <!-- Desktop Layout -->
     <div class="col-12 d-none d-md-flex justify-content-between align-items-center gap-2">
-        <!-- Desktop: Full button group -->
+        <!-- Desktop: View mode buttons -->
         <div class="btn-group" role="group">
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Graph)"
-                    disabled="@(CurrentViewMode == ViewMode.Graph)"
-                    title="Graph View">
+                disabled="@(CurrentViewMode == ViewMode.Graph)" title="Graph View">
                 <i class="bi bi-diagram-3"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.List)"
-                    disabled="@(CurrentViewMode == ViewMode.List)"
-                    title="List View">
+                disabled="@(CurrentViewMode == ViewMode.List)" title="List View">
                 <i class="bi bi-list-ul"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Hierarchy)"
-                    disabled="@(CurrentViewMode == ViewMode.Hierarchy)"
-                    title="Hierarchy View">
+                disabled="@(CurrentViewMode == ViewMode.Hierarchy)" title="Hierarchy View">
                 <i class="bi bi-diagram-2"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Instances)"
-                    disabled="@(CurrentViewMode == ViewMode.Instances)"
-                    title="Instances">
+                disabled="@(CurrentViewMode == ViewMode.Instances)" title="Instances">
                 <i class="bi bi-person"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Ttl)"
-                    disabled="@(CurrentViewMode == ViewMode.Ttl)"
-                    title="Export/View TTL">
+                disabled="@(CurrentViewMode == ViewMode.Ttl)" title="Export/View TTL">
                 <i class="bi bi-file-code"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)"
-                    disabled="@(CurrentViewMode == ViewMode.Notes)"
-                    title="Notes">
+                disabled="@(CurrentViewMode == ViewMode.Notes)" title="Notes">
                 <i class="bi bi-journal-text"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Templates)"
-                    disabled="@(CurrentViewMode == ViewMode.Templates)"
-                    title="Templates">
+                disabled="@(CurrentViewMode == ViewMode.Templates)" title="Templates">
                 <i class="bi bi-journal-code"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Links)"
-                    disabled="@(CurrentViewMode == ViewMode.Links)"
-                    title="Linked Ontologies">
+                disabled="@(CurrentViewMode == ViewMode.Links)" title="Linked Ontologies">
                 <i class="bi bi-link-45deg"></i>
             </button>
-            <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Collaborators)"
-                    disabled="@(CurrentViewMode == ViewMode.Collaborators)"
-                    title="Collaborators">
+            <button class="btn btn-outline-primary"
+                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Collaborators)"
+                disabled="@(CurrentViewMode == ViewMode.Collaborators)" title="Collaborators">
                 <i class="bi bi-people-fill"></i>
             </button>
-            <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.VersionHistory)"
-                    disabled="@(CurrentViewMode == ViewMode.VersionHistory)"
-                    title="Version History">
+            <button class="btn btn-outline-primary"
+                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.VersionHistory)"
+                disabled="@(CurrentViewMode == ViewMode.VersionHistory)" title="Version History">
                 <i class="bi bi-clock-history"></i>
             </button>
             <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Help)"
-                    disabled="@(CurrentViewMode == ViewMode.Help)"
-                    title="Help">
+                disabled="@(CurrentViewMode == ViewMode.Help)" title="Help">
                 <i class="bi bi-question-circle"></i>
             </button>
         </div>
 
-        <!-- Desktop: Undo/Redo buttons -->
+        <!-- Desktop: Undo/Redo buttons (aligned right) -->
         <div class="btn-group" role="group">
-            <button class="btn btn-outline-secondary btn-sm"
-                    @onclick="OnUndoClick"
-                    disabled="@(!CanUndo)"
-                    title="Undo (Ctrl+Z)">
+            <button class="btn btn-outline-info" @onclick="OnUndoClick" disabled="@(!CanUndo)" title="Undo (Ctrl+Z)">
                 <i class="bi bi-arrow-counterclockwise"></i>
             </button>
-            <button class="btn btn-outline-secondary btn-sm"
-                    @onclick="OnRedoClick"
-                    disabled="@(!CanRedo)"
-                    title="Redo (Ctrl+Y)">
+            <button class="btn btn-outline-info" @onclick="OnRedoClick" disabled="@(!CanRedo)" title="Redo (Ctrl+Y)">
                 <i class="bi bi-arrow-clockwise"></i>
             </button>
         </div>
@@ -84,102 +69,84 @@
         <!-- Mobile: Compact dropdown with icon only -->
         <div class="dropdown flex-grow-1" style="min-width: 0;">
             <button class="btn btn-primary dropdown-toggle w-100 text-truncate" type="button" id="viewModeDropdown"
-                    data-bs-toggle="dropdown" aria-expanded="false"
-                    style="max-width: 100%;">
+                data-bs-toggle="dropdown" aria-expanded="false" style="max-width: 100%;">
                 <i class="@GetViewModeIcon(CurrentViewMode)"></i>
                 <span class="ms-2 d-none d-sm-inline">@GetViewModeName(CurrentViewMode)</span>
             </button>
             <ul class="dropdown-menu" aria-labelledby="viewModeDropdown">
                 <li>
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.Graph ? "active" : "")"
-                            @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Graph)">
+                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Graph)">
                         <i class="bi bi-diagram-3 me-2"></i> Graph
                     </button>
                 </li>
                 <li>
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.List ? "active" : "")"
-                            @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.List)">
+                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.List)">
                         <i class="bi bi-list-ul me-2"></i> List
                     </button>
                 </li>
                 <li>
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.Hierarchy ? "active" : "")"
-                            @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Hierarchy)">
+                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Hierarchy)">
                         <i class="bi bi-diagram-2 me-2"></i> Hierarchy
                     </button>
                 </li>
                 <li>
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.Instances ? "active" : "")"
-                            @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Instances)">
+                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Instances)">
                         <i class="bi bi-person me-2"></i> Instances
                     </button>
                 </li>
                 <li>
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.Ttl ? "active" : "")"
-                            @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Ttl)">
+                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Ttl)">
                         <i class="bi bi-file-code me-2"></i> TTL
                     </button>
                 </li>
                 <li>
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.Notes ? "active" : "")"
-                            @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)">
+                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)">
                         <i class="bi bi-journal-text me-2"></i> Notes
                     </button>
                 </li>
                 <li>
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.Templates ? "active" : "")"
-                            @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Templates)">
+                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Templates)">
                         <i class="bi bi-journal-code me-2"></i> Templates
                     </button>
                 </li>
                 <li>
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.Links ? "active" : "")"
-                            @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Links)">
+                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Links)">
                         <i class="bi bi-link-45deg me-2"></i> Links
                     </button>
                 </li>
                 <li>
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.Collaborators ? "active" : "")"
-                            @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Collaborators)">
+                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Collaborators)">
                         <i class="bi bi-people-fill me-2"></i> Collaborators
                     </button>
                 </li>
                 <li>
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.VersionHistory ? "active" : "")"
-                            @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.VersionHistory)">
+                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.VersionHistory)">
                         <i class="bi bi-clock-history me-2"></i> Version History
                     </button>
                 </li>
                 <li>
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.Help ? "active" : "")"
-                            @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Help)">
+                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Help)">
                         <i class="bi bi-question-circle me-2"></i> Help
                     </button>
                 </li>
             </ul>
         </div>
-
-        <!-- Mobile: Undo/Redo buttons - compact -->
-        <div class="btn-group flex-shrink-0" role="group">
-            <button class="btn btn-outline-secondary btn-sm"
-                    @onclick="OnUndoClick"
-                    disabled="@(!CanUndo)"
-                    title="Undo"
-                    style="min-width: 40px;">
-                <i class="bi bi-arrow-counterclockwise"></i>
-            </button>
-            <button class="btn btn-outline-secondary btn-sm"
-                    @onclick="OnRedoClick"
-                    disabled="@(!CanRedo)"
-                    title="Redo"
-                    style="min-width: 40px;">
-                <i class="bi bi-arrow-clockwise"></i>
-            </button>
-        </div>
     </div>
 </div>
 
-@code {
+@code
+{
     [Parameter, EditorRequired]
     public ViewMode CurrentViewMode { get; set; }
 

@@ -91,7 +91,8 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small">Activity Type</label>
-                    <select class="form-select form-select-sm" @bind="FilterActivityType" @bind:after="ApplyFiltersAsync">
+                    <select class="form-select form-select-sm" @bind="FilterActivityType"
+                        @bind:after="ApplyFiltersAsync">
                         <option value="">All Activities</option>
                         <option value="create">Create</option>
                         <option value="update">Update</option>
@@ -143,7 +144,7 @@
             @foreach (var activity in Activities)
             {
                 <div class="timeline-item @(SelectedActivityId == activity.Id ? "selected" : "")"
-                     @onclick="() => SelectActivity(activity.Id)">
+                    @onclick="() => SelectActivity(activity.Id)">
                     <div class="timeline-marker">
                         <i class="bi bi-@GetActivityIcon(activity.ActivityType)"></i>
                     </div>
@@ -166,19 +167,15 @@
                                 <div class="timeline-actions">
                                     @if (!string.IsNullOrEmpty(activity.AfterSnapshot))
                                     {
-                                        <button class="btn btn-sm btn-outline-secondary"
-                                                @onclick:stopPropagation="true"
-                                                @onclick="() => ViewDetails(activity.Id)"
-                                                title="View details">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick:stopPropagation="true"
+                                            @onclick="() => ViewDetails(activity.Id)" title="View details">
                                             <i class="bi bi-eye"></i>
                                         </button>
                                     }
                                     @if (activity.VersionNumber.HasValue && activity.ActivityType != "revert")
                                     {
-                                        <button class="btn btn-sm btn-outline-warning"
-                                                @onclick:stopPropagation="true"
-                                                @onclick="() => ConfirmRevert(activity)"
-                                                title="Revert to this version">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick:stopPropagation="true"
+                                            @onclick="() => ConfirmRevert(activity)" title="Revert to this version">
                                             <i class="bi bi-arrow-counterclockwise"></i>
                                         </button>
                                     }
@@ -243,9 +240,8 @@
         <!-- Pagination -->
         <div class="d-flex justify-content-between align-items-center mt-3">
             <div>
-                <button class="btn btn-sm btn-outline-secondary"
-                        @onclick="LoadMoreAsync"
-                        disabled="@(IsLoading || Activities.Count < PageSize)">
+                <button class="btn btn-sm btn-outline-secondary" @onclick="LoadMoreAsync"
+                    disabled="@(IsLoading || Activities.Count < PageSize)">
                     <i class="bi bi-arrow-down"></i> Load More
                 </button>
             </div>
@@ -256,7 +252,8 @@
     }
 </div>
 
-@code {
+@code
+{
     [Parameter, EditorRequired]
     public int OntologyId { get; set; }
 
@@ -355,7 +352,8 @@
 
             if (!string.IsNullOrEmpty(FilterEntityType))
             {
-                moreActivities = await ActivityService.GetActivityByEntityTypeAsync(OntologyId, FilterEntityType, CurrentSkip, PageSize);
+                moreActivities = await ActivityService.GetActivityByEntityTypeAsync(OntologyId, FilterEntityType, CurrentSkip,
+                PageSize);
             }
             else
             {

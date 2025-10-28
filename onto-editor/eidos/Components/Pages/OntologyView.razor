@@ -267,7 +267,8 @@ else
             <div class="d-none d-md-block col-md-3 ontology-sidebar">
                 @if (showAddConcept || editingConcept != null)
                 {
-                    <ConceptEditor IsEditing="@(editingConcept != null)"
+                    <ConceptEditor @ref="conceptEditor"
+                                  IsEditing="@(editingConcept != null)"
                                   ShouldPulse="@shouldPulseSidebar"
                                   CustomTemplates="@ontology.CustomTemplates"
                                   ConceptName="@newConcept.Name"
@@ -281,6 +282,7 @@ else
                                   ConceptColor="@newConcept.Color"
                                   ConceptColorChanged="@((value) => newConcept.Color = value)"
                                   OnSaveClick="@SaveConcept"
+                                  OnSaveAndAddAnotherClick="@SaveConceptAndAddAnother"
                                   OnCancelClick="@CancelEditConcept"
                                   OnTemplateSelected="@ApplyConceptTemplate" />
                 }
@@ -560,6 +562,7 @@ else
                                           ConceptColor="@newConcept.Color"
                                           ConceptColorChanged="@((value) => newConcept.Color = value)"
                                           OnSaveClick="@SaveConcept"
+                                          OnSaveAndAddAnotherClick="@SaveConceptAndAddAnother"
                                           OnCancelClick="@CancelEditConcept"
                                           OnTemplateSelected="@ApplyConceptTemplate" />
                         }
@@ -726,6 +729,7 @@ else
     private List<IndividualProperty> newIndividualProperties = new();
     private string customRelationType = string.Empty;
     private GraphView? graphView;
+    private ConceptEditor? conceptEditor;
 
     private string ttlContent = string.Empty;
     private string selectedRdfFormat = "Turtle";
@@ -1041,6 +1045,57 @@ else
 
             showAddConcept = false;
             await LoadOntology();
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = ex.InnerException != null
+                ? $"{ex.Message} - {ex.InnerException.Message}"
+                : ex.Message;
+            ToastService.ShowError($"Failed to save concept: {errorMessage}", 8000);
+        }
+    }
+
+    private async Task SaveConceptAndAddAnother()
+    {
+        if (string.IsNullOrWhiteSpace(newConcept.Name))
+            return;
+
+        // Check permissions
+        if (!CanAdd())
+        {
+            ToastService.ShowError("You do not have permission to add concepts");
+            return;
+        }
+
+        try
+        {
+            var conceptName = newConcept.Name;
+            await OntologyService.CreateConceptAsync(newConcept);
+            ToastService.ShowSuccess($"Created concept \"{conceptName}\"", 2000);
+
+            // Reload ontology in the background
+            await LoadOntology();
+
+            // Get user preferences for the new concept defaults
+            var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+
+            // Clear the form with fresh defaults
+            newConcept = new Concept
+            {
+                OntologyId = Id,
+                Color = prefs.DefaultConceptColor,
+                Category = newConcept.Category // Keep the same category for convenience
+            };
+
+            // Keep the form open
+            showAddConcept = true;
+            StateHasChanged();
+
+            // Focus the name input field
+            if (conceptEditor != null)
+            {
+                await conceptEditor.FocusNameInput();
+            }
         }
         catch (Exception ex)
         {

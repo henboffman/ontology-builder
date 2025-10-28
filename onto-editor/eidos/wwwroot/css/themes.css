@@ -263,13 +263,48 @@ body {
 
 .btn-outline-secondary {
     color: var(--text-primary);
-    border-color: var(--border-color);
+    border-color: #6c757d; /* Dark gray border for light mode */
 }
 
 .btn-outline-secondary:hover {
     background-color: var(--btn-secondary-bg);
     border-color: var(--btn-secondary-bg);
     color: var(--text-inverse);
+}
+
+/* Dark mode: Light gray border for better visibility */
+[data-theme="dark"] .btn-outline-secondary {
+    border-color: #9ca3af; /* Light gray border for dark mode */
+}
+
+[data-theme="dark"] .btn-outline-secondary:hover {
+    background-color: var(--btn-secondary-bg);
+    border-color: var(--btn-secondary-bg);
+}
+
+/* Improve contrast for other outline button types */
+.btn-outline-info {
+    border-color: #0dcaf0; /* Solid cyan border for light mode */
+}
+
+[data-theme="dark"] .btn-outline-info {
+    border-color: #3dd5f3; /* Brighter cyan for dark mode */
+}
+
+.btn-outline-success {
+    border-color: #198754; /* Solid green border for light mode */
+}
+
+[data-theme="dark"] .btn-outline-success {
+    border-color: #20c997; /* Brighter green for dark mode */
+}
+
+.btn-outline-warning {
+    border-color: #ffc107; /* Solid yellow/orange border for light mode */
+}
+
+[data-theme="dark"] .btn-outline-warning {
+    border-color: #ffca2c; /* Brighter yellow for dark mode */
 }
 
 /* Tables */
