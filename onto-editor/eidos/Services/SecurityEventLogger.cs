@@ -93,7 +93,7 @@ public class SecurityEventLogger
 
     public void LogAccountUnlink(string userId, string email, string provider)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogInformation(
             "External account unlinked. Provider: {Provider}, UserId: {UserId}, Email: {Email}, IP: {IpAddress}",
             provider, userId, email, ipAddress);
