@@ -164,7 +164,7 @@
         }
     }
 
-    private async Task LoadGroupAccess()
+    private Task LoadGroupAccess()
     {
         try
         {
@@ -177,6 +177,8 @@
             Logger.LogError(ex, "Error loading group access");
             ToastService.ShowError("Failed to load group access");
         }
+
+        return Task.CompletedTask;
     }
 
     private async Task HandleSave()
@@ -195,13 +197,15 @@
         ToastService.ShowInfo("Group management coming soon");
     }
 
-    private async Task RemoveGroupAccess(string groupId)
+    private Task RemoveGroupAccess(string groupId)
     {
         if (groupAccess != null)
         {
             groupAccess.RemoveAll(g => g.GroupId == groupId);
             StateHasChanged();
         }
+
+        return Task.CompletedTask;
     }
 
     // Placeholder model

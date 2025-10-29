@@ -124,7 +124,7 @@ else
                                CanEdit="@CanEdit()" />
             </div>
             <div class="ms-3">
-                <PresenceIndicator Users="@presenceUsers" />
+                <PresenceIndicator Users="@presenceUsers" OnNavigateToUserView="@NavigateToUserView" />
             </div>
         </div>
 
@@ -1075,6 +1075,20 @@ else
             {
                 individuals = await IndividualService.GetByOntologyIdAsync(ontology.Id);
             }
+        }
+    }
+
+    private async Task NavigateToUserView(string viewName)
+    {
+        // Convert the view name string to ViewMode enum
+        if (Enum.TryParse<ViewMode>(viewName, true, out var targetView))
+        {
+            await SwitchViewMode(targetView);
+            ToastService.ShowInfo($"Navigated to {viewName} view");
+        }
+        else
+        {
+            Logger.LogWarning("Unable to navigate to view: {ViewName}", viewName);
         }
     }
 

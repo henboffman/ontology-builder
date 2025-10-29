@@ -188,6 +188,49 @@ Eidos is a comprehensive ontology management system built with modern .NET techn
 - ✅ **Automatic connection cleanup** - Disconnect handling
 - ✅ **Guest session support** - Unauthenticated users via share links
 
+### Real-Time Presence Indicators (Google Docs / Figma-style)
+- ✅ **Visual presence avatars** - Color-coded user avatars with initials
+  - Shows up to 5 users with "+N" badge for additional viewers
+  - Hover tooltips display full names
+  - "Just you" message when working alone
+  - Smooth fade-in animations for joining users
+- ✅ **Live view tracking** - See which tab each user is viewing
+  - Real-time view indicators on avatars
+  - View-specific icons (Graph, List, Hierarchy, etc.)
+  - View labels under avatars
+  - Instant updates when users switch tabs
+- ✅ **Colored tab indicators** - User-colored dots on view buttons
+  - Shows up to 3 colored dots per tab
+  - Each dot matches the user's avatar color
+  - "+N" badge for additional viewers beyond 3
+  - Enhanced tooltips listing all viewer names
+- ✅ **Multi-provider display names** - Compatible with all auth providers
+  - Entra ID (Azure AD) support with "preferred_username" claim
+  - Google OAuth with "name" claim
+  - GitHub OAuth with display name fallback
+  - Microsoft OAuth compatibility
+  - Smart fallback chain: name → ClaimTypes.Name → preferred_username → GivenName+Surname → email username
+- ✅ **Heartbeat mechanism** - Keep presence active
+  - 30-second automatic heartbeat timer
+  - LastSeenAt timestamp tracking
+  - Stale presence prevention
+- ✅ **Automatic cleanup** - Presence removal on disconnect
+  - OnDisconnectedAsync cleanup
+  - Empty dictionary cleanup
+  - Multi-ontology disconnect handling
+- ✅ **Permission-based presence** - Security-first design
+  - Permission check before joining
+  - Unauthorized attempts logged
+  - Only authorized users see PII (emails)
+- ✅ **Thread-safe implementation** - ConcurrentDictionary storage
+  - No race conditions
+  - Multiple concurrent users supported
+  - Hash-based consistent color assignment
+- ✅ **Dark mode support** - Theme-aware presence UI
+  - CSS custom properties for theming
+  - Border colors adapt to theme
+  - Readable in both light and dark modes
+
 ### Sharing & Permissions
 - ✅ **Secure share links** - Cryptographically secure tokens
 - ✅ **Granular permission levels**
@@ -385,7 +428,7 @@ Eidos is a comprehensive ontology management system built with modern .NET techn
 
 ## Testing & Quality
 
-### Test Suite (137 Tests - 100% Pass Rate)
+### Test Suite (151 Tests - 100% Pass Rate)
 - ✅ **Repository integration tests** (19 tests)
   - OntologyRepository (6 tests)
   - ConceptRepository (6 tests)
@@ -397,6 +440,15 @@ Eidos is a comprehensive ontology management system built with modern .NET techn
 - ✅ **Service integration tests** (25 tests) - REAL database operations
   - ConceptServiceIntegrationTests (11 tests)
   - RelationshipServiceIntegrationTests (14 tests)
+- ✅ **Hub tests** (14 tests) - Real-time presence tracking
+  - OntologyHubPresenceTests (14 tests)
+    - Permission validation tests
+    - Presence info creation tests
+    - View update and input validation tests
+    - Multi-provider display name resolution tests
+    - Color consistency tests
+    - Guest user tests
+    - Disconnect cleanup tests
 - ✅ **Workflow tests** (7 tests) - End-to-end scenarios
 - ✅ **Component tests** (36 tests)
   - ConfirmDialog (9 tests)
@@ -580,8 +632,8 @@ Eidos is a comprehensive ontology management system built with modern .NET techn
 - **Security Event Types**: 8+ logged event types
 
 ### Quality Metrics
-- **Test Count**: 137 tests (100% pass rate)
-- **Test Execution Time**: 845ms for all tests
+- **Test Count**: 151 tests (100% pass rate)
+- **Test Execution Time**: ~900ms for all tests
 - **Code Reduction**: 75% reduction in service size
 - **Async Operations**: 377+ async methods
 - **Documentation Lines**: 3000+ lines across 10+ files
@@ -620,4 +672,4 @@ Eidos is a **production-ready, enterprise-grade** application demonstrating:
 
 **Built with .NET 9, C# 13, ASP.NET Core, Entity Framework Core, Blazor Server, SignalR, Bootstrap 5, and D3.js**
 
-*Last Updated: 2025-10-25*
+*Last Updated: 2025-10-28*

@@ -4,39 +4,55 @@
 <div class="presence-indicator">
     @if (Users.Any())
     {
-        <div class="presence-avatars">
-            @foreach (var user in Users.Take(5))
-            {
-                <div class="presence-avatar-container">
-                    <div class="presence-avatar"
-                         style="background-color: @user.Color; border-color: @user.Color;"
-                         title="@GetUserTooltip(user)">
-                        <span class="avatar-initials">@GetInitials(user.UserName)</span>
+        <div class="presence-content">
+            <div class="presence-avatars">
+                @foreach (var user in Users.Take(5))
+                {
+                    <div class="presence-avatar-container">
+                        <div class="presence-avatar"
+                             style="background-color: @user.Color; border-color: @user.Color;"
+                             title="@GetUserTooltip(user)">
+                            @if (!string.IsNullOrEmpty(user.ProfilePhotoUrl))
+                            {
+                                <img src="@user.ProfilePhotoUrl"
+                                     alt="@user.UserName"
+                                     class="avatar-photo"
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                                <span class="avatar-initials" style="display: none;">@GetInitials(user.UserName)</span>
+                            }
+                            else
+                            {
+                                <span class="avatar-initials">@GetInitials(user.UserName)</span>
+                            }
+                            @if (!string.IsNullOrEmpty(user.CurrentView))
+                            {
+                                <span class="avatar-view-indicator"
+                                      title="Click to view @user.CurrentView"
+                                      @onclick="@(() => HandleNavigateToView(user))"
+                                      @onclick:stopPropagation="true">
+                                    <i class="bi @GetViewIcon(user.CurrentView)"></i>
+                                </span>
+                            }
+                        </div>
                         @if (!string.IsNullOrEmpty(user.CurrentView))
                         {
-                            <span class="avatar-view-indicator" title="Viewing: @user.CurrentView">
-                                <i class="bi @GetViewIcon(user.CurrentView)"></i>
-                            </span>
+                            <div class="view-label">@user.CurrentView</div>
                         }
                     </div>
-                    @if (!string.IsNullOrEmpty(user.CurrentView))
-                    {
-                        <div class="view-label">@user.CurrentView</div>
-                    }
-                </div>
-            }
+                }
 
-            @if (Users.Count > 5)
-            {
-                <div class="presence-avatar presence-avatar-more" title="@(Users.Count - 5) more">
-                    <span class="avatar-initials">+@(Users.Count - 5)</span>
-                </div>
-            }
-        </div>
+                @if (Users.Count > 5)
+                {
+                    <div class="presence-avatar presence-avatar-more" title="@(Users.Count - 5) more">
+                        <span class="avatar-initials">+@(Users.Count - 5)</span>
+                    </div>
+                }
+            </div>
 
-        <div class="presence-count">
-            <i class="bi bi-people-fill"></i>
-            <span>@Users.Count online</span>
+            <div class="presence-count">
+                <i class="bi bi-people-fill"></i>
+                <span>@Users.Count online</span>
+            </div>
         </div>
     }
     else
@@ -51,6 +67,17 @@
 @code {
     [Parameter]
     public List<PresenceInfo> Users { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<string> OnNavigateToUserView { get; set; }
+
+    private async Task HandleNavigateToView(PresenceInfo user)
+    {
+        if (!string.IsNullOrEmpty(user.CurrentView) && OnNavigateToUserView.HasDelegate)
+        {
+            await OnNavigateToUserView.InvokeAsync(user.CurrentView);
+        }
+    }
 
     private string GetInitials(string userName)
     {
@@ -96,13 +123,16 @@
 
 <style>
     .presence-indicator {
-        display: flex;
-        align-items: center;
-        gap: 12px;
         padding: 8px 12px;
         background: var(--bs-light);
         border-radius: 8px;
         border: 1px solid var(--bs-border-color);
+    }
+
+    .presence-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
 
     .presence-avatars {
@@ -158,6 +188,18 @@
         text-transform: uppercase;
         font-size: 0.7rem;
         letter-spacing: -0.5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+    }
+
+    .avatar-photo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
     }
 
     .avatar-view-indicator {
@@ -173,11 +215,22 @@
         justify-content: center;
         font-size: 0.6rem;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        z-index: 2;
+    }
+
+    .avatar-view-indicator:hover {
+        transform: scale(1.2);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        background-color: var(--bs-primary);
+        color: white;
     }
 
     .presence-count {
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 4px;
         font-size: 0.875rem;
         color: var(--bs-body-color);

@@ -9,9 +9,91 @@
     </div>
 
     <div class="release-timeline">
-        <!-- Latest: Branding & UX Updates -->
+        <!-- Latest: Real-Time Presence Tracking -->
         <div class="release-item">
             <div class="release-badge badge bg-primary">Latest</div>
+            <div class="release-date">October 28, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-people-fill text-success me-2"></i>
+                Real-Time Presence Tracking
+            </h4>
+            <div class="release-content">
+                <p class="lead">Google Docs / Figma-style collaboration awareness - see who's viewing your ontology in real-time!</p>
+
+                <h5>Presence Indicators</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Live User Avatars</strong>
+                        <ul>
+                            <li>Color-coded avatars with user initials</li>
+                            <li>Shows up to 5 users with "+N" indicator for additional viewers</li>
+                            <li>Hover to see user names and current view</li>
+                            <li>"Just you" message when working alone</li>
+                            <li>Smooth fade-in animations when users join/leave</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>View Tracking</strong>
+                        <ul>
+                            <li>See which tab each user is viewing (Graph, List, Hierarchy, etc.)</li>
+                            <li>View-specific icons on user avatars</li>
+                            <li>View labels under avatars</li>
+                            <li>Real-time updates when users switch tabs</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Colored Tab Indicators</strong>
+                        <ul>
+                            <li>User-colored dots on tab buttons show who's viewing each tab</li>
+                            <li>Shows up to 3 colored dots per tab with "+N" for additional viewers</li>
+                            <li>Enhanced tooltips listing all viewer names</li>
+                            <li>Visual consistency between avatars and tab indicators</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>Multi-Provider Authentication Support</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Smart Display Name Resolution</strong>
+                        <ul>
+                            <li>Compatible with Entra ID (Azure AD)</li>
+                            <li>Supports Google, GitHub, Microsoft OAuth</li>
+                            <li>Priority fallback chain for reliable name display</li>
+                            <li>Graceful handling of missing name claims</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>Technical Implementation</h5>
+                <ul class="feature-list">
+                    <li>SignalR hub with permission-based access control</li>
+                    <li>30-second heartbeat for presence maintenance</li>
+                    <li>Automatic cleanup on disconnect</li>
+                    <li>Thread-safe concurrent data structures</li>
+                    <li>Hash-based consistent color assignment</li>
+                    <li>Dark mode support throughout</li>
+                </ul>
+
+                <h5>Security</h5>
+                <ul class="feature-list">
+                    <li>Authentication required - no anonymous presence</li>
+                    <li>Permission validation via share system</li>
+                    <li>Owner and invited users both supported</li>
+                    <li>PII protection - emails only to authorized users</li>
+                    <li>Comprehensive audit logging</li>
+                    <li>Input validation on all user data</li>
+                </ul>
+
+                <div class="alert alert-success mt-3">
+                    <i class="bi bi-eye me-2"></i>
+                    <strong>Try it now:</strong> Open an ontology in two different browser windows or share with a colleague to see real-time presence in action!
+                </div>
+            </div>
+        </div>
+
+        <!-- Branding & UX Updates -->
+        <div class="release-item">
             <div class="release-date">October 28, 2025</div>
             <h4 class="release-title">
                 <i class="bi bi-palette text-info me-2"></i>

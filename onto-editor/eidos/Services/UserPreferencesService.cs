@@ -41,7 +41,7 @@ public class UserPreferencesService : IUserPreferencesService
         var cacheKey = $"{CACHE_KEY_PREFIX}{userId}";
 
         // Try to get from cache first
-        if (_cache.TryGetValue<UserPreferences>(cacheKey, out var cachedPreferences))
+        if (_cache.TryGetValue<UserPreferences>(cacheKey, out var cachedPreferences) && cachedPreferences != null)
         {
             return cachedPreferences;
         }

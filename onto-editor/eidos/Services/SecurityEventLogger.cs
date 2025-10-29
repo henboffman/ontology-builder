@@ -13,7 +13,7 @@ public class SecurityEventLogger
     /// <summary>
     /// Sanitizes strings for safe logging (removes line breaks).
     /// </summary>
-    private static string SanitizeForLog(string input)
+    private static string? SanitizeForLog(string? input)
     {
         if (input == null) return null;
         return input.Replace("\r", "").Replace("\n", "");
@@ -29,7 +29,7 @@ public class SecurityEventLogger
 
     public void LogLoginSuccess(string userId, string email)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogInformation(
             "User login successful. UserId: {UserId}, Email: {Email}, IP: {IpAddress}",
             userId, email, ipAddress);
@@ -37,7 +37,7 @@ public class SecurityEventLogger
 
     public void LogLoginFailed(string email, string reason)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogWarning(
             "Login attempt failed. Email: {Email}, Reason: {Reason}, IP: {IpAddress}",
             email, reason, ipAddress);
@@ -45,7 +45,7 @@ public class SecurityEventLogger
 
     public void LogAccountLockout(string userId, string email)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogWarning(
             "Account locked out due to failed login attempts. UserId: {UserId}, Email: {Email}, IP: {IpAddress}",
             userId, email, ipAddress);
@@ -53,7 +53,7 @@ public class SecurityEventLogger
 
     public void LogRegistration(string userId, string email)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogInformation(
             "New user registered. UserId: {UserId}, Email: {Email}, IP: {IpAddress}",
             userId, email, ipAddress);
@@ -61,7 +61,7 @@ public class SecurityEventLogger
 
     public void LogPasswordChange(string userId, string email)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogInformation(
             "Password changed. UserId: {UserId}, Email: {Email}, IP: {IpAddress}",
             userId, email, ipAddress);
@@ -69,7 +69,7 @@ public class SecurityEventLogger
 
     public void LogPasswordReset(string email)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogInformation(
             "Password reset requested. Email: {Email}, IP: {IpAddress}",
             email, ipAddress);
@@ -77,7 +77,7 @@ public class SecurityEventLogger
 
     public void LogExternalLoginSuccess(string provider, string userId, string email)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogInformation(
             "External login successful. Provider: {Provider}, UserId: {UserId}, Email: {Email}, IP: {IpAddress}",
             provider, userId, email, ipAddress);
@@ -85,7 +85,7 @@ public class SecurityEventLogger
 
     public void LogExternalLoginFailed(string provider, string reason)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogWarning(
             "External login failed. Provider: {Provider}, Reason: {Reason}, IP: {IpAddress}",
             provider, reason, ipAddress);
@@ -93,7 +93,7 @@ public class SecurityEventLogger
 
     public void LogAccountUnlink(string userId, string email, string provider)
     {
-        var ipAddress = GetClientIpAddress();
+        var ipAddress = SanitizeForLog(GetClientIpAddress());
         _logger.LogInformation(
             "External account unlinked. Provider: {Provider}, UserId: {UserId}, Email: {Email}, IP: {IpAddress}",
             provider, userId, email, ipAddress);

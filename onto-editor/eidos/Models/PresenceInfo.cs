@@ -9,6 +9,7 @@ namespace Eidos.Models
         public string UserId { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public string? UserEmail { get; set; }
+        public string? ProfilePhotoUrl { get; set; } // Profile photo URL from OAuth/Entra ID
         public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
         public DateTime LastSeenAt { get; set; } = DateTime.UtcNow;
         public string Color { get; set; } = string.Empty; // For avatar/cursor color

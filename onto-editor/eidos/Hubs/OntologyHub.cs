@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Eidos.Data;
 using Eidos.Models;
+using Eidos.Services;
 using Eidos.Services.Interfaces;
 using System.Security.Claims;
 using System.Collections.Concurrent;
@@ -45,28 +48,103 @@ public class OntologyHub : Hub
     {
         // Create a scope to access scoped services
         using var scope = _serviceScopeFactory.CreateScope();
-        var shareService = scope.ServiceProvider.GetRequiredService<IOntologyShareService>();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<OntologyDbContext>>();
 
         try
         {
             // Get the current user ID from the authenticated context
             var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            // Verify the user has permission to access this ontology
-            var permissionLevel = await shareService.GetPermissionLevelAsync(
+            _logger.LogInformation(
+                "JoinOntology called: OntologyId={OntologyId}, UserId={UserId}, ConnectionId={ConnectionId}",
                 ontologyId,
-                userId,
-                sessionToken: null);
+                userId ?? "NULL",
+                Context.ConnectionId);
 
-            if (permissionLevel == null)
+            // Verify the user has permission to access this ontology
+            // Create a new context for this operation
+            await using var context = await contextFactory.CreateDbContextAsync();
+
+            var ontology = await context.Ontologies
+                .Where(o => o.Id == ontologyId)
+                .Select(o => new { o.UserId })
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            if (ontology == null)
             {
                 _logger.LogWarning(
-                    "User {UserId} (ConnectionId: {ConnectionId}) attempted to join ontology {OntologyId} without permission",
-                    userId ?? "Guest",
-                    Context.ConnectionId,
-                    ontologyId);
-                throw new HubException("You do not have permission to access this ontology");
+                    "Ontology not found: OntologyId={OntologyId}, UserId={UserId}",
+                    ontologyId,
+                    userId ?? "NULL");
+                throw new HubException("Ontology not found");
             }
+
+            _logger.LogInformation(
+                "Ontology found: OntologyId={OntologyId}, OwnerId={OwnerId}, RequestingUserId={UserId}",
+                ontologyId,
+                ontology.UserId ?? "NULL",
+                userId ?? "NULL");
+
+            // Check if user has permission to join:
+            // 1. Owner always has permission
+            // 2. Users with share access have permission
+            // 3. Check OntologyShares and UserShareAccesses tables
+            var hasPermission = false;
+            var permissionReason = "none";
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                permissionReason = "not_authenticated";
+            }
+            else if (ontology.UserId == userId)
+            {
+                // Owner always has permission
+                hasPermission = true;
+                permissionReason = "owner";
+            }
+            else
+            {
+                // Check if user has been granted access via sharing
+                var hasShareAccess = await context.UserShareAccesses
+                    .Where(usa => usa.UserId == userId)
+                    .Where(usa => usa.OntologyShare != null && usa.OntologyShare.OntologyId == ontologyId)
+                    .Where(usa => usa.OntologyShare != null && usa.OntologyShare.IsActive)
+                    .AnyAsync();
+
+                if (hasShareAccess)
+                {
+                    hasPermission = true;
+                    permissionReason = "shared_access";
+                }
+                else
+                {
+                    permissionReason = "no_access";
+                }
+            }
+
+            _logger.LogInformation(
+                "Permission check result: HasPermission={HasPermission}, Reason={Reason}, OntologyId={OntologyId}, UserId={UserId}",
+                hasPermission,
+                permissionReason,
+                ontologyId,
+                userId ?? "NULL");
+
+            if (!hasPermission)
+            {
+                _logger.LogWarning(
+                    "Permission denied: UserId={UserId}, OntologyId={OntologyId}, Reason={Reason}",
+                    userId ?? "Guest",
+                    ontologyId,
+                    permissionReason);
+                throw new HubException("You do not have permission to join this ontology");
+            }
+
+
+            _logger.LogInformation(
+                "User {UserId} successfully joined ontology {OntologyId}",
+                userId,
+                ontologyId);
 
             var groupName = GetOntologyGroupName(ontologyId);
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
@@ -75,6 +153,7 @@ public class OntologyHub : Hub
             // Try multiple claim types for display name to support different auth providers
             var userName = GetDisplayName(Context.User) ?? "Guest";
             var userEmail = Context.User?.FindFirst(ClaimTypes.Email)?.Value;
+            var profilePhotoUrl = GetProfilePhotoUrl(Context.User);
             var isGuest = string.IsNullOrEmpty(userId);
 
             var presenceInfo = new PresenceInfo
@@ -83,6 +162,7 @@ public class OntologyHub : Hub
                 UserId = userId ?? $"guest_{Context.ConnectionId}",
                 UserName = userName,
                 UserEmail = userEmail,
+                ProfilePhotoUrl = profilePhotoUrl,
                 JoinedAt = DateTime.UtcNow,
                 LastSeenAt = DateTime.UtcNow,
                 Color = GetUserColor(userId ?? Context.ConnectionId),
@@ -94,10 +174,9 @@ public class OntologyHub : Hub
             ontologyPresence[Context.ConnectionId] = presenceInfo;
 
             _logger.LogInformation(
-                "User {UserId} joined ontology {OntologyId} with permission {PermissionLevel}",
+                "User {UserId} joined ontology {OntologyId}",
                 userId ?? "Guest",
-                ontologyId,
-                permissionLevel);
+                ontologyId);
 
             // Get all current users in this ontology
             var currentUsers = ontologyPresence.Values.ToList();
@@ -166,6 +245,13 @@ public class OntologyHub : Hub
     {
         try
         {
+            // Validate viewName to prevent storing arbitrary strings
+            if (string.IsNullOrWhiteSpace(viewName) || viewName.Length > 50)
+            {
+                _logger.LogWarning("Invalid view name provided: {ViewName}", viewName);
+                return;
+            }
+
             if (_presenceByOntology.TryGetValue(ontologyId, out var ontologyPresence))
             {
                 if (ontologyPresence.TryGetValue(Context.ConnectionId, out var presence))
@@ -292,6 +378,59 @@ public class OntologyHub : Hub
             // Return just the username part of the email (before @)
             return email.Split('@')[0];
         }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the profile photo URL from the user's claims
+    /// Supports multiple authentication providers including Entra ID, Google, GitHub, Microsoft
+    /// </summary>
+    /// <remarks>
+    /// For Entra ID (Azure AD) profile photos via Microsoft Graph API:
+    ///
+    /// 1. Add the Microsoft.Graph NuGet package
+    /// 2. Request the "User.Read" scope in your authentication configuration
+    /// 3. Add optional claim "picture" to your app registration in Azure Portal:
+    ///    - App Registration > Token Configuration > Add optional claim > ID token > "picture"
+    ///
+    /// Alternative approach for Entra ID without optional claims:
+    /// - Use Microsoft Graph API to fetch photo: GET https://graph.microsoft.com/v1.0/me/photo/$value
+    /// - Requires creating a service to fetch and cache photos
+    /// - Cache photos to avoid rate limiting
+    ///
+    /// Example Microsoft Graph API integration:
+    /// <code>
+    /// var graphClient = new GraphServiceClient(...);
+    /// var photoStream = await graphClient.Me.Photo.Content.Request().GetAsync();
+    /// // Convert stream to base64 or upload to blob storage
+    /// </code>
+    /// </remarks>
+    private static string? GetProfilePhotoUrl(System.Security.Claims.ClaimsPrincipal? user)
+    {
+        if (user == null) return null;
+
+        // Priority order for profile photo claims:
+        // 1. "picture" - Standard OAuth 2.0 claim (Google, GitHub, Microsoft, Entra ID with optional claim)
+        // 2. "avatar_url" - GitHub specific
+        // 3. "photo" - Some OAuth providers
+        // 4. "image" - Alternative claim name
+
+        // Try "picture" claim (most common - OIDC standard)
+        var pictureClaim = user.FindFirst("picture")?.Value;
+        if (!string.IsNullOrWhiteSpace(pictureClaim)) return pictureClaim;
+
+        // Try "avatar_url" (GitHub)
+        var avatarUrl = user.FindFirst("avatar_url")?.Value;
+        if (!string.IsNullOrWhiteSpace(avatarUrl)) return avatarUrl;
+
+        // Try "photo" claim
+        var photoClaim = user.FindFirst("photo")?.Value;
+        if (!string.IsNullOrWhiteSpace(photoClaim)) return photoClaim;
+
+        // Try "image" claim
+        var imageClaim = user.FindFirst("image")?.Value;
+        if (!string.IsNullOrWhiteSpace(imageClaim)) return imageClaim;
 
         return null;
     }
