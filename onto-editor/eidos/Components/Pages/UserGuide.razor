@@ -1,0 +1,649 @@
+@page "/user-guide"
+@rendermode InteractiveServer
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<PageTitle>User Guide - Eidos</PageTitle>
+<HeadContent>
+    <meta name="description" content="Learn how to use Eidos Ontology Builder. Create ontologies, add concepts and relationships, collaborate with others, and export your work." />
+</HeadContent>
+
+<div class="container-fluid py-4 user-guide-page">
+    <div class="row">
+        <!-- Table of Contents Sidebar -->
+        <div class="col-lg-3 d-none d-lg-block">
+            <div class="sticky-top" style="top: 20px;">
+                <h5 class="mb-3">Guide</h5>
+                <nav class="nav flex-column doc-nav">
+                    <button class="nav-link @(activeSection == "getting-started" ? "active" : "")" @onclick='async () => await ScrollToSection("getting-started")'>
+                        <i class="bi bi-rocket"></i> Getting Started
+                    </button>
+                    <button class="nav-link @(activeSection == "creating-ontology" ? "active" : "")" @onclick='async () => await ScrollToSection("creating-ontology")'>
+                        <i class="bi bi-plus-circle"></i> Creating an Ontology
+                    </button>
+                    <button class="nav-link @(activeSection == "concepts" ? "active" : "")" @onclick='async () => await ScrollToSection("concepts")'>
+                        <i class="bi bi-box"></i> Working with Concepts
+                    </button>
+                    <button class="nav-link @(activeSection == "relationships" ? "active" : "")" @onclick='async () => await ScrollToSection("relationships")'>
+                        <i class="bi bi-arrow-left-right"></i> Relationships
+                    </button>
+                    <button class="nav-link @(activeSection == "views" ? "active" : "")" @onclick='async () => await ScrollToSection("views")'>
+                        <i class="bi bi-eye"></i> Different Views
+                    </button>
+                    <button class="nav-link @(activeSection == "collaboration" ? "active" : "")" @onclick='async () => await ScrollToSection("collaboration")'>
+                        <i class="bi bi-people"></i> Collaboration
+                    </button>
+                    <button class="nav-link @(activeSection == "importing" ? "active" : "")" @onclick='async () => await ScrollToSection("importing")'>
+                        <i class="bi bi-download"></i> Importing
+                    </button>
+                    <button class="nav-link @(activeSection == "exporting" ? "active" : "")" @onclick='async () => await ScrollToSection("exporting")'>
+                        <i class="bi bi-upload"></i> Exporting
+                    </button>
+                    <button class="nav-link @(activeSection == "keyboard-shortcuts" ? "active" : "")" @onclick='async () => await ScrollToSection("keyboard-shortcuts")'>
+                        <i class="bi bi-keyboard"></i> Keyboard Shortcuts
+                    </button>
+                    <button class="nav-link @(activeSection == "tips" ? "active" : "")" @onclick='async () => await ScrollToSection("tips")'>
+                        <i class="bi bi-lightbulb"></i> Tips & Tricks
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-9">
+            <div class="doc-content">
+                <h1 class="mb-4">Eidos User Guide</h1>
+                <p class="lead">Welcome to Eidos! This guide will help you get started building ontologies, collaborating with others, and making the most of the platform.</p>
+
+                <!-- Getting Started -->
+                <section id="getting-started" class="doc-section">
+                    <h2><i class="bi bi-rocket text-primary"></i> Getting Started</h2>
+
+                    <h3>What is an Ontology?</h3>
+                    <p>An ontology is a structured way to organize knowledge about a domain. It consists of:</p>
+                    <ul>
+                        <li><strong>Concepts</strong> - The things in your domain (e.g., "Dog", "Animal", "Pet")</li>
+                        <li><strong>Relationships</strong> - How concepts relate to each other (e.g., "Dog is-a Animal")</li>
+                        <li><strong>Properties</strong> - Attributes that describe concepts</li>
+                    </ul>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> <strong>Example:</strong> If you're building an ontology for a pet store, you might have concepts like "Dog", "Cat", "Food", and "Toy", with relationships like "Dog needs-a Food" or "Cat is-a Pet".
+                    </div>
+
+                    <h3>Your First Login</h3>
+                    <ol>
+                        <li>Sign in using your preferred method (Google, GitHub, Microsoft, or Entra ID)</li>
+                        <li>You'll see your dashboard with any existing ontologies</li>
+                        <li>Click "Create New Ontology" to get started</li>
+                    </ol>
+                </section>
+
+                <!-- Creating an Ontology -->
+                <section id="creating-ontology" class="doc-section">
+                    <h2><i class="bi bi-plus-circle text-primary"></i> Creating an Ontology</h2>
+
+                    <h3>Step-by-Step</h3>
+                    <ol>
+                        <li>Click the <span class="badge bg-success">Create New Ontology</span> button</li>
+                        <li>Enter a descriptive name for your ontology</li>
+                        <li>Optionally add a description to explain its purpose</li>
+                        <li>Click <strong>Create</strong></li>
+                    </ol>
+
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i> <strong>Tip:</strong> Use clear, descriptive names like "E-commerce Product Catalog" instead of generic names like "My Ontology".
+                    </div>
+
+                    <h3>Ontology Settings</h3>
+                    <p>You can configure your ontology by clicking the <i class="bi bi-gear"></i> Settings tab:</p>
+                    <ul>
+                        <li><strong>Name & Description</strong> - Update basic information</li>
+                        <li><strong>Visibility</strong> - Make it private, public, or shared with specific users</li>
+                        <li><strong>Permissions</strong> - Control who can view or edit</li>
+                    </ul>
+                </section>
+
+                <!-- Working with Concepts -->
+                <section id="concepts" class="doc-section">
+                    <h2><i class="bi bi-box text-primary"></i> Working with Concepts</h2>
+
+                    <h3>Adding Concepts</h3>
+                    <p>There are several ways to add concepts:</p>
+
+                    <h4>Method 1: Add Concept Button</h4>
+                    <ol>
+                        <li>Click <span class="badge bg-success"><i class="bi bi-plus-circle"></i> Add Concept</span></li>
+                        <li>Enter the concept name (e.g., "Dog")</li>
+                        <li>Add an optional description</li>
+                        <li>Choose a color for visual identification</li>
+                        <li>Click <strong>Save</strong></li>
+                    </ol>
+
+                    <h4>Method 2: Quick Add (Ctrl+Enter)</h4>
+                    <ol>
+                        <li>Enter a concept name in the input field</li>
+                        <li>Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd></li>
+                        <li>The concept is added immediately</li>
+                        <li>Continue typing and pressing <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to add multiple concepts quickly</li>
+                    </ol>
+
+                    <h4>Method 3: From Graph View</h4>
+                    <ol>
+                        <li>In Graph view, <kbd>Ctrl</kbd> + <kbd>Click</kbd> on an existing concept</li>
+                        <li>This creates a new related concept</li>
+                        <li>Enter the name and relationship type</li>
+                    </ol>
+
+                    <h3>Editing Concepts</h3>
+                    <ul>
+                        <li>Click on a concept in List or Graph view</li>
+                        <li>Modify the name, description, or color</li>
+                        <li>Click <strong>Save Changes</strong></li>
+                    </ul>
+
+                    <h3>Deleting Concepts</h3>
+                    <ol>
+                        <li>Select the concept</li>
+                        <li>Click the <span class="badge bg-danger"><i class="bi bi-trash"></i> Delete</span> button</li>
+                        <li>Confirm the deletion</li>
+                    </ol>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> <strong>Warning:</strong> Deleting a concept also removes all its relationships. This action can be undone with <kbd>Ctrl</kbd> + <kbd>Z</kbd>.
+                    </div>
+                </section>
+
+                <!-- Relationships -->
+                <section id="relationships" class="doc-section">
+                    <h2><i class="bi bi-arrow-left-right text-primary"></i> Relationships</h2>
+
+                    <h3>Creating Relationships</h3>
+                    <ol>
+                        <li>Click <span class="badge bg-info"><i class="bi bi-arrow-left-right"></i> Add Relationship</span></li>
+                        <li>Select the <strong>Source</strong> concept (e.g., "Dog")</li>
+                        <li>Choose a <strong>Relationship Type</strong> (e.g., "is-a", "part-of", "has-a")</li>
+                        <li>Select the <strong>Target</strong> concept (e.g., "Animal")</li>
+                        <li>Optionally add a description</li>
+                        <li>Click <strong>Save</strong></li>
+                    </ol>
+
+                    <h3>Common Relationship Types</h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title"><span class="badge bg-dark">is-a</span></h5>
+                                    <p class="card-text">Indicates a subtype relationship</p>
+                                    <p class="text-muted small mb-0">Example: Dog is-a Animal</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title"><span class="badge bg-dark">part-of</span></h5>
+                                    <p class="card-text">Indicates composition</p>
+                                    <p class="text-muted small mb-0">Example: Wheel part-of Car</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title"><span class="badge bg-dark">has-a</span></h5>
+                                    <p class="card-text">Indicates possession or attribute</p>
+                                    <p class="text-muted small mb-0">Example: Person has-a Name</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title"><span class="badge bg-dark">related-to</span></h5>
+                                    <p class="card-text">Generic relationship</p>
+                                    <p class="text-muted small mb-0">Example: Book related-to Author</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> You can create custom relationship types! Just type your own relationship name instead of selecting from the dropdown.
+                    </div>
+                </section>
+
+                <!-- Different Views -->
+                <section id="views" class="doc-section">
+                    <h2><i class="bi bi-eye text-primary"></i> Different Views</h2>
+
+                    <p>Eidos offers multiple ways to visualize and work with your ontology:</p>
+
+                    <h3><i class="bi bi-diagram-3"></i> Graph View</h3>
+                    <p>Visual network representation of concepts and relationships.</p>
+                    <ul>
+                        <li><strong>Drag</strong> nodes to rearrange the layout</li>
+                        <li><strong>Click</strong> nodes to see details</li>
+                        <li><strong>Zoom</strong> with mouse wheel</li>
+                        <li><strong>Pan</strong> by dragging empty space</li>
+                        <li><strong>Ctrl+Click</strong> to quick-add related concepts</li>
+                    </ul>
+
+                    <h3><i class="bi bi-list-ul"></i> List View</h3>
+                    <p>Tabular view of all concepts with their properties.</p>
+                    <ul>
+                        <li>View all concepts at once</li>
+                        <li>Quick editing and deletion</li>
+                        <li>Search and filter capabilities</li>
+                    </ul>
+
+                    <h3><i class="bi bi-diagram-2"></i> Hierarchy View</h3>
+                    <p>Tree structure showing parent-child relationships.</p>
+                    <ul>
+                        <li>Focuses on "is-a" and "subclass-of" relationships</li>
+                        <li>Expand/collapse branches</li>
+                        <li>Clear visualization of taxonomies</li>
+                    </ul>
+
+                    <h3><i class="bi bi-file-code"></i> TTL View</h3>
+                    <p>Raw Turtle (TTL) format representation.</p>
+                    <ul>
+                        <li>See the OWL/RDF representation</li>
+                        <li>Copy for use in other tools</li>
+                        <li>Validate semantic web compliance</li>
+                    </ul>
+                </section>
+
+                <!-- Collaboration -->
+                <section id="collaboration" class="doc-section">
+                    <h2><i class="bi bi-people text-primary"></i> Collaboration</h2>
+
+                    <h3>Real-Time Presence</h3>
+                    <p>See who's currently viewing or editing your ontology:</p>
+                    <ul>
+                        <li>User avatars appear in the top-right corner</li>
+                        <li>Colored dots show which tab each user is viewing</li>
+                        <li>Click the eye icon <i class="bi bi-eye"></i> on a user's avatar to jump to their view</li>
+                        <li>Hover over avatars to see user names</li>
+                    </ul>
+
+                    <h3>Sharing Your Ontology</h3>
+                    <ol>
+                        <li>Open the ontology you want to share</li>
+                        <li>Go to the <i class="bi bi-people"></i> <strong>Collaborators</strong> tab</li>
+                        <li>Click <span class="badge bg-primary">Add Collaborator</span></li>
+                        <li>Enter the collaborator's email address</li>
+                        <li>Choose their permission level:
+                            <ul>
+                                <li><strong>View Only</strong> - Can see but not edit</li>
+                                <li><strong>Edit</strong> - Can make changes</li>
+                                <li><strong>Full Access</strong> - Can edit and manage collaborators</li>
+                            </ul>
+                        </li>
+                        <li>Click <strong>Send Invitation</strong></li>
+                    </ol>
+
+                    <h3>Managing Collaborators</h3>
+                    <p>In the Collaborators tab, you can:</p>
+                    <ul>
+                        <li>See who has access to your ontology</li>
+                        <li>Change permission levels</li>
+                        <li>Remove collaborators</li>
+                        <li>View access history and activity</li>
+                    </ul>
+                </section>
+
+                <!-- Importing -->
+                <section id="importing" class="doc-section">
+                    <h2><i class="bi bi-download text-primary"></i> Importing</h2>
+
+                    <h3>Importing from TTL/OWL Files</h3>
+                    <ol>
+                        <li>Click the <i class="bi bi-download"></i> <strong>Import</strong> button</li>
+                        <li>Choose your TTL, RDF, or OWL file</li>
+                        <li>Review the preview of concepts and relationships</li>
+                        <li>Select import mode:
+                            <ul>
+                                <li><strong>Replace</strong> - Replaces entire ontology</li>
+                                <li><strong>Merge</strong> - Adds to existing concepts</li>
+                            </ul>
+                        </li>
+                        <li>Click <strong>Import</strong> to complete</li>
+                    </ol>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> <strong>Note:</strong> Large imports may take a few moments. You'll see a progress indicator during the process.
+                    </div>
+
+                    <h3>Supported Formats</h3>
+                    <ul>
+                        <li>Turtle (.ttl)</li>
+                        <li>RDF/XML (.rdf, .owl)</li>
+                        <li>N-Triples (.nt)</li>
+                    </ul>
+                </section>
+
+                <!-- Exporting -->
+                <section id="exporting" class="doc-section">
+                    <h2><i class="bi bi-upload text-primary"></i> Exporting</h2>
+
+                    <h3>Export Formats</h3>
+                    <p>Export your ontology in various formats:</p>
+
+                    <h4>Turtle (TTL)</h4>
+                    <ul>
+                        <li>Standard OWL/RDF format</li>
+                        <li>Compatible with Protégé and other ontology editors</li>
+                        <li>Human-readable</li>
+                    </ul>
+
+                    <h4>JSON-LD</h4>
+                    <ul>
+                        <li>Linked Data format</li>
+                        <li>Easy to use in web applications</li>
+                        <li>Compatible with semantic web tools</li>
+                    </ul>
+
+                    <h4>RDF/XML</h4>
+                    <ul>
+                        <li>Classic RDF format</li>
+                        <li>Widely supported</li>
+                        <li>Good for interchange with older tools</li>
+                    </ul>
+
+                    <h3>How to Export</h3>
+                    <ol>
+                        <li>Click the <i class="bi bi-upload"></i> <strong>Export</strong> button</li>
+                        <li>Select your desired format</li>
+                        <li>Click <strong>Download</strong></li>
+                        <li>The file will be saved to your downloads folder</li>
+                    </ol>
+                </section>
+
+                <!-- Keyboard Shortcuts -->
+                <section id="keyboard-shortcuts" class="doc-section">
+                    <h2><i class="bi bi-keyboard text-primary"></i> Keyboard Shortcuts</h2>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Shortcut</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>Enter</kbd></td>
+                                    <td>Quick add concept</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>Z</kbd></td>
+                                    <td>Undo last action</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>Y</kbd></td>
+                                    <td>Redo action</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>Click</kbd> (Graph view)</td>
+                                    <td>Quick-add related concept</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>?</kbd></td>
+                                    <td>Show keyboard shortcuts</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-apple"></i> <strong>Mac Users:</strong> Use <kbd>⌘ Cmd</kbd> instead of <kbd>Ctrl</kbd>
+                    </div>
+                </section>
+
+                <!-- Tips & Tricks -->
+                <section id="tips" class="doc-section">
+                    <h2><i class="bi bi-lightbulb text-primary"></i> Tips & Tricks</h2>
+
+                    <h3>Best Practices</h3>
+                    <ul>
+                        <li><strong>Start broad, then narrow</strong> - Create general concepts first, then add specific ones</li>
+                        <li><strong>Use consistent naming</strong> - Stick to a naming convention (PascalCase, camelCase, etc.)</li>
+                        <li><strong>Add descriptions</strong> - Future you will thank you for documenting concepts</li>
+                        <li><strong>Use color coding</strong> - Assign colors to concept categories for visual clarity</li>
+                        <li><strong>Save templates</strong> - Use the Templates feature for commonly used concept patterns</li>
+                    </ul>
+
+                    <h3>Performance Tips</h3>
+                    <ul>
+                        <li><strong>Large ontologies</strong> - Use List view for bulk editing</li>
+                        <li><strong>Complex graphs</strong> - Zoom in on specific areas instead of viewing everything</li>
+                        <li><strong>Frequent changes</strong> - Use Ctrl+Enter for rapid concept creation</li>
+                    </ul>
+
+                    <h3>Collaboration Tips</h3>
+                    <ul>
+                        <li><strong>Communicate</strong> - Use the Notes tab to leave messages for collaborators</li>
+                        <li><strong>Follow users</strong> - Click the eye icon on avatars to see what others are working on</li>
+                        <li><strong>Review history</strong> - Check the History tab to see what changed</li>
+                    </ul>
+
+                    <h3>Troubleshooting</h3>
+                    <div class="accordion" id="troubleshootingAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#troubleshoot1">
+                                    My changes aren't saving
+                                </button>
+                            </h2>
+                            <div id="troubleshoot1" class="accordion-collapse collapse" data-bs-parent="#troubleshootingAccordion">
+                                <div class="accordion-body">
+                                    <ul>
+                                        <li>Check your internet connection</li>
+                                        <li>Make sure you have edit permissions</li>
+                                        <li>Try refreshing the page</li>
+                                        <li>Check if someone else is editing the same concept</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#troubleshoot2">
+                                    I can't see other users' presence
+                                </button>
+                            </h2>
+                            <div id="troubleshoot2" class="accordion-collapse collapse" data-bs-parent="#troubleshootingAccordion">
+                                <div class="accordion-body">
+                                    <ul>
+                                        <li>Make sure real-time features are enabled in settings</li>
+                                        <li>Check that other users are actually online</li>
+                                        <li>Try refreshing the page</li>
+                                        <li>Check your firewall settings (SignalR requires websocket support)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#troubleshoot3">
+                                    Import failed
+                                </button>
+                            </h2>
+                            <div id="troubleshoot3" class="accordion-collapse collapse" data-bs-parent="#troubleshootingAccordion">
+                                <div class="accordion-body">
+                                    <ul>
+                                        <li>Ensure your file is in a supported format (TTL, RDF, OWL)</li>
+                                        <li>Check that the file is valid RDF/OWL syntax</li>
+                                        <li>Try importing a smaller file to test</li>
+                                        <li>Check error messages for specific issues</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Need More Help -->
+                <div class="alert alert-primary mt-5">
+                    <h4><i class="bi bi-question-circle"></i> Need More Help?</h4>
+                    <p>Can't find what you're looking for? Here are more resources:</p>
+                    <ul class="mb-0">
+                        <li><a href="/documentation" class="alert-link">Technical Documentation</a> - For developers and advanced users</li>
+                        <li><a href="/release-notes" class="alert-link">What's New</a> - Latest features and updates</li>
+                        <li><a href="https://github.com/your-repo/issues" class="alert-link" target="_blank">Report an Issue</a> - Found a bug or have a suggestion?</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string activeSection = "getting-started";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await UpdateActiveSection();
+        }
+    }
+
+    private async Task ScrollToSection(string sectionId)
+    {
+        await JS.InvokeVoidAsync("scrollToSection", sectionId);
+        activeSection = sectionId;
+        StateHasChanged();
+    }
+
+    private async Task UpdateActiveSection()
+    {
+        // This would be called on scroll to update active section
+        StateHasChanged();
+    }
+}
+
+<style>
+    .user-guide-page {
+        background: var(--bs-body-bg);
+        min-height: 100vh;
+    }
+
+    .doc-nav {
+        background: transparent;
+        border-radius: 8px;
+        padding: 15px;
+        border: 1px solid var(--bs-border-color);
+    }
+
+    .doc-nav .nav-link {
+        color: var(--bs-body-color);
+        padding: 8px 12px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+        transition: all 0.2s;
+        border: none;
+        background: transparent;
+        text-align: left;
+        width: 100%;
+        font-size: 0.9rem;
+    }
+
+    .doc-nav .nav-link:hover {
+        background: var(--bs-primary);
+        color: white;
+    }
+
+    .doc-nav .nav-link.active {
+        background: var(--bs-primary);
+        color: white;
+        font-weight: 500;
+    }
+
+    .doc-nav .nav-link i {
+        margin-right: 8px;
+        width: 16px;
+    }
+
+    .doc-content {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .doc-section {
+        margin-bottom: 50px;
+        scroll-margin-top: 20px;
+    }
+
+    .doc-section h2 {
+        color: var(--bs-primary);
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--bs-primary);
+    }
+
+    .doc-section h3 {
+        color: var(--bs-secondary);
+        margin-top: 25px;
+        margin-bottom: 15px;
+    }
+
+    .doc-section h4 {
+        color: var(--bs-dark);
+        margin-top: 20px;
+        margin-bottom: 10px;
+        font-size: 1.1rem;
+    }
+
+    kbd {
+        background: var(--bs-dark);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.85em;
+        font-family: monospace;
+        border: 1px solid #000;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+
+    .card {
+        transition: transform 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    [data-bs-theme="dark"] .doc-nav {
+        background: var(--bs-dark);
+    }
+
+    [data-bs-theme="dark"] .doc-content {
+        background: var(--bs-dark);
+    }
+
+    [data-bs-theme="dark"] kbd {
+        background: #1a1a1a;
+        border-color: #444;
+    }
+
+    @@media (max-width: 991px) {
+        .doc-content {
+            padding: 20px;
+        }
+    }
+</style>
+
+<script>
+    window.scrollToSection = (sectionId) => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+</script>
