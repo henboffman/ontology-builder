@@ -346,6 +346,7 @@ builder.Services.AddScoped<IConceptRepository, ConceptRepository>();
 builder.Services.AddScoped<IRelationshipRepository, RelationshipRepository>();
 builder.Services.AddScoped<IIndividualRepository, IndividualRepository>();
 builder.Services.AddScoped<IRestrictionRepository, RestrictionRepository>();
+builder.Services.AddScoped<ICollaborationPostRepository, CollaborationPostRepository>();
 
 // Register Export Strategies (Strategy Pattern)
 builder.Services.AddScoped<IExportStrategy, JsonExportStrategy>();
@@ -367,6 +368,7 @@ builder.Services.AddScoped<IOntologyShareService, OntologyShareService>();
 builder.Services.AddScoped<IOntologyActivityService, OntologyActivityService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<IIndividualService, IndividualService>();
+builder.Services.AddScoped<ICollaborationBoardService, CollaborationBoardService>();
 builder.Services.AddScoped<IRestrictionService, RestrictionService>();
 builder.Services.AddScoped<IRelationshipSuggestionService, RelationshipSuggestionService>();
 
@@ -394,6 +396,14 @@ builder.Services.AddScoped<JsonExportService>();
 builder.Services.AddScoped<CsvExportService>();
 
 var app = builder.Build();
+
+// Configure PathBase for subsite deployment (e.g., /eidos)
+var pathBase = builder.Configuration["PathBase"];
+if (!string.IsNullOrEmpty(pathBase))
+{
+    app.UsePathBase(pathBase);
+    Console.WriteLine($"✓ PathBase configured: {pathBase}");
+}
 
 // Global exception handling middleware - must be early in pipeline
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();

@@ -1,0 +1,331 @@
+@page "/collaboration"
+@using Eidos.Models
+@using Eidos.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICollaborationBoardService CollaborationService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Looking for Group - Collaboration Board</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="bi bi-people"></i> Looking for Group</h2>
+                    <p class="text-muted">Find collaborators to build ontologies together</p>
+                </div>
+                <button class="btn btn-primary" @onclick="ShowNewPostDialog">
+                    <i class="bi bi-plus-circle"></i> Post Your Project
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @* Search and Filter Section *@
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small">Search</label>
+                            <input type="text" class="form-control" @bind="searchTerm" @bind:event="oninput"
+                                   placeholder="Search by keywords, tags, domain..." />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Domain</label>
+                            <select class="form-select" @bind="filterDomain">
+                                <option value="">All Domains</option>
+                                @foreach (var domain in commonDomains)
+                                {
+                                    <option value="@domain">@domain</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Skill Level</label>
+                            <select class="form-select" @bind="filterSkillLevel">
+                                <option value="">All Levels</option>
+                                <option value="Beginner friendly">Beginner friendly</option>
+                                <option value="Intermediate">Intermediate</option>
+                                <option value="Advanced">Advanced</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-outline-primary w-100" @onclick="ApplyFilters">
+                                <i class="bi bi-funnel"></i> Filter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Posts List *@
+    <div class="row">
+        <div class="col-12">
+            @if (loading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (!posts.Any())
+            {
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>No posts found.</strong>
+                    Be the first to post your collaboration opportunity!
+                </div>
+            }
+            else
+            {
+                @foreach (var post in posts)
+                {
+                    <div class="card mb-3 collaboration-post-card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-9">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h5 class="card-title mb-1">
+                                                <a href="@($"/collaboration/{post.Id}")" class="text-decoration-none">
+                                                    @post.Title
+                                                </a>
+                                            </h5>
+                                            <small class="text-muted">
+                                                Posted by @post.User.UserName
+                                                · @GetTimeAgo(post.CreatedAt)
+                                            </small>
+                                        </div>
+                                        @if (!post.IsActive)
+                                        {
+                                            <span class="badge bg-secondary">Closed</span>
+                                        }
+                                    </div>
+
+                                    <p class="card-text">@TruncateDescription(post.Description, 200)</p>
+
+                                    <div class="d-flex flex-wrap gap-2 mt-2">
+                                        @if (!string.IsNullOrWhiteSpace(post.Domain))
+                                        {
+                                            <span class="badge bg-primary">
+                                                <i class="bi bi-tag"></i> @post.Domain
+                                            </span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(post.SkillLevel))
+                                        {
+                                            <span class="badge bg-info">
+                                                <i class="bi bi-mortarboard"></i> @post.SkillLevel
+                                            </span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(post.TimeCommitment))
+                                        {
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="bi bi-clock"></i> @post.TimeCommitment
+                                            </span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(post.Tags))
+                                        {
+                                            @foreach (var tag in post.Tags.Split(',').Take(3))
+                                            {
+                                                <span class="badge bg-secondary">@tag.Trim()</span>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="col-md-3 d-flex flex-column justify-content-between align-items-end">
+                                    <div class="text-end mb-2">
+                                        <small class="text-muted d-block">
+                                            <i class="bi bi-eye"></i> @post.ViewCount views
+                                        </small>
+                                        <small class="text-muted d-block">
+                                            <i class="bi bi-chat-dots"></i> @post.ResponseCount responses
+                                        </small>
+                                    </div>
+
+                                    <div class="d-grid gap-2 w-100">
+                                        <a href="@($"/collaboration/{post.Id}")" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-arrow-right-circle"></i> View Details
+                                        </a>
+                                        @if (post.UserId == currentUserId)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => EditPost(post.Id)">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    @* My Posts Section *@
+    @if (myPosts.Any())
+    {
+        <div class="row mt-5">
+            <div class="col-12">
+                <h4 class="mb-3"><i class="bi bi-person-badge"></i> My Posts</h4>
+                @foreach (var post in myPosts)
+                {
+                    <div class="card mb-2">
+                        <div class="card-body py-2">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <strong>@post.Title</strong>
+                                    @if (!post.IsActive)
+                                    {
+                                        <span class="badge bg-secondary ms-2">Closed</span>
+                                    }
+                                </div>
+                                <div class="col-md-3 small text-muted">
+                                    @post.ResponseCount responses · @post.ViewCount views
+                                </div>
+                                <div class="col-md-3 text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="@($"/collaboration/{post.Id}")" class="btn btn-outline-primary">
+                                            View
+                                        </a>
+                                        <button class="btn btn-outline-secondary" @onclick="() => EditPost(post.Id)">
+                                            Edit
+                                        </button>
+                                        <button class="btn btn-outline-warning" @onclick="() => TogglePostStatus(post.Id)">
+                                            @(post.IsActive ? "Close" : "Reopen")
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<CollaborationPost> posts = new();
+    private List<CollaborationPost> myPosts = new();
+    private bool loading = true;
+    private string? currentUserId;
+
+    // Filter state
+    private string searchTerm = "";
+    private string filterDomain = "";
+    private string filterSkillLevel = "";
+
+    private readonly string[] commonDomains = new[]
+    {
+        "Healthcare", "Biology", "Environmental Science", "Business",
+        "Education", "Technology", "Social Sciences", "Engineering",
+        "Arts & Humanities", "Law & Policy", "Other"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        await LoadPosts();
+        await LoadMyPosts();
+    }
+
+    private async Task LoadPosts()
+    {
+        loading = true;
+        try
+        {
+            var allPosts = await CollaborationService.GetActivePostsAsync();
+            posts = allPosts.ToList();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task LoadMyPosts()
+    {
+        if (!string.IsNullOrEmpty(currentUserId))
+        {
+            var userPosts = await CollaborationService.GetMyPostsAsync(currentUserId);
+            myPosts = userPosts.ToList();
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        loading = true;
+        try
+        {
+            var filtered = await CollaborationService.SearchPostsAsync(
+                searchTerm: string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm,
+                domain: string.IsNullOrWhiteSpace(filterDomain) ? null : filterDomain,
+                skillLevel: string.IsNullOrWhiteSpace(filterSkillLevel) ? null : filterSkillLevel
+            );
+            posts = filtered.ToList();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void ShowNewPostDialog()
+    {
+        Navigation.NavigateTo("/collaboration/new");
+    }
+
+    private void EditPost(int postId)
+    {
+        Navigation.NavigateTo($"/collaboration/edit/{postId}");
+    }
+
+    private async Task TogglePostStatus(int postId)
+    {
+        await CollaborationService.TogglePostActiveStatusAsync(postId);
+        await LoadMyPosts();
+        await LoadPosts();
+    }
+
+    private string TruncateDescription(string description, int maxLength)
+    {
+        if (string.IsNullOrEmpty(description) || description.Length <= maxLength)
+            return description;
+
+        return description.Substring(0, maxLength) + "...";
+    }
+
+    private string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalMinutes < 1)
+            return "just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)}w ago";
+        if (timeSpan.TotalDays < 365)
+            return $"{(int)(timeSpan.TotalDays / 30)}mo ago";
+
+        return $"{(int)(timeSpan.TotalDays / 365)}y ago";
+    }
+}

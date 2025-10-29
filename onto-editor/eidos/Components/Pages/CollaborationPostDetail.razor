@@ -1,0 +1,381 @@
+@page "/collaboration/{PostId:int}"
+@using Eidos.Models
+@using Eidos.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICollaborationBoardService CollaborationService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>@(post?.Title ?? "Collaboration Post")</PageTitle>
+
+<div class="container-fluid py-4">
+    @if (loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (post == null)
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> Post not found.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-8">
+                @* Post Header *@
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h3 class="card-title">@post.Title</h3>
+                                <p class="text-muted mb-0">
+                                    Posted by <strong>@post.User.UserName</strong>
+                                    · @GetTimeAgo(post.CreatedAt)
+                                    @if (post.UpdatedAt != post.CreatedAt)
+                                    {
+                                        <span> · Updated @GetTimeAgo(post.UpdatedAt)</span>
+                                    }
+                                </p>
+                            </div>
+                            @if (!post.IsActive)
+                            {
+                                <span class="badge bg-secondary">Closed</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <h5>Description</h5>
+                            <p style="white-space: pre-wrap;">@post.Description</p>
+                        </div>
+
+                        @* Tags and Metadata *@
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            @if (!string.IsNullOrWhiteSpace(post.Domain))
+                            {
+                                <span class="badge bg-primary">
+                                    <i class="bi bi-tag"></i> @post.Domain
+                                </span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(post.SkillLevel))
+                            {
+                                <span class="badge bg-info">
+                                    <i class="bi bi-mortarboard"></i> @post.SkillLevel
+                                </span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(post.TimeCommitment))
+                            {
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-clock"></i> @post.TimeCommitment
+                                </span>
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(post.LookingFor))
+                        {
+                            <div class="mb-3">
+                                <h6>Looking For:</h6>
+                                <p>@post.LookingFor</p>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(post.Tags))
+                        {
+                            <div>
+                                <h6>Tags:</h6>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var tag in post.Tags.Split(','))
+                                    {
+                                        <span class="badge bg-secondary">@tag.Trim()</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        @if (post.Ontology != null)
+                        {
+                            <div class="mt-3 p-3 bg-light rounded">
+                                <h6>Related Ontology:</h6>
+                                <a href="@($"ontology/{post.Ontology.Id}")" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-diagram-3"></i> @post.Ontology.Name
+                                </a>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Responses Section *@
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-chat-dots"></i> Responses (@(post.Responses?.Count ?? 0))
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (post.IsActive && post.UserId != currentUserId)
+                        {
+                            @if (!showResponseForm)
+                            {
+                                <button class="btn btn-primary mb-3" @onclick="() => showResponseForm = true">
+                                    <i class="bi bi-reply"></i> Express Interest
+                                </button>
+                            }
+                            else
+                            {
+                                <div class="card bg-light mb-3">
+                                    <div class="card-body">
+                                        <h6>Express Your Interest</h6>
+                                        <div class="mb-3">
+                                            <label class="form-label">Message <span class="text-danger">*</span></label>
+                                            <textarea class="form-control" rows="4" @bind="responseMessage"
+                                                      placeholder="Tell the post author why you're interested and what you can contribute..."></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Contact Info (optional)</label>
+                                            <input type="text" class="form-control" @bind="responseContact"
+                                                   placeholder="Email, Discord, or preferred contact method" />
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-primary" @onclick="SubmitResponse"
+                                                    disabled="@string.IsNullOrWhiteSpace(responseMessage)">
+                                                <i class="bi bi-send"></i> Send Response
+                                            </button>
+                                            <button class="btn btn-outline-secondary" @onclick="() => { showResponseForm = false; responseMessage = string.Empty; responseContact = string.Empty; }">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+
+                        @if (post.Responses != null && post.Responses.Any())
+                        {
+                            @foreach (var response in post.Responses.OrderByDescending(r => r.CreatedAt))
+                            {
+                                <div class="card mb-2">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <strong>@response.User.UserName</strong>
+                                                <small class="text-muted ms-2">@GetTimeAgo(response.CreatedAt)</small>
+                                            </div>
+                                            <span class="badge @GetStatusBadgeClass(response.Status)">
+                                                @response.Status
+                                            </span>
+                                        </div>
+                                        <p class="mb-2" style="white-space: pre-wrap;">@response.Message</p>
+
+                                        @if (!string.IsNullOrWhiteSpace(response.ContactInfo) && (post.UserId == currentUserId || response.UserId == currentUserId))
+                                        {
+                                            <small class="text-muted">
+                                                <i class="bi bi-envelope"></i> @response.ContactInfo
+                                            </small>
+                                        }
+
+                                        @if (post.UserId == currentUserId && response.Status == "Pending")
+                                        {
+                                            <div class="mt-2 btn-group btn-group-sm">
+                                                <button class="btn btn-outline-success" @onclick="@(() => UpdateResponseStatus(response.Id, "Accepted"))">
+                                                    <i class="bi bi-check-circle"></i> Accept
+                                                </button>
+                                                <button class="btn btn-outline-primary" @onclick="@(() => UpdateResponseStatus(response.Id, "Collaborating"))">
+                                                    <i class="bi bi-people"></i> Collaborating
+                                                </button>
+                                                <button class="btn btn-outline-danger" @onclick="@(() => UpdateResponseStatus(response.Id, "Declined"))">
+                                                    <i class="bi bi-x-circle"></i> Decline
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted">No responses yet. Be the first to express interest!</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* Sidebar *@
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">Post Stats</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">
+                            <i class="bi bi-eye"></i> <strong>@post.ViewCount</strong> views
+                        </p>
+                        <p class="mb-2">
+                            <i class="bi bi-chat-dots"></i> <strong>@post.ResponseCount</strong> responses
+                        </p>
+                        <p class="mb-0">
+                            <i class="bi bi-calendar"></i> Posted @post.CreatedAt.ToShortDateString()
+                        </p>
+                    </div>
+                </div>
+
+                @if (post.UserId == currentUserId)
+                {
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Manage Post</h6>
+                        </div>
+                        <div class="card-body d-grid gap-2">
+                            <a href="@($"/collaboration/edit/{post.Id}")" class="btn btn-outline-primary">
+                                <i class="bi bi-pencil"></i> Edit Post
+                            </a>
+                            <button class="btn btn-outline-warning" @onclick="ToggleStatus">
+                                <i class="bi bi-toggle-on"></i> @(post.IsActive ? "Close Post" : "Reopen Post")
+                            </button>
+                            <button class="btn btn-outline-danger" @onclick="DeletePost">
+                                <i class="bi bi-trash"></i> Delete Post
+                            </button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Actions</h6>
+                        </div>
+                        <div class="card-body">
+                            <a href="/collaboration" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-arrow-left"></i> Back to Board
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int PostId { get; set; }
+
+    private CollaborationPost? post;
+    private bool loading = true;
+    private string? currentUserId;
+    private bool hasIncrementedView = false; // Track if we've already incremented the view for this visit
+
+    // Response form state
+    private bool showResponseForm = false;
+    private string responseMessage = string.Empty;
+    private string responseContact = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        await LoadPost(incrementView: true); // Only increment view on initial page load
+    }
+
+    private async Task LoadPost(bool incrementView = false)
+    {
+        loading = true;
+        try
+        {
+            // Only increment view once per component lifetime
+            bool shouldIncrement = incrementView && !hasIncrementedView;
+            post = await CollaborationService.GetPostDetailsAsync(PostId, incrementView: shouldIncrement);
+
+            if (shouldIncrement)
+            {
+                hasIncrementedView = true;
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SubmitResponse()
+    {
+        if (string.IsNullOrWhiteSpace(responseMessage) || currentUserId == null)
+            return;
+
+        var response = new CollaborationResponse
+        {
+            CollaborationPostId = PostId,
+            UserId = currentUserId,
+            Message = responseMessage.Trim(),
+            ContactInfo = string.IsNullOrWhiteSpace(responseContact) ? null : responseContact.Trim()
+        };
+
+        await CollaborationService.AddResponseAsync(response);
+
+        // Reset form
+        showResponseForm = false;
+        responseMessage = string.Empty;
+        responseContact = string.Empty;
+
+        // Reload post
+        await LoadPost();
+    }
+
+    private async Task UpdateResponseStatus(int responseId, string newStatus)
+    {
+        await CollaborationService.UpdateResponseStatusAsync(responseId, newStatus);
+        await LoadPost();
+    }
+
+    private async Task ToggleStatus()
+    {
+        await CollaborationService.TogglePostActiveStatusAsync(PostId);
+        await LoadPost();
+    }
+
+    private async Task DeletePost()
+    {
+        if (post?.UserId == currentUserId)
+        {
+            await CollaborationService.DeletePostAsync(PostId);
+            Navigation.NavigateTo("/collaboration");
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Pending" => "bg-secondary",
+            "Accepted" => "bg-success",
+            "Declined" => "bg-danger",
+            "Collaborating" => "bg-primary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalMinutes < 1) return "just now";
+        if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7) return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalDays < 30) return $"{(int)(timeSpan.TotalDays / 7)}w ago";
+        if (timeSpan.TotalDays < 365) return $"{(int)(timeSpan.TotalDays / 30)}mo ago";
+
+        return $"{(int)(timeSpan.TotalDays / 365)}y ago";
+    }
+}

@@ -28,12 +28,22 @@
             </label>
             <select class="form-select form-select-sm" @bind="conceptId" disabled="@IsEditing">
                 <option value="0">-- Select a concept --</option>
-                @foreach (var concept in Concepts)
+                @if (Concepts != null && Concepts.Any())
                 {
-                    <option value="@concept.Id">@concept.Name</option>
+                    @foreach (var concept in Concepts)
+                    {
+                        <option value="@concept.Id">@concept.Name</option>
+                    }
                 }
             </select>
-            <small class="text-muted">The concept this individual belongs to</small>
+            @if (Concepts == null || !Concepts.Any())
+            {
+                <small class="text-warning"><i class="bi bi-exclamation-triangle"></i> No concepts available. Please add concepts to your ontology first.</small>
+            }
+            else
+            {
+                <small class="text-muted">The concept this individual belongs to</small>
+            }
         </div>
 
         <div class="mb-2">

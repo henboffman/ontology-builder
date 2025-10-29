@@ -114,12 +114,19 @@ else
         }
 
         <!-- Header -->
-        <OntologyHeader Ontology="@ontology"
-                       OnBackClick="@GoBack"
-                       OnImportClick="@GetConditionalCallback(CanEdit(), ShowImportDialog)"
-                       OnExportClick="@ShowExportDialog"
-                       CanShare="@CanFullAccess()"
-                       CanEdit="@CanEdit()" />
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="flex-grow-1">
+                <OntologyHeader Ontology="@ontology"
+                               OnBackClick="@GoBack"
+                               OnImportClick="@GetConditionalCallback(CanEdit(), ShowImportDialog)"
+                               OnExportClick="@ShowExportDialog"
+                               CanShare="@CanFullAccess()"
+                               CanEdit="@CanEdit()" />
+            </div>
+            <div class="ms-3">
+                <PresenceIndicator Users="@presenceUsers" />
+            </div>
+        </div>
 
         <!-- View Mode Selector -->
         <ViewModeSelector CurrentViewMode="@viewMode"
@@ -127,7 +134,8 @@ else
                          CanUndo="@OntologyService.CanUndo()"
                          CanRedo="@OntologyService.CanRedo()"
                          OnUndoClick="@HandleUndo"
-                         OnRedoClick="@HandleRedo" />
+                         OnRedoClick="@HandleRedo"
+                         PresenceUsers="@presenceUsers" />
 
         <!-- TTL Import Dialog -->
         <TtlImportDialog IsVisible="@showImportDialog"
@@ -880,6 +888,10 @@ else
     private string? editingOntologyNamespace;
     private string? editingOntologyTags;
     private string? editingOntologyLicense;
+
+    // Presence tracking
+    private List<PresenceInfo> presenceUsers = new();
+    private System.Timers.Timer? heartbeatTimer;
     private bool editingOntologyUsesBFO;
     private bool editingOntologyUsesProvO;
     private string editingOntologyVisibility = OntologyVisibility.Private;
@@ -987,7 +999,7 @@ else
 
     private void GoBack()
     {
-        Navigation.NavigateTo("/");
+        Navigation.NavigateTo("");
     }
 
     private async Task HandleUndo()
@@ -1038,6 +1050,9 @@ else
         editingConcept = null;
         editingRelationship = null;
         selectedConcept = null;
+
+        // Update presence with current view
+        await UpdateCurrentView(mode.ToString());
 
         if (mode == ViewMode.Ttl)
         {
@@ -2098,6 +2113,12 @@ else
             try
             {
                 await JS.InvokeVoidAsync("ontologyHub.init", dotNetRef, ontology.Id);
+
+                // Send initial view to other users
+                await UpdateCurrentView(viewMode.ToString());
+
+                // Start heartbeat timer to keep presence active
+                StartHeartbeatTimer();
             }
             catch (Exception ex)
             {
@@ -2187,8 +2208,97 @@ else
         }
     }
 
+    // Presence tracking methods
+    [JSInvokable]
+    public Task HandleUserJoined(PresenceInfo presenceInfo)
+    {
+        if (!presenceUsers.Any(u => u.ConnectionId == presenceInfo.ConnectionId))
+        {
+            presenceUsers.Add(presenceInfo);
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task HandleUserLeft(string connectionId)
+    {
+        var user = presenceUsers.FirstOrDefault(u => u.ConnectionId == connectionId);
+        if (user != null)
+        {
+            presenceUsers.Remove(user);
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task HandlePresenceList(List<PresenceInfo> userList)
+    {
+        // Filter out our own connection
+        presenceUsers = userList.Where(u => u.ConnectionId != dotNetRef?.Value.GetHashCode().ToString()).ToList();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task HandleUserViewChanged(string connectionId, string viewName)
+    {
+        var user = presenceUsers.FirstOrDefault(u => u.ConnectionId == connectionId);
+        if (user != null)
+        {
+            user.CurrentView = viewName;
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    private void StartHeartbeatTimer()
+    {
+        // Send heartbeat every 30 seconds to keep presence active
+        heartbeatTimer = new System.Timers.Timer(30000);
+        heartbeatTimer.Elapsed += async (sender, e) =>
+        {
+            if (ontology != null)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("ontologyHub.sendHeartbeat", ontology.Id);
+                }
+                catch
+                {
+                    // Ignore heartbeat errors
+                }
+            }
+        };
+        heartbeatTimer.Start();
+    }
+
+    private async Task UpdateCurrentView(string viewName)
+    {
+        if (ontology != null)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("ontologyHub.updateCurrentView", ontology.Id, viewName);
+            }
+            catch
+            {
+                // Ignore view update errors
+            }
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
+        // Stop heartbeat timer
+        if (heartbeatTimer != null)
+        {
+            heartbeatTimer.Stop();
+            heartbeatTimer.Dispose();
+            heartbeatTimer = null;
+        }
+
         if (ontology != null)
         {
             try

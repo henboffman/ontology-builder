@@ -28,14 +28,21 @@ window.ontologyHub = {
                 this.dotNetHelper.invokeMethodAsync('HandleRelationshipChanged', changeEvent);
             });
 
-            // Subscribe to UserJoined events
-            this.connection.on("UserJoined", (connectionId) => {
-                // User joined - could be used for presence indicators
+            // Subscribe to presence events
+            this.connection.on("UserJoined", (presenceInfo) => {
+                this.dotNetHelper.invokeMethodAsync('HandleUserJoined', presenceInfo);
             });
 
-            // Subscribe to UserLeft events
             this.connection.on("UserLeft", (connectionId) => {
-                // User left - could be used for presence indicators
+                this.dotNetHelper.invokeMethodAsync('HandleUserLeft', connectionId);
+            });
+
+            this.connection.on("PresenceList", (userList) => {
+                this.dotNetHelper.invokeMethodAsync('HandlePresenceList', userList);
+            });
+
+            this.connection.on("UserViewChanged", (connectionId, viewName) => {
+                this.dotNetHelper.invokeMethodAsync('HandleUserViewChanged', connectionId, viewName);
             });
 
             // Start the connection
@@ -82,6 +89,35 @@ window.ontologyHub = {
                 await this.connection.stop();
             } catch (err) {
                 console.error("Error disconnecting from SignalR:", err);
+            }
+        }
+    },
+
+    /**
+     * Update the current view the user is on
+     * @param {number} ontologyId - ID of the ontology
+     * @param {string} viewName - Name of the view (e.g., "Graph", "List")
+     */
+    async updateCurrentView(ontologyId, viewName) {
+        if (this.connection && this.connection.state === signalR.HubConnectionState.Connected) {
+            try {
+                await this.connection.invoke("UpdateCurrentView", ontologyId, viewName);
+            } catch (err) {
+                console.error("Error updating current view:", err);
+            }
+        }
+    },
+
+    /**
+     * Send heartbeat to keep presence active
+     * @param {number} ontologyId - ID of the ontology
+     */
+    async sendHeartbeat(ontologyId) {
+        if (this.connection && this.connection.state === signalR.HubConnectionState.Connected) {
+            try {
+                await this.connection.invoke("Heartbeat", ontologyId);
+            } catch (err) {
+                console.error("Error sending heartbeat:", err);
             }
         }
     }

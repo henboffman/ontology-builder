@@ -45,6 +45,10 @@ namespace Eidos.Data
         public DbSet<UserGroupMember> UserGroupMembers { get; set; }
         public DbSet<OntologyGroupPermission> OntologyGroupPermissions { get; set; }
 
+        // Collaboration bulletin board
+        public DbSet<CollaborationPost> CollaborationPosts { get; set; }
+        public DbSet<CollaborationResponse> CollaborationResponses { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -368,6 +372,54 @@ namespace Eidos.Data
                     .WithMany()
                     .HasForeignKey(p => p.GrantedByUserId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure CollaborationPost
+            modelBuilder.Entity<CollaborationPost>(entity =>
+            {
+                entity.HasOne(p => p.User)
+                    .WithMany()
+                    .HasForeignKey(p => p.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(p => p.Ontology)
+                    .WithMany()
+                    .HasForeignKey(p => p.OntologyId)
+                    .OnDelete(DeleteBehavior.SetNull); // Keep post even if ontology is deleted
+
+                // Add indexes for efficient querying
+                entity.HasIndex(p => p.IsActive)
+                    .HasDatabaseName("IX_CollaborationPost_IsActive");
+
+                entity.HasIndex(p => new { p.IsActive, p.CreatedAt })
+                    .HasDatabaseName("IX_CollaborationPost_IsActive_CreatedAt");
+
+                entity.HasIndex(p => p.Domain)
+                    .HasDatabaseName("IX_CollaborationPost_Domain");
+
+                entity.HasIndex(p => p.UserId)
+                    .HasDatabaseName("IX_CollaborationPost_UserId");
+            });
+
+            // Configure CollaborationResponse
+            modelBuilder.Entity<CollaborationResponse>(entity =>
+            {
+                entity.HasOne(r => r.CollaborationPost)
+                    .WithMany(p => p.Responses)
+                    .HasForeignKey(r => r.CollaborationPostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(r => r.User)
+                    .WithMany()
+                    .HasForeignKey(r => r.UserId)
+                    .OnDelete(DeleteBehavior.Restrict); // Avoid cascade path conflict with CollaborationPost->User
+
+                // Add index for efficient querying
+                entity.HasIndex(r => r.CollaborationPostId)
+                    .HasDatabaseName("IX_CollaborationResponse_PostId");
+
+                entity.HasIndex(r => new { r.UserId, r.CollaborationPostId })
+                    .HasDatabaseName("IX_CollaborationResponse_UserId_PostId");
             });
 
             // Seed feature toggles only

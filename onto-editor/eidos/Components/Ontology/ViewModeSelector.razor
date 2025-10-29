@@ -5,51 +5,62 @@
     <div class="col-12 d-none d-md-flex justify-content-between align-items-center gap-2">
         <!-- Desktop: View mode buttons -->
         <div class="btn-group" role="group">
-            <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Graph)"
-                disabled="@(CurrentViewMode == ViewMode.Graph)" title="💡 Graph View - Interactive visual diagram of your ontology. Ctrl+Click nodes to quick-add concepts">
+            <button class="btn btn-outline-primary view-mode-btn" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Graph)"
+                disabled="@(CurrentViewMode == ViewMode.Graph)" title="@GetViewerTooltip(ViewMode.Graph)">
                 <i class="bi bi-diagram-3"></i>
+                @RenderViewerIndicators(ViewMode.Graph)
             </button>
-            <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.List)"
-                disabled="@(CurrentViewMode == ViewMode.List)" title="List View - Tabular view with sorting and filtering">
+            <button class="btn btn-outline-primary view-mode-btn" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.List)"
+                disabled="@(CurrentViewMode == ViewMode.List)" title="@GetViewerTooltip(ViewMode.List)">
                 <i class="bi bi-list-ul"></i>
+                @RenderViewerIndicators(ViewMode.List)
             </button>
-            <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Hierarchy)"
-                disabled="@(CurrentViewMode == ViewMode.Hierarchy)" title="Hierarchy View - Tree structure showing is-a relationships">
+            <button class="btn btn-outline-primary view-mode-btn" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Hierarchy)"
+                disabled="@(CurrentViewMode == ViewMode.Hierarchy)" title="@GetViewerTooltip(ViewMode.Hierarchy)">
                 <i class="bi bi-diagram-2"></i>
+                @RenderViewerIndicators(ViewMode.Hierarchy)
             </button>
-            <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Instances)"
-                disabled="@(CurrentViewMode == ViewMode.Instances)" title="Instances - Individual examples of concepts">
+            <button class="btn btn-outline-primary view-mode-btn" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Instances)"
+                disabled="@(CurrentViewMode == ViewMode.Instances)" title="@GetViewerTooltip(ViewMode.Instances)">
                 <i class="bi bi-person"></i>
+                @RenderViewerIndicators(ViewMode.Instances)
             </button>
-            <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Ttl)"
-                disabled="@(CurrentViewMode == ViewMode.Ttl)" title="Export/View TTL - View RDF/OWL representation">
+            <button class="btn btn-outline-primary view-mode-btn" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Ttl)"
+                disabled="@(CurrentViewMode == ViewMode.Ttl)" title="@GetViewerTooltip(ViewMode.Ttl)">
                 <i class="bi bi-file-code"></i>
+                @RenderViewerIndicators(ViewMode.Ttl)
             </button>
-            <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)"
-                disabled="@(CurrentViewMode == ViewMode.Notes)" title="Notes - Personal documentation and markdown notes">
+            <button class="btn btn-outline-primary view-mode-btn" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)"
+                disabled="@(CurrentViewMode == ViewMode.Notes)" title="@GetViewerTooltip(ViewMode.Notes)">
                 <i class="bi bi-journal-text"></i>
+                @RenderViewerIndicators(ViewMode.Notes)
             </button>
-            <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Templates)"
-                disabled="@(CurrentViewMode == ViewMode.Templates)" title="Templates - Reusable concept patterns for quick creation">
+            <button class="btn btn-outline-primary view-mode-btn" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Templates)"
+                disabled="@(CurrentViewMode == ViewMode.Templates)" title="@GetViewerTooltip(ViewMode.Templates)">
                 <i class="bi bi-journal-code"></i>
+                @RenderViewerIndicators(ViewMode.Templates)
             </button>
-            <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Links)"
-                disabled="@(CurrentViewMode == ViewMode.Links)" title="Linked Ontologies - Connections to other ontologies">
+            <button class="btn btn-outline-primary view-mode-btn" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Links)"
+                disabled="@(CurrentViewMode == ViewMode.Links)" title="@GetViewerTooltip(ViewMode.Links)">
                 <i class="bi bi-link-45deg"></i>
+                @RenderViewerIndicators(ViewMode.Links)
             </button>
-            <button class="btn btn-outline-primary"
+            <button class="btn btn-outline-primary view-mode-btn"
                 @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Collaborators)"
-                disabled="@(CurrentViewMode == ViewMode.Collaborators)" title="Collaborators - View who has access and recent activity">
+                disabled="@(CurrentViewMode == ViewMode.Collaborators)" title="@GetViewerTooltip(ViewMode.Collaborators)">
                 <i class="bi bi-people-fill"></i>
+                @RenderViewerIndicators(ViewMode.Collaborators)
             </button>
-            <button class="btn btn-outline-primary"
+            <button class="btn btn-outline-primary view-mode-btn"
                 @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.VersionHistory)"
-                disabled="@(CurrentViewMode == ViewMode.VersionHistory)" title="Version History - Track changes and revert if needed">
+                disabled="@(CurrentViewMode == ViewMode.VersionHistory)" title="@GetViewerTooltip(ViewMode.VersionHistory)">
                 <i class="bi bi-clock-history"></i>
+                @RenderViewerIndicators(ViewMode.VersionHistory)
             </button>
-            <button class="btn btn-outline-primary" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Help)"
-                disabled="@(CurrentViewMode == ViewMode.Help)" title="Help - Learn about ontology concepts and usage">
+            <button class="btn btn-outline-primary view-mode-btn" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Help)"
+                disabled="@(CurrentViewMode == ViewMode.Help)" title="@GetViewerTooltip(ViewMode.Help)">
                 <i class="bi bi-question-circle"></i>
+                @RenderViewerIndicators(ViewMode.Help)
             </button>
         </div>
 
@@ -165,6 +176,9 @@
     [Parameter]
     public EventCallback OnRedoClick { get; set; }
 
+    [Parameter]
+    public List<PresenceInfo> PresenceUsers { get; set; } = new();
+
     private string GetViewModeIcon(ViewMode mode) => mode switch
     {
         ViewMode.Graph => "bi bi-diagram-3",
@@ -196,4 +210,127 @@
         ViewMode.Help => "Help",
         _ => "Graph"
     };
+
+    private int GetViewerCount(ViewMode mode)
+    {
+        if (PresenceUsers == null || !PresenceUsers.Any())
+            return 0;
+
+        var viewName = GetViewModeName(mode);
+        return PresenceUsers.Count(u => u.CurrentView == viewName);
+    }
+
+    private List<PresenceInfo> GetViewersForView(ViewMode mode)
+    {
+        if (PresenceUsers == null || !PresenceUsers.Any())
+            return new List<PresenceInfo>();
+
+        var viewName = GetViewModeName(mode);
+        return PresenceUsers.Where(u => u.CurrentView == viewName).ToList();
+    }
+
+    private string GetViewerTooltip(ViewMode mode)
+    {
+        var viewers = GetViewersForView(mode);
+        if (!viewers.Any())
+        {
+            return GetViewModeTooltipText(mode);
+        }
+
+        var names = string.Join(", ", viewers.Select(v => v.UserName));
+        return $"{GetViewModeTooltipText(mode)} | Viewing: {names}";
+    }
+
+    private string GetViewModeTooltipText(ViewMode mode) => mode switch
+    {
+        ViewMode.Graph => "💡 Graph View - Interactive visual diagram of your ontology. Ctrl+Click nodes to quick-add concepts",
+        ViewMode.List => "List View - Tabular view with sorting and filtering",
+        ViewMode.Hierarchy => "Hierarchy View - Tree structure showing is-a relationships",
+        ViewMode.Instances => "Instances - Individual examples of concepts",
+        ViewMode.Ttl => "Export/View TTL - View RDF/OWL representation",
+        ViewMode.Notes => "Notes - Personal documentation and markdown notes",
+        ViewMode.Templates => "Templates - Reusable concept patterns for quick creation",
+        ViewMode.Links => "Linked Ontologies - Connections to other ontologies",
+        ViewMode.Collaborators => "Collaborators - View who has access and recent activity",
+        ViewMode.VersionHistory => "Version History - Track changes and revert if needed",
+        ViewMode.Help => "Help - Learn about ontology concepts and usage",
+        _ => ""
+    };
+
+    private RenderFragment RenderViewerIndicators(ViewMode mode) => __builder =>
+    {
+        var viewers = GetViewersForView(mode);
+        if (!viewers.Any()) return;
+
+        <span class="viewer-indicators">
+            @foreach (var viewer in viewers.Take(3))
+            {
+                <span class="viewer-dot" style="background-color: @viewer.Color;" title="@viewer.UserName"></span>
+            }
+            @if (viewers.Count > 3)
+            {
+                <span class="viewer-count">+@(viewers.Count - 3)</span>
+            }
+        </span>
+    };
 }
+
+<style>
+    .view-mode-btn {
+        position: relative;
+    }
+
+    .viewer-indicators {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        z-index: 10;
+    }
+
+    .viewer-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid var(--bs-body-bg);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        display: inline-block;
+        animation: dotFadeIn 0.3s ease-out;
+    }
+
+    .viewer-count {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: var(--bs-body-color);
+        background: var(--bs-body-bg);
+        border-radius: 8px;
+        padding: 0 4px;
+        margin-left: 2px;
+        border: 1px solid var(--bs-border-color);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Dark mode support */
+    [data-bs-theme="dark"] .viewer-dot {
+        border-color: var(--bs-dark);
+    }
+
+    [data-bs-theme="dark"] .viewer-count {
+        background: var(--bs-dark);
+        border-color: var(--bs-border-color);
+    }
+
+    /* Animation for dot appearance */
+    @@keyframes dotFadeIn {
+        from {
+            opacity: 0;
+            transform: scale(0.5);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+</style>

@@ -25,6 +25,9 @@
             <NavLink href="" class="nav-link-item" Match="NavLinkMatch.All">
                 <i class="bi bi-house"></i> Home
             </NavLink>
+            <NavLink href="/collaboration" class="nav-link-item">
+                <i class="bi bi-people"></i> Looking for Group
+            </NavLink>
             <NavLink href="features" class="nav-link-item">
                 <i class="bi bi-star-fill"></i> Features
             </NavLink>
@@ -90,19 +93,19 @@
                 <strong class="d-block text-truncate">@currentUser</strong>
             </div>
             <div class="d-grid gap-2">
-                <a href="/settings" class="btn btn-outline-light btn-sm">
+                <NavLink href="settings" class="btn btn-outline-light btn-sm">
                     <i class="bi bi-gear"></i> Settings
-                </a>
-                <a href="/Account/Logout" class="btn btn-outline-light btn-sm">
+                </NavLink>
+                <NavLink href="Account/Logout" class="btn btn-outline-light btn-sm">
                     <i class="bi bi-box-arrow-right"></i> Logout
-                </a>
+                </NavLink>
             </div>
         }
         else
         {
-            <a href="/Account/Login" class="btn btn-primary btn-sm w-100">
+            <NavLink href="Account/Login" class="btn btn-primary btn-sm w-100">
                 <i class="bi bi-box-arrow-in-right"></i> Login
-            </a>
+            </NavLink>
         }
     </div>
 </div>

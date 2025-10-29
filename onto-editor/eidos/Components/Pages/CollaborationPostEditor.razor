@@ -1,0 +1,284 @@
+@page "/collaboration/new"
+@page "/collaboration/edit/{PostId:int}"
+@using Eidos.Models
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICollaborationBoardService CollaborationService
+@inject IOntologyService OntologyService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>@(IsEditing ? "Edit Post" : "Create Collaboration Post")</PageTitle>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-@(IsEditing ? "pencil" : "plus-circle")"></i>
+                        @(IsEditing ? "Edit Collaboration Post" : "Create Collaboration Post")
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if (loading)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" @bind="title"
+                                   placeholder="e.g., Looking for collaborators on Healthcare Ontology"
+                                   maxlength="200" />
+                            <small class="text-muted">Be specific and descriptive</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description <span class="text-danger">*</span></label>
+                            <textarea class="form-control" rows="6" @bind="description"
+                                      placeholder="Describe your project, what you're trying to build, and what you hope to achieve..."
+                                      maxlength="2000"></textarea>
+                            <small class="text-muted">@description.Length / 2000 characters</small>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Domain</label>
+                                <select class="form-select" @bind="domain">
+                                    <option value="">-- Select a domain --</option>
+                                    @foreach (var d in commonDomains)
+                                    {
+                                        <option value="@d">@d</option>
+                                    }
+                                </select>
+                                <small class="text-muted">What field is this ontology for?</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Skill Level</label>
+                                <select class="form-select" @bind="skillLevel">
+                                    <option value="">-- Select skill level --</option>
+                                    <option value="Beginner friendly">Beginner friendly</option>
+                                    <option value="Intermediate">Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                </select>
+                                <small class="text-muted">What level of experience is needed?</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Looking For</label>
+                            <input type="text" class="form-control" @bind="lookingFor"
+                                   placeholder="e.g., Domain experts in cardiology, Technical contributors, Co-designers"
+                                   maxlength="500" />
+                            <small class="text-muted">What kind of help do you need?</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Time Commitment</label>
+                            <input type="text" class="form-control" @bind="timeCommitment"
+                                   placeholder="e.g., Few hours, Weekly, Ongoing project"
+                                   maxlength="100" />
+                            <small class="text-muted">How much time will this require?</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Tags</label>
+                            <input type="text" class="form-control" @bind="tags"
+                                   placeholder="healthcare, medical-imaging, radiology (comma-separated)"
+                                   maxlength="500" />
+                            <small class="text-muted">Add keywords to help people find your post</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Link to Existing Ontology (Optional)</label>
+                            <select class="form-select" @bind="ontologyId">
+                                <option value="0">-- No ontology selected --</option>
+                                @foreach (var ont in myOntologies)
+                                {
+                                    <option value="@ont.Id">@ont.Name</option>
+                                }
+                            </select>
+                            <small class="text-muted">If you already have an ontology started, link it here</small>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Tips for a great post:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Be clear about what you're building and why</li>
+                                <li>Specify what skills or knowledge you need</li>
+                                <li>Set realistic expectations for time commitment</li>
+                                <li>Respond promptly to interested collaborators</li>
+                            </ul>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(errorMessage))
+                        {
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle"></i> @errorMessage
+                            </div>
+                        }
+
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" @onclick="SavePost"
+                                    disabled="@(!CanSave() || saving)">
+                                @if (saving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <i class="bi bi-@(IsEditing ? "save" : "check-circle")"></i>
+                                @(IsEditing ? "Update Post" : "Create Post")
+                            </button>
+                            <a href="/collaboration" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int? PostId { get; set; }
+
+    private bool IsEditing => PostId.HasValue && PostId.Value > 0;
+
+    private bool loading = true;
+    private bool saving = false;
+    private string? currentUserId;
+    private string? errorMessage;
+
+    // Form fields
+    private string title = string.Empty;
+    private string description = string.Empty;
+    private string domain = string.Empty;
+    private string skillLevel = string.Empty;
+    private string lookingFor = string.Empty;
+    private string timeCommitment = string.Empty;
+    private string tags = string.Empty;
+    private int ontologyId = 0;
+
+    private List<Ontology> myOntologies = new();
+
+    private readonly string[] commonDomains = new[]
+    {
+        "Healthcare", "Biology", "Environmental Science", "Business",
+        "Education", "Technology", "Social Sciences", "Engineering",
+        "Arts & Humanities", "Law & Policy", "Other"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            Navigation.NavigateTo("Account/Login");
+            return;
+        }
+
+        // Load user's ontologies
+        myOntologies = await OntologyService.GetOntologiesForCurrentUserAsync();
+
+        if (IsEditing)
+        {
+            await LoadPost();
+        }
+
+        loading = false;
+    }
+
+    private async Task LoadPost()
+    {
+        if (!PostId.HasValue) return;
+
+        var post = await CollaborationService.GetPostDetailsAsync(PostId.Value, incrementView: false);
+
+        if (post == null)
+        {
+            errorMessage = "Post not found.";
+            return;
+        }
+
+        if (post.UserId != currentUserId)
+        {
+            errorMessage = "You don't have permission to edit this post.";
+            return;
+        }
+
+        // Populate form fields
+        title = post.Title;
+        description = post.Description;
+        domain = post.Domain ?? string.Empty;
+        skillLevel = post.SkillLevel ?? string.Empty;
+        lookingFor = post.LookingFor ?? string.Empty;
+        timeCommitment = post.TimeCommitment ?? string.Empty;
+        tags = post.Tags ?? string.Empty;
+        ontologyId = post.OntologyId ?? 0;
+    }
+
+    private async Task SavePost()
+    {
+        if (!CanSave() || string.IsNullOrEmpty(currentUserId))
+            return;
+
+        saving = true;
+        errorMessage = null;
+
+        try
+        {
+            var post = new CollaborationPost
+            {
+                UserId = currentUserId,
+                Title = title.Trim(),
+                Description = description.Trim(),
+                Domain = string.IsNullOrWhiteSpace(domain) ? null : domain,
+                SkillLevel = string.IsNullOrWhiteSpace(skillLevel) ? null : skillLevel,
+                LookingFor = string.IsNullOrWhiteSpace(lookingFor) ? null : lookingFor.Trim(),
+                TimeCommitment = string.IsNullOrWhiteSpace(timeCommitment) ? null : timeCommitment.Trim(),
+                Tags = string.IsNullOrWhiteSpace(tags) ? null : tags.Trim(),
+                OntologyId = ontologyId > 0 ? ontologyId : null
+            };
+
+            if (IsEditing && PostId.HasValue)
+            {
+                post.Id = PostId.Value;
+                await CollaborationService.UpdatePostAsync(post);
+                Navigation.NavigateTo($"/collaboration/{PostId.Value}");
+            }
+            else
+            {
+                var created = await CollaborationService.CreatePostAsync(post);
+                Navigation.NavigateTo($"/collaboration/{created.Id}");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving post: {ex.Message}";
+            saving = false;
+        }
+    }
+
+    private bool CanSave()
+    {
+        return !string.IsNullOrWhiteSpace(title) &&
+               title.Length <= 200 &&
+               !string.IsNullOrWhiteSpace(description) &&
+               description.Length <= 2000;
+    }
+}

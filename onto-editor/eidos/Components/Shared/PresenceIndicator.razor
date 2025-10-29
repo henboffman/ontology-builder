@@ -1,0 +1,227 @@
+@using Eidos.Models
+@rendermode InteractiveServer
+
+<div class="presence-indicator">
+    @if (Users.Any())
+    {
+        <div class="presence-avatars">
+            @foreach (var user in Users.Take(5))
+            {
+                <div class="presence-avatar-container">
+                    <div class="presence-avatar"
+                         style="background-color: @user.Color; border-color: @user.Color;"
+                         title="@GetUserTooltip(user)">
+                        <span class="avatar-initials">@GetInitials(user.UserName)</span>
+                        @if (!string.IsNullOrEmpty(user.CurrentView))
+                        {
+                            <span class="avatar-view-indicator" title="Viewing: @user.CurrentView">
+                                <i class="bi @GetViewIcon(user.CurrentView)"></i>
+                            </span>
+                        }
+                    </div>
+                    @if (!string.IsNullOrEmpty(user.CurrentView))
+                    {
+                        <div class="view-label">@user.CurrentView</div>
+                    }
+                </div>
+            }
+
+            @if (Users.Count > 5)
+            {
+                <div class="presence-avatar presence-avatar-more" title="@(Users.Count - 5) more">
+                    <span class="avatar-initials">+@(Users.Count - 5)</span>
+                </div>
+            }
+        </div>
+
+        <div class="presence-count">
+            <i class="bi bi-people-fill"></i>
+            <span>@Users.Count online</span>
+        </div>
+    }
+    else
+    {
+        <div class="presence-empty">
+            <i class="bi bi-person"></i>
+            <span>Just you</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<PresenceInfo> Users { get; set; } = new();
+
+    private string GetInitials(string userName)
+    {
+        if (string.IsNullOrWhiteSpace(userName))
+            return "?";
+
+        var parts = userName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+
+        return userName.Length >= 2 ? userName.Substring(0, 2).ToUpper() : userName[0].ToString().ToUpper();
+    }
+
+    private string GetUserTooltip(PresenceInfo user)
+    {
+        var tooltip = user.UserName;
+        if (!string.IsNullOrEmpty(user.CurrentView))
+        {
+            tooltip += $" (viewing {user.CurrentView})";
+        }
+        return tooltip;
+    }
+
+    private string GetViewIcon(string viewName)
+    {
+        return viewName switch
+        {
+            "Graph" => "bi-diagram-3",
+            "List" => "bi-list-ul",
+            "Hierarchy" => "bi-diagram-2",
+            "Instances" => "bi-person",
+            "TTL" => "bi-file-code",
+            "Notes" => "bi-journal-text",
+            "Templates" => "bi-journal-code",
+            "Collaborators" => "bi-people",
+            "Settings" => "bi-gear",
+            "Statistics" => "bi-bar-chart",
+            "History" => "bi-clock-history",
+            _ => "bi-eye"
+        };
+    }
+}
+
+<style>
+    .presence-indicator {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+        background: var(--bs-light);
+        border-radius: 8px;
+        border: 1px solid var(--bs-border-color);
+    }
+
+    .presence-avatars {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .presence-avatar-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .presence-avatar {
+        position: relative;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 2px solid var(--bs-body-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.75rem;
+        color: white;
+        cursor: pointer;
+        transition: transform 0.2s, z-index 0.2s;
+        z-index: 1;
+    }
+
+    .view-label {
+        font-size: 0.65rem;
+        color: var(--bs-secondary);
+        text-align: center;
+        white-space: nowrap;
+        font-weight: 500;
+    }
+
+    .presence-avatar:hover {
+        transform: scale(1.15) translateY(-2px);
+        z-index: 10;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .presence-avatar-more {
+        background-color: var(--bs-secondary);
+        border-color: var(--bs-secondary);
+    }
+
+    .avatar-initials {
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: -0.5px;
+    }
+
+    .avatar-view-indicator {
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        width: 16px;
+        height: 16px;
+        background-color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.6rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .presence-count {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.875rem;
+        color: var(--bs-body-color);
+        font-weight: 500;
+    }
+
+    .presence-count i {
+        font-size: 1rem;
+    }
+
+    .presence-empty {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.875rem;
+        color: var(--bs-secondary);
+    }
+
+    /* Dark mode support */
+    [data-bs-theme="dark"] .presence-indicator {
+        background: var(--bs-dark);
+    }
+
+    [data-bs-theme="dark"] .presence-avatar {
+        border-color: var(--bs-dark);
+    }
+
+    [data-bs-theme="dark"] .avatar-view-indicator {
+        background-color: var(--bs-dark);
+    }
+
+    /* Animation for new users joining */
+    @@keyframes fadeInScale {
+        from {
+            opacity: 0;
+            transform: scale(0.5);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .presence-avatar {
+        animation: fadeInScale 0.3s ease-out;
+    }
+</style>

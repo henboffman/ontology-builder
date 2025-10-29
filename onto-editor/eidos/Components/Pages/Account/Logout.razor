@@ -8,6 +8,6 @@
     protected override async Task OnInitializedAsync()
     {
         await SignInManager.SignOutAsync();
-        Navigation.NavigateTo("/Account/Login", forceLoad: true);
+        Navigation.NavigateTo("Account/Login", forceLoad: true);
     }
 }

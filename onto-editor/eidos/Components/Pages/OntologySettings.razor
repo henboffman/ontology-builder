@@ -227,7 +227,7 @@ else
             {
                 await OntologyService.DeleteOntologyAsync(Id);
                 ToastService.ShowSuccess($"Deleted ontology \"{ontology.Name}\"");
-                Navigation.NavigateTo("/");
+                Navigation.NavigateTo("");
             }
             catch (Exception ex)
             {
