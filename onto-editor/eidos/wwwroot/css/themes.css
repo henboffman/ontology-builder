@@ -480,3 +480,27 @@ footer {
 .dropdown-menu {
     transition: none;
 }
+
+/* ========================================
+   Highlight Flash Animation
+   ======================================== */
+
+/* Highlight animation for individual cards when clicked in graph */
+@keyframes highlight-pulse {
+    0% {
+        background-color: var(--list-active-bg);
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7);
+    }
+    50% {
+        background-color: var(--list-active-bg);
+        box-shadow: 0 0 0 10px rgba(13, 110, 253, 0);
+    }
+    100% {
+        background-color: var(--list-active-bg);
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+    }
+}
+
+.highlight-flash {
+    animation: highlight-pulse 2s ease-out;
+}

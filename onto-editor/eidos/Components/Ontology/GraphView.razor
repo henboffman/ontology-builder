@@ -38,6 +38,19 @@
                         <i class="bi bi-folder"></i> By Source
                     </button>
                 </div>
+
+                @if ((FilteredOntology?.Individuals?.Count ?? 0) > 0)
+                {
+                    <div class="form-check form-switch ms-2">
+                        <input class="form-check-input" type="checkbox" id="showIndividualsToggle"
+                               checked="@showIndividuals"
+                               @onchange="@((ChangeEventArgs e) => OnShowIndividualsChanged((bool)e.Value!))"
+                               title="Show individual instances in the graph">
+                        <label class="form-check-label" for="showIndividualsToggle">
+                            <i class="bi bi-person"></i> Show Individuals
+                        </label>
+                    </div>
+                }
             }
         </div>
     </div>
@@ -82,9 +95,11 @@
             <div class="row">
                 <div class="@(ColorMode == "source" ? "col-md-10" : "col-md-12")">
                     <GraphVisualization Ontology="@FilteredOntology" Height="700px" ColorMode="@ColorMode"
+                                      ShowIndividuals="@showIndividuals"
                                       OnNodeCtrlClicked="@OnNodeCtrlClicked"
                                       OnNodeClicked="@OnNodeClicked"
                                       OnEdgeClicked="@OnEdgeClicked"
+                                      OnIndividualClicked="@OnIndividualClicked"
                                       @ref="graphVisualization" />
                 </div>
                 @if (ColorMode == "source" && SourceOntologies.Any())
@@ -143,10 +158,44 @@
     public EventCallback<int> OnEdgeClicked { get; set; }
 
     [Parameter]
+    public EventCallback<int> OnIndividualClicked { get; set; }
+
+    [Parameter]
     public bool CanAdd { get; set; } = true;
 
     private GraphVisualization? graphVisualization;
     private bool showGraphHelp = false;
+
+    /// <summary>
+    /// Controls whether individual instances are displayed in the graph alongside concepts.
+    /// When enabled, individuals appear as diamond-shaped nodes with dotted borders,
+    /// connected to their parent concepts via "instance of" edges.
+    /// </summary>
+    private bool showIndividuals = false;
+
+    /// <summary>
+    /// Handles changes to the "Show Individuals" toggle.
+    /// This method ensures proper parameter propagation to the GraphVisualization child component
+    /// by forcing a state update and allowing time for Blazor's rendering cycle to complete.
+    /// </summary>
+    /// <param name="newValue">True to show individuals in the graph, false to hide them</param>
+    /// <remarks>
+    /// The StateHasChanged() + Task.Delay(10) pattern is critical here because:
+    /// 1. StateHasChanged() triggers a re-render of this component
+    /// 2. The delay allows Blazor to propagate the ShowIndividuals parameter to GraphVisualization
+    /// 3. Only then can RefreshGraph() use the updated parameter value
+    /// Without this sequence, RefreshGraph() would use the old parameter value.
+    /// </remarks>
+    private async Task OnShowIndividualsChanged(bool newValue)
+    {
+        showIndividuals = newValue;
+        StateHasChanged(); // Force Blazor to update the GraphVisualization parameter
+        await Task.Delay(10); // Give Blazor time to propagate the parameter change
+        if (graphVisualization != null)
+        {
+            await graphVisualization.RefreshGraph();
+        }
+    }
 
     // Predefined color palette for graph nodes - matches CSS variables in themes.css
     // These correspond to: entity, function, quality, attribute, role, process, related, information

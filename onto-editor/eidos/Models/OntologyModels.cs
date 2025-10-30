@@ -27,6 +27,13 @@ namespace Eidos.Models
         [StringLength(500)]
         public string? Namespace { get; set; }
 
+        /// <summary>
+        /// Stores namespace prefix mappings from imported TTL files as JSON
+        /// Format: {"prefix": "namespace_uri", "ex": "http://example.org/"}
+        /// This preserves the original prefixes when round-tripping TTL files
+        /// </summary>
+        public string? NamespacePrefixes { get; set; }
+
         // Tags for categorization (stored as comma-separated string)
         public string? Tags { get; set; }
 

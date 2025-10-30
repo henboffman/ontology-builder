@@ -9,9 +9,63 @@
     </div>
 
     <div class="release-timeline">
-        <!-- Latest: Real-Time Presence Tracking -->
+        <!-- Latest: Individual Visualization in Graph View -->
         <div class="release-item">
             <div class="release-badge badge bg-primary">Latest</div>
+            <div class="release-date">October 29, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-diagram-3 text-primary me-2"></i>
+                Individual Visualization in Graph View
+            </h4>
+            <div class="release-content">
+                <p class="lead">Visualize the complete picture - see both your ontology structure AND individual instances in the graph view!</p>
+
+                <h5>Graph Visualization Enhancements</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>"Show Individuals" Toggle</strong>
+                        <ul>
+                            <li>New checkbox in graph toolbar to show/hide individual instances</li>
+                            <li>Only appears when your ontology contains individuals</li>
+                            <li>Seamlessly switch between structure-only and full instance view</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Individual Node Styling</strong>
+                        <ul>
+                            <li>Diamond-shaped nodes distinguish individuals from concepts</li>
+                            <li>Dashed borders for clear visual separation</li>
+                            <li>Transparent colors (40% opacity) derived from parent concept</li>
+                            <li>Fully compatible with dark/light themes</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Instance Relationships</strong>
+                        <ul>
+                            <li>Dotted "instance of" lines connect individuals to their concepts</li>
+                            <li>Purple solid lines show relationships between individuals</li>
+                            <li>All edges fully interactive with hover tooltips</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>Technical Implementation</h5>
+                <ul class="feature-list">
+                    <li>Enhanced OntologyRepository to load Individuals and IndividualRelationships</li>
+                    <li>Cytoscape.js diamond node shape with custom styling</li>
+                    <li>RGBA color format for proper transparency rendering</li>
+                    <li>Blazor parameter binding with StateHasChanged() for responsive updates</li>
+                </ul>
+
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    <strong>Example:</strong> If you have a "Server" concept with instances like "Dev", "Test", and "Prod", toggle "Show Individuals" to see all three servers as diamond nodes connected to the Server concept!
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-Time Presence Tracking -->
+        <div class="release-item">
             <div class="release-date">October 28, 2025</div>
             <h4 class="release-title">
                 <i class="bi bi-people-fill text-success me-2"></i>

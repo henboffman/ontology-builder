@@ -22,8 +22,6 @@ namespace Eidos.Services
         {
             var graph = BuildRdfGraph(ontology);
 
-            using var stringWriter = new System.IO.StringWriter();
-
             // JsonLdWriter requires a TripleStore, not just a Graph
             if (format == RdfFormat.JsonLd)
             {
@@ -45,6 +43,9 @@ namespace Eidos.Services
                 }
             }
 
+            // Use UTF-8 StringWriter to ensure correct encoding declaration in RDF/XML
+            using var stringWriter = new Utf8StringWriter();
+
             IRdfWriter writer = format switch
             {
                 RdfFormat.RdfXml => new RdfXmlWriter(),
@@ -64,20 +65,60 @@ namespace Eidos.Services
         private IGraph BuildRdfGraph(Ontology ontology)
         {
             var graph = new Graph();
-            graph.NamespaceMap.AddNamespace("rdf", UriFactory.Create(OntologyNamespaces.RdfSyntax));
-            graph.NamespaceMap.AddNamespace("rdfs", UriFactory.Create(OntologyNamespaces.RdfSchema));
-            graph.NamespaceMap.AddNamespace("owl", UriFactory.Create(OntologyNamespaces.Owl));
-            graph.NamespaceMap.AddNamespace("dc", UriFactory.Create(OntologyNamespaces.DublinCoreElements));
-            graph.NamespaceMap.AddNamespace("dcterms", UriFactory.Create(OntologyNamespaces.DublinCoreTerms));
-            graph.NamespaceMap.AddNamespace("skos", UriFactory.Create(OntologyNamespaces.Skos));
-            graph.NamespaceMap.AddNamespace("xsd", UriFactory.Create("http://www.w3.org/2001/XMLSchema#"));
 
-            if (ontology.UsesBFO)
+            // First, restore namespace prefixes from imported TTL (if available)
+            if (!string.IsNullOrWhiteSpace(ontology.NamespacePrefixes))
+            {
+                try
+                {
+                    var savedPrefixes = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(ontology.NamespacePrefixes);
+                    if (savedPrefixes != null)
+                    {
+                        foreach (var kvp in savedPrefixes)
+                        {
+                            // Only add if the prefix doesn't already exist
+                            if (!graph.NamespaceMap.HasNamespace(kvp.Key))
+                            {
+                                try
+                                {
+                                    graph.NamespaceMap.AddNamespace(kvp.Key, UriFactory.Create(kvp.Value));
+                                }
+                                catch
+                                {
+                                    // Skip if there's any issue adding this specific prefix
+                                }
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // If deserialization fails, fall back to standard prefixes below
+                }
+            }
+
+            // Add standard namespace prefixes (these will be skipped if already present from import)
+            if (!graph.NamespaceMap.HasNamespace("rdf"))
+                graph.NamespaceMap.AddNamespace("rdf", UriFactory.Create(OntologyNamespaces.RdfSyntax));
+            if (!graph.NamespaceMap.HasNamespace("rdfs"))
+                graph.NamespaceMap.AddNamespace("rdfs", UriFactory.Create(OntologyNamespaces.RdfSchema));
+            if (!graph.NamespaceMap.HasNamespace("owl"))
+                graph.NamespaceMap.AddNamespace("owl", UriFactory.Create(OntologyNamespaces.Owl));
+            if (!graph.NamespaceMap.HasNamespace("dc"))
+                graph.NamespaceMap.AddNamespace("dc", UriFactory.Create(OntologyNamespaces.DublinCoreElements));
+            if (!graph.NamespaceMap.HasNamespace("dcterms"))
+                graph.NamespaceMap.AddNamespace("dcterms", UriFactory.Create(OntologyNamespaces.DublinCoreTerms));
+            if (!graph.NamespaceMap.HasNamespace("skos"))
+                graph.NamespaceMap.AddNamespace("skos", UriFactory.Create(OntologyNamespaces.Skos));
+            if (!graph.NamespaceMap.HasNamespace("xsd"))
+                graph.NamespaceMap.AddNamespace("xsd", UriFactory.Create("http://www.w3.org/2001/XMLSchema#"));
+
+            if (ontology.UsesBFO && !graph.NamespaceMap.HasNamespace("bfo"))
             {
                 graph.NamespaceMap.AddNamespace("bfo", UriFactory.Create(OntologyNamespaces.BfoPrefix));
             }
 
-            if (ontology.UsesProvO)
+            if (ontology.UsesProvO && !graph.NamespaceMap.HasNamespace("prov"))
             {
                 graph.NamespaceMap.AddNamespace("prov", UriFactory.Create(OntologyNamespaces.ProvO));
             }
@@ -565,5 +606,14 @@ namespace Eidos.Services
             var localName = relationType.Replace(" ", "_").Replace("-", "_");
             return baseUri + localName;
         }
+    }
+
+    /// <summary>
+    /// StringWriter that reports UTF-8 encoding instead of UTF-16
+    /// This fixes the RDF/XML encoding mismatch issue with Protégé and other RDF tools
+    /// </summary>
+    internal class Utf8StringWriter : System.IO.StringWriter
+    {
+        public override System.Text.Encoding Encoding => System.Text.Encoding.UTF8;
     }
 }

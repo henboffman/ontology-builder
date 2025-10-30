@@ -35,6 +35,27 @@
     [Parameter]
     public string ColorMode { get; set; } = "concept"; // "concept" or "source"
 
+    /// <summary>
+    /// Controls whether individual instances are rendered in the graph alongside concepts.
+    /// When true, adds three types of additional graph elements:
+    /// 1. Individual nodes (diamond-shaped with 40% opacity colors derived from parent concept)
+    /// 2. Instance-of edges (dotted lines connecting individuals to their parent concepts)
+    /// 3. Individual relationship edges (purple lines connecting related individuals)
+    /// </summary>
+    /// <remarks>
+    /// Visual styling for individuals:
+    /// - Shape: Diamond (distinguishes from ellipse-shaped concepts)
+    /// - Border: Dashed (visual indicator of instance vs. concept)
+    /// - Color: rgba() format with 40% opacity of parent concept color
+    /// - Size: 1.2x larger than concept nodes for better visibility
+    ///
+    /// Edge types:
+    /// - instance-of: Dotted gray lines with vee arrows
+    /// - individualRelationship: Solid purple (#7B68EE) lines with triangle arrows
+    /// </remarks>
+    [Parameter]
+    public bool ShowIndividuals { get; set; } = false;
+
     [Parameter]
     public EventCallback<int> OnNodeCtrlClicked { get; set; }
 
@@ -43,6 +64,9 @@
 
     [Parameter]
     public EventCallback<int> OnEdgeClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnIndividualClicked { get; set; }
 
     private string GraphId = $"graph-{Guid.NewGuid():N}";
     private bool hasRendered = false;
@@ -157,6 +181,7 @@
                     id = $"concept-{c.Id}",
                     label = c.Name,
                     color = nodeColor,
+                    nodeType = "concept",
                     definition = c.Definition ?? "",
                     explanation = c.SimpleExplanation ?? "",
                     examples = c.Examples ?? "",
@@ -165,6 +190,51 @@
                 }
             };
         }).ToList();
+
+        // ====================================================================================
+        // Individual Node Visualization (Phase 1 of 3: Nodes)
+        // ====================================================================================
+        // Adds diamond-shaped nodes representing individual instances of concepts.
+        // Design decisions:
+        // - Color opacity: 40% of parent concept color for visual hierarchy
+        // - Color format: rgba() required by Cytoscape.js (8-char hex with alpha not supported)
+        // - Shape: Diamond with dashed border (defined in graphVisualization.js)
+        // - Size: 1.2x concept node size for better visibility with diamond shape
+        // ====================================================================================
+        if (ShowIndividuals && Ontology.Individuals?.Any() == true)
+        {
+            var individualNodes = Ontology.Individuals.Select(ind =>
+            {
+                // Find the concept this individual is an instance of
+                var concept = Ontology.Concepts.FirstOrDefault(c => c.Id == ind.ConceptId);
+                var baseColor = concept?.Color ?? "#4A90E2";
+
+                // Convert hex color to rgba format with 40% opacity
+                // Note: Cytoscape.js requires rgba() format - does not support 8-character hex (#RRGGBBAA)
+                var r = Convert.ToInt32(baseColor.Substring(1, 2), 16);
+                var g = Convert.ToInt32(baseColor.Substring(3, 2), 16);
+                var b = Convert.ToInt32(baseColor.Substring(5, 2), 16);
+                var individualColor = $"rgba({r}, {g}, {b}, 0.4)";
+
+                return new
+                {
+                    data = new
+                    {
+                        id = $"individual-{ind.Id}",
+                        label = ind.Name ?? ind.Label ?? $"Individual {ind.Id}",
+                        color = individualColor,
+                        nodeType = "individual",
+                        definition = ind.Description ?? "",
+                        explanation = "", // Individuals don't have explanations
+                        examples = "", // Individuals don't have examples
+                        category = "", // Individuals don't have categories
+                        sourceOntology = concept?.SourceOntology ?? "Original"
+                    }
+                };
+            });
+
+            nodes.AddRange(individualNodes);
+        }
 
         // Build edges from relationships
         var edges = Ontology.Relationships.Select(r => new
@@ -175,9 +245,61 @@
                 source = $"concept-{r.SourceConceptId}",
                 target = $"concept-{r.TargetConceptId}",
                 label = r.RelationType,
+                edgeType = "relationship",
                 description = r.Description ?? ""
             }
         }).ToList();
+
+        // ====================================================================================
+        // Individual Visualization (Phase 2 of 3: Instance-of Edges)
+        // ====================================================================================
+        // Adds dotted edges connecting individuals to their parent concepts.
+        // Visual style: Dotted gray lines with vee arrows (lighter than regular relationships)
+        // Label: "instance of" to clearly indicate the type-instance relationship
+        // ====================================================================================
+        if (ShowIndividuals && Ontology.Individuals?.Any() == true)
+        {
+            var instanceEdges = Ontology.Individuals.Select(ind => new
+            {
+                data = new
+                {
+                    id = $"instance-{ind.Id}",
+                    source = $"individual-{ind.Id}",
+                    target = $"concept-{ind.ConceptId}",
+                    label = "instance of",
+                    edgeType = "instanceOf",
+                    description = ""
+                }
+            });
+
+            edges.AddRange(instanceEdges);
+        }
+
+        // ====================================================================================
+        // Individual Visualization (Phase 3 of 3: Individual Relationship Edges)
+        // ====================================================================================
+        // Adds edges connecting related individuals (e.g., "Alice knows Bob").
+        // Visual style: Solid purple (#7B68EE) lines with triangle arrows
+        // These relationships are distinct from concept relationships and instance-of edges,
+        // representing connections at the instance level rather than the ontology structure level.
+        // ====================================================================================
+        if (ShowIndividuals && Ontology.IndividualRelationships?.Any() == true)
+        {
+            var individualRelationshipEdges = Ontology.IndividualRelationships.Select(ir => new
+            {
+                data = new
+                {
+                    id = $"indrel-{ir.Id}",
+                    source = $"individual-{ir.SourceIndividualId}",
+                    target = $"individual-{ir.TargetIndividualId}",
+                    label = ir.RelationType ?? "related to",
+                    edgeType = "individualRelationship",
+                    description = ir.Description ?? ""
+                }
+            });
+
+            edges.AddRange(individualRelationshipEdges);
+        }
 
         var elements = new
         {
@@ -220,6 +342,13 @@
     public async Task OnEdgeClick(int relationshipId)
     {
         await OnEdgeClicked.InvokeAsync(relationshipId);
+    }
+
+    [JSInvokable]
+    public async Task OnIndividualClick(int individualId)
+    {
+        Console.WriteLine($"OnIndividualClick called with ID: {individualId}");
+        await OnIndividualClicked.InvokeAsync(individualId);
     }
 
     public async Task RefreshGraph()

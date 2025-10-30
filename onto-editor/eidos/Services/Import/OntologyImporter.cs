@@ -31,12 +31,21 @@ public class OntologyImporter : IOntologyImporter
 
     public async Task<Ontology> ImportAsNewAsync(IGraph graph, string? customName = null, string? customDescription = null)
     {
+        // Extract namespace prefixes from the imported TTL
+        var namespacePrefixes = new Dictionary<string, string>();
+        foreach (var prefix in graph.NamespaceMap.Prefixes)
+        {
+            var uri = graph.NamespaceMap.GetNamespaceUri(prefix).ToString();
+            namespacePrefixes[prefix] = uri;
+        }
+
         // Create new ontology
         var ontology = new Ontology
         {
             Name = customName ?? RdfUtilities.ExtractOntologyName(graph) ?? "Imported Ontology",
             Description = customDescription ?? RdfUtilities.ExtractOntologyDescription(graph) ?? "Imported from RDF file",
-            Version = "1.0 (imported)"
+            Version = "1.0 (imported)",
+            NamespacePrefixes = namespacePrefixes.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(namespacePrefixes) : null
         };
 
         ontology = await _ontologyRepository.AddAsync(ontology);

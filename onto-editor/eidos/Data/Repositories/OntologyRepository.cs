@@ -10,6 +10,24 @@ public class OntologyRepository : BaseRepository<Ontology>, IOntologyRepository
     {
     }
 
+    /// <summary>
+    /// Retrieves an ontology with all related data eagerly loaded.
+    /// This includes concepts, relationships, individuals, and individual relationships.
+    /// </summary>
+    /// <param name="id">The ID of the ontology to retrieve</param>
+    /// <returns>The ontology with all related data, or null if not found</returns>
+    /// <remarks>
+    /// Navigation properties loaded:
+    /// - Concepts with their Properties
+    /// - Relationships with SourceConcept and TargetConcept
+    /// - Individuals with their Properties (for individual visualization in graph view)
+    /// - IndividualRelationships (for individual relationship edges in graph view)
+    /// - LinkedOntologies
+    ///
+    /// Performance considerations:
+    /// - Uses AsSplitQuery() to avoid cartesian explosion with multiple collections
+    /// - Uses AsNoTracking() for read-only performance optimization
+    /// </remarks>
     public async Task<Ontology?> GetWithAllRelatedDataAsync(int id)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
@@ -22,6 +40,9 @@ public class OntologyRepository : BaseRepository<Ontology>, IOntologyRepository
                 .ThenInclude(r => r.SourceConcept)
             .Include(o => o.Relationships)
                 .ThenInclude(r => r.TargetConcept)
+            .Include(o => o.Individuals)                    // Required for individual visualization
+                .ThenInclude(i => i.Properties)
+            .Include(o => o.IndividualRelationships)        // Required for individual relationship edges
             .Include(o => o.LinkedOntologies)
             .FirstOrDefaultAsync(o => o.Id == id);
     }

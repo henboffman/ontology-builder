@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.SignalR;
 using Eidos.Hubs;
 using Eidos.Models;
+using Eidos.Models.Enums;
 using Eidos.Services;
 using Eidos.Services.Interfaces;
 using System.Security.Claims;
@@ -50,7 +51,8 @@ public class OntologyHubPresenceTests
             .Returns(_mockShareService.Object);
 
         // Setup client proxies
-        _mockClients.Setup(c => c.Caller).Returns(_mockClientProxy.Object);
+        var mockSingleClientProxy = _mockClientProxy.As<ISingleClientProxy>();
+        _mockClients.Setup(c => c.Caller).Returns(mockSingleClientProxy.Object);
         _mockClients.Setup(c => c.OthersInGroup(It.IsAny<string>())).Returns(_mockClientProxy.Object);
         _mockClients.Setup(c => c.Group(It.IsAny<string>())).Returns(_mockClientProxy.Object);
     }
@@ -114,7 +116,7 @@ public class OntologyHubPresenceTests
         _mockContext.Setup(c => c.ConnectionId).Returns(connectionId);
         _mockContext.Setup(c => c.User).Returns(user);
         _mockShareService.Setup(s => s.GetPermissionLevelAsync(ontologyId, userId, null))
-            .ReturnsAsync(PermissionLevel.None);
+            .ReturnsAsync((PermissionLevel?)null);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<HubException>(() => hub.JoinOntology(ontologyId));

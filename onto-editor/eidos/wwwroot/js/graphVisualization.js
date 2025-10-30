@@ -53,7 +53,27 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
                     'border-width': Math.max(1, Math.round(options.nodeSize * 0.05)),
                     'border-color': '#333',
                     'text-wrap': 'wrap',
-                    'text-max-width': (options.nodeSize + 20) + 'px'
+                    'text-max-width': (options.nodeSize + 20) + 'px',
+                    'shape': 'ellipse'
+                }
+            },
+            // ====================================================================
+            // Individual Node Styling
+            // ====================================================================
+            // Individuals (instances) are visually distinguished from concepts:
+            // - Diamond shape (vs ellipse for concepts)
+            // - Dashed border (vs solid for concepts)
+            // - 1.2x larger size for better visibility with diamond shape
+            // - Color with 40% opacity (set in GraphVisualization.razor)
+            // ====================================================================
+            {
+                selector: 'node[nodeType = "individual"]',
+                style: {
+                    'shape': 'diamond',
+                    'width': (options.nodeSize * 1.2) + 'px',
+                    'height': (options.nodeSize * 1.2) + 'px',
+                    'border-width': Math.max(1, Math.round(options.nodeSize * 0.04)),
+                    'border-style': 'dashed'
                 }
             },
             {
@@ -72,6 +92,42 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
                     'text-background-color': '#fff',
                     'text-background-opacity': 0.8,
                     'text-background-padding': '2px'
+                }
+            },
+            // ====================================================================
+            // Instance-of Edge Styling
+            // ====================================================================
+            // Edges connecting individuals to their parent concepts (type edges).
+            // - Dotted line style to distinguish from regular relationships
+            // - Gray color (#666) - lighter/subtler than regular edges (#999)
+            // - Vee arrow shape (smaller than triangle)
+            // - Slightly thinner than regular edges
+            // Example: "Alice" --instance of--> "Person"
+            // ====================================================================
+            {
+                selector: 'edge[edgeType = "instanceOf"]',
+                style: {
+                    'line-style': 'dotted',
+                    'line-color': '#666',
+                    'target-arrow-color': '#666',
+                    'width': Math.max(2, options.edgeThickness - 1),
+                    'target-arrow-shape': 'vee'
+                }
+            },
+            // ====================================================================
+            // Individual Relationship Edge Styling
+            // ====================================================================
+            // Edges connecting related individuals (instance-level relationships).
+            // - Purple color (#7B68EE) to distinguish from concept relationships
+            // - Solid line (not dotted like instance-of edges)
+            // - Triangle arrow shape (same as regular relationships)
+            // Example: "Alice" --knows--> "Bob"
+            // ====================================================================
+            {
+                selector: 'edge[edgeType = "individualRelationship"]',
+                style: {
+                    'line-color': '#7B68EE',
+                    'target-arrow-color': '#7B68EE'
                 }
             },
             {
@@ -241,16 +297,34 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
             cy.on('click', 'node', function (event) {
                 const node = event.target;
                 const nodeId = node.data('id');
-                // Extract the concept ID from the node ID (format: "concept-123")
-                const conceptId = parseInt(nodeId.replace('concept-', ''));
+                const nodeType = node.data('nodeType');
 
-                // Check if Cmd (Mac) or Ctrl (Windows/Linux) was pressed
-                if (event.originalEvent.metaKey || event.originalEvent.ctrlKey) {
-                    // Ctrl/Cmd + click to create relationships
-                    dotNetHelper.invokeMethodAsync('OnNodeCtrlClick', conceptId);
+                console.log('Node clicked:', { nodeId, nodeType });
+
+                // Handle individual nodes differently from concept nodes
+                if (nodeType === 'individual') {
+                    // Extract the individual ID from the node ID (format: "individual-123")
+                    const individualId = parseInt(nodeId.replace('individual-', ''));
+                    console.log('Individual node clicked, ID:', individualId);
+
+                    // Call the individual click handler
+                    if (dotNetHelper.invokeMethodAsync) {
+                        dotNetHelper.invokeMethodAsync('OnIndividualClick', individualId)
+                            .then(() => console.log('OnIndividualClick succeeded'))
+                            .catch(err => console.error('OnIndividualClick failed:', err));
+                    }
                 } else {
-                    // Regular click to show details
-                    dotNetHelper.invokeMethodAsync('OnNodeClick', conceptId);
+                    // Extract the concept ID from the node ID (format: "concept-123")
+                    const conceptId = parseInt(nodeId.replace('concept-', ''));
+
+                    // Check if Cmd (Mac) or Ctrl (Windows/Linux) was pressed
+                    if (event.originalEvent.metaKey || event.originalEvent.ctrlKey) {
+                        // Ctrl/Cmd + click to create relationships
+                        dotNetHelper.invokeMethodAsync('OnNodeCtrlClick', conceptId);
+                    } else {
+                        // Regular click to show details
+                        dotNetHelper.invokeMethodAsync('OnNodeClick', conceptId);
+                    }
                 }
             });
 
@@ -335,5 +409,24 @@ window.copyToClipboard = async function (text) {
     } catch (err) {
         console.error('Failed to copy to clipboard:', err);
         return false;
+    }
+};
+
+// Scroll to an individual card in the list and highlight it
+window.scrollToIndividual = function (individualId) {
+    // Find the individual card by data attribute or ID
+    const individualCard = document.querySelector(`[data-individual-id="${individualId}"]`);
+
+    if (individualCard) {
+        // Scroll into view with smooth animation
+        individualCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Add a temporary highlight effect
+        individualCard.classList.add('highlight-flash');
+        setTimeout(() => {
+            individualCard.classList.remove('highlight-flash');
+        }, 2000);
+    } else {
+        console.warn(`Could not find individual card with ID: ${individualId}`);
     }
 };

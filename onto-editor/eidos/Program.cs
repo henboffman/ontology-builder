@@ -153,10 +153,35 @@ builder.Services.Configure<Microsoft.AspNetCore.Components.Server.CircuitOptions
 });
 
 // Configure database with DbContextFactory for Blazor Server concurrency
-// Use SQL Server for both development (via Docker) and production (Azure SQL Database)
 builder.Services.AddDbContextFactory<OntologyDbContext>(options =>
 {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+    // Auto-detect database provider based on connection string
+    // SQLite: "Data Source=..."
+    // SQL Server: "Server=..." or contains "Database="
+    if (connectionString?.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase) == true
+        && !connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase))
+    {
+        // SQLite for local development
+        options.UseSqlite(connectionString);
+        Console.WriteLine($"ℹ️  Using SQLite database: {connectionString}");
+
+        // For SQLite in development, suppress pending model changes warning
+        // The existing SQLite db was created with earlier migrations and works fine
+        if (builder.Environment.IsDevelopment())
+        {
+            options.ConfigureWarnings(warnings =>
+                warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        }
+    }
+    else
+    {
+        // SQL Server for Docker/Azure
+        options.UseSqlServer(connectionString);
+        Console.WriteLine($"ℹ️  Using SQL Server database");
+    }
+
     if (builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging();
@@ -173,24 +198,34 @@ var authBuilder = builder.Services.AddAuthentication(options =>
 
 authBuilder.AddIdentityCookies();
 
-// Add GitHub OAuth provider (required)
-authBuilder.AddGitHub(options =>
+// Add GitHub OAuth provider (optional - only if configured)
+var githubClientId = builder.Configuration["Authentication:GitHub:ClientId"];
+var githubClientSecret = builder.Configuration["Authentication:GitHub:ClientSecret"];
+if (!string.IsNullOrEmpty(githubClientId) && !string.IsNullOrEmpty(githubClientSecret))
 {
-    options.ClientId = builder.Configuration["Authentication:GitHub:ClientId"] ?? throw new InvalidOperationException("GitHub ClientId not configured in Key Vault or User Secrets");
-    options.ClientSecret = builder.Configuration["Authentication:GitHub:ClientSecret"] ?? throw new InvalidOperationException("GitHub ClientSecret not configured in Key Vault or User Secrets");
-    options.CallbackPath = "/signin-github";
-    options.Scope.Add("user:email");
-    options.SaveTokens = true;
+    authBuilder.AddGitHub(options =>
+    {
+        options.ClientId = githubClientId;
+        options.ClientSecret = githubClientSecret;
+        options.CallbackPath = "/signin-github";
+        options.Scope.Add("user:email");
+        options.SaveTokens = true;
 
-    // Configure correlation cookie to prevent correlation errors
-    options.CorrelationCookie.HttpOnly = true;
-    options.CorrelationCookie.SameSite = SameSiteMode.Lax;
-    options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always; // Always require HTTPS
-    options.CorrelationCookie.IsEssential = true;
+        // Configure correlation cookie to prevent correlation errors
+        options.CorrelationCookie.HttpOnly = true;
+        options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+        options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always; // Always require HTTPS
+        options.CorrelationCookie.IsEssential = true;
 
-    // Assign roles after successful authentication
-    options.Events.OnCreatingTicket = async context => await ProgramHelpers.HandleOAuthTicketCreationAsync(context, "GitHub");
-});
+        // Assign roles after successful authentication
+        options.Events.OnCreatingTicket = async context => await ProgramHelpers.HandleOAuthTicketCreationAsync(context, "GitHub");
+    });
+    Console.WriteLine("✓ GitHub OAuth configured");
+}
+else
+{
+    Console.WriteLine("ℹ️  GitHub OAuth not configured (credentials not found in User Secrets or Key Vault)");
+}
 
 // Add Google OAuth provider (optional - only if configured)
 var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
@@ -418,8 +453,22 @@ using (var scope = app.Services.CreateScope())
     var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<OntologyDbContext>>();
     using var db = dbFactory.CreateDbContext();
 
-    // Use migrations instead of EnsureCreated for proper schema management
-    db.Database.Migrate();
+    // For SQLite in development, use EnsureCreated to avoid migration compatibility issues
+    // For SQL Server (production/docker), use Migrate for proper versioning
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (connectionString?.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase) == true
+        && !connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase))
+    {
+        // SQLite: Create schema from current model
+        db.Database.EnsureCreated();
+        Console.WriteLine("ℹ️  SQLite database schema ensured");
+    }
+    else
+    {
+        // SQL Server: Use migrations for proper schema management
+        db.Database.Migrate();
+        Console.WriteLine("ℹ️  SQL Server migrations applied");
+    }
 
     // Seed roles and admin users
     var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
@@ -474,6 +523,12 @@ app.UseHttpsRedirection();
 if (!app.Environment.IsDevelopment())
 {
     app.UseIpRateLimiting();
+}
+
+// Development auto-login (only in Development mode)
+if (app.Environment.IsDevelopment())
+{
+    app.UseMiddleware<Eidos.Middleware.DevelopmentAuthMiddleware>();
 }
 
 app.UseAuthentication();

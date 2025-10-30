@@ -271,7 +271,7 @@ else
                     <div class="card h-100">
                         <div class="card-header bg-light d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">
-                                <i class="bi bi-person me-2"></i>Individuals & Instances
+                                <i class="bi bi-person me-2"></i>Individuals
                             </h5>
                             <small class="text-muted">
                                 Specific instances of concepts
@@ -300,6 +300,7 @@ else
                               OnNodeCtrlClicked="@GetConditionalCallback(CanAdd(), HandleNodeCtrlClick)"
                               OnNodeClicked="@HandleNodeClick"
                               OnEdgeClicked="@HandleEdgeClick"
+                              OnIndividualClicked="@HandleIndividualClick"
                               CanAdd="@CanAdd()"
                               @ref="graphView" />
                 }
@@ -367,6 +368,84 @@ else
                                      PropertiesChanged="@((value) => newIndividualProperties = value)"
                                      OnSaveClick="@SaveIndividual"
                                      OnCancelClick="@CancelEditIndividual" />
+                }
+                else if (selectedIndividual != null)
+                {
+                    var individualConcept = selectedIndividual.Concept ?? ontology?.Concepts.FirstOrDefault(c => c.Id == selectedIndividual.ConceptId);
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Individual Details</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="bi bi-person-fill fs-4" style="color: @(individualConcept?.Color ?? "#4A90E2");"></i>
+                                <h5 class="mb-0">@selectedIndividual.Name</h5>
+                            </div>
+
+                            @if (individualConcept != null)
+                            {
+                                <p class="mb-2">
+                                    <strong>Instance of:</strong>
+                                    <span class="badge" style="background-color: @(individualConcept.Color ?? "#4A90E2");">
+                                        @individualConcept.Name
+                                    </span>
+                                </p>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(selectedIndividual.Label))
+                            {
+                                <p class="mb-2"><strong>Label:</strong> @selectedIndividual.Label</p>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(selectedIndividual.Description))
+                            {
+                                <p class="mb-2"><strong>Description:</strong> @selectedIndividual.Description</p>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(selectedIndividual.Uri))
+                            {
+                                <p class="mb-2">
+                                    <strong>URI:</strong><br/>
+                                    <code class="small">@selectedIndividual.Uri</code>
+                                </p>
+                            }
+
+                            @if (selectedIndividual.Properties?.Any() == true)
+                            {
+                                <hr class="my-3" />
+                                <div class="mb-3">
+                                    <h6 class="mb-2"><i class="bi bi-tags me-1"></i>Properties</h6>
+                                    <div class="list-group list-group-flush">
+                                        @foreach (var prop in selectedIndividual.Properties)
+                                        {
+                                            <div class="list-group-item px-0 py-2">
+                                                <strong>@prop.Name:</strong> @prop.Value
+                                                @if (!string.IsNullOrWhiteSpace(prop.DataType))
+                                                {
+                                                    <br/><small class="text-muted">Type: @prop.DataType</small>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            <hr class="my-3" />
+
+                            @if (CanEdit())
+                            {
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-primary btn-sm" @onclick="() => EditIndividual(selectedIndividual)">
+                                        <i class="bi bi-pencil me-2"></i>Edit Individual
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="async () => await DeleteIndividual(selectedIndividual)">
+                                        <i class="bi bi-trash me-2"></i>Delete Individual
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
                 }
                 else if (selectedConcept != null)
                 {
@@ -613,7 +692,7 @@ else
         </div>
 
         <!-- Mobile Modal - Editors (visible on sm and below) -->
-        @if ((showAddConcept || editingConcept != null || showAddRelationship || editingRelationship != null || showAddIndividual || editingIndividual != null || selectedConcept != null || selectedRelationship != null))
+        @if ((showAddConcept || editingConcept != null || showAddRelationship || editingRelationship != null || showAddIndividual || editingIndividual != null || selectedConcept != null || selectedRelationship != null || selectedIndividual != null))
         {
             <div class="ontology-mobile-modal d-md-none">
                 <div class="ontology-mobile-modal-backdrop" @onclick="CloseMobileEditor"></div>
@@ -626,6 +705,7 @@ else
                             else if (editingRelationship != null) { <span><i class="bi bi-pencil me-2"></i>Edit Relationship</span> }
                             else if (showAddIndividual && editingIndividual == null) { <span><i class="bi bi-person-plus me-2"></i>Add Individual</span> }
                             else if (editingIndividual != null) { <span><i class="bi bi-pencil me-2"></i>Edit Individual</span> }
+                            else if (selectedIndividual != null) { <span><i class="bi bi-person-fill me-2"></i>Individual Details</span> }
                             else if (selectedConcept != null) { <span><i class="bi bi-info-circle me-2"></i>Concept Details</span> }
                             else if (selectedRelationship != null) { <span><i class="bi bi-info-circle me-2"></i>Relationship Details</span> }
                         </h6>
@@ -691,6 +771,81 @@ else
                                              PropertiesChanged="@((value) => newIndividualProperties = value)"
                                              OnSaveClick="@SaveIndividual"
                                              OnCancelClick="@CancelEditIndividual" />
+                        }
+                        else if (selectedIndividual != null)
+                        {
+                            var individualConceptMobile = selectedIndividual.Concept ?? ontology?.Concepts.FirstOrDefault(c => c.Id == selectedIndividual.ConceptId);
+
+                            <div class="card border-0 shadow-none">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center gap-2 mb-3">
+                                        <i class="bi bi-person-fill fs-4" style="color: @(individualConceptMobile?.Color ?? "#4A90E2");"></i>
+                                        <h5 class="mb-0">@selectedIndividual.Name</h5>
+                                    </div>
+
+                                    @if (individualConceptMobile != null)
+                                    {
+                                        <p class="mb-2">
+                                            <strong>Instance of:</strong>
+                                            <span class="badge" style="background-color: @(individualConceptMobile.Color ?? "#4A90E2");">
+                                                @individualConceptMobile.Name
+                                            </span>
+                                        </p>
+                                    }
+
+                                    @if (!string.IsNullOrWhiteSpace(selectedIndividual.Label))
+                                    {
+                                        <p class="mb-2"><strong>Label:</strong> @selectedIndividual.Label</p>
+                                    }
+
+                                    @if (!string.IsNullOrWhiteSpace(selectedIndividual.Description))
+                                    {
+                                        <p class="mb-2"><strong>Description:</strong> @selectedIndividual.Description</p>
+                                    }
+
+                                    @if (!string.IsNullOrWhiteSpace(selectedIndividual.Uri))
+                                    {
+                                        <p class="mb-2">
+                                            <strong>URI:</strong><br/>
+                                            <code class="small">@selectedIndividual.Uri</code>
+                                        </p>
+                                    }
+
+                                    @if (selectedIndividual.Properties?.Any() == true)
+                                    {
+                                        <hr class="my-3" />
+                                        <div class="mb-3">
+                                            <h6 class="mb-2"><i class="bi bi-tags me-1"></i>Properties</h6>
+                                            <div class="list-group list-group-flush">
+                                                @foreach (var prop in selectedIndividual.Properties)
+                                                {
+                                                    <div class="list-group-item px-0 py-2">
+                                                        <strong>@prop.Name:</strong> @prop.Value
+                                                        @if (!string.IsNullOrWhiteSpace(prop.DataType))
+                                                        {
+                                                            <br/><small class="text-muted">Type: @prop.DataType</small>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <hr class="my-3" />
+
+                                    @if (CanEdit())
+                                    {
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-outline-primary btn-sm" @onclick="() => EditIndividual(selectedIndividual)">
+                                                <i class="bi bi-pencil me-2"></i>Edit Individual
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm" @onclick="async () => await DeleteIndividual(selectedIndividual)">
+                                                <i class="bi bi-trash me-2"></i>Delete Individual
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
                         }
                         else if (selectedConcept != null)
                         {
@@ -1614,6 +1769,15 @@ else
         if (relationship != null)
         {
             SelectRelationship(relationship);
+        }
+    }
+
+    private void HandleIndividualClick(int individualId)
+    {
+        var individual = ontology?.Individuals.FirstOrDefault(i => i.Id == individualId);
+        if (individual != null)
+        {
+            SelectIndividual(individual);
         }
     }
 

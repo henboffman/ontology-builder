@@ -3,6 +3,7 @@ using System;
 using Eidos.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Eidos.Migrations
 {
     [DbContext(typeof(OntologyDbContext))]
-    partial class OntologyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251030003943_UpdateForSQLiteSupport")]
+    partial class UpdateForSQLiteSupport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.10");
@@ -643,9 +646,6 @@ namespace Eidos.Migrations
 
                     b.Property<string>("Namespace")
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("NamespacePrefixes")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Notes")
