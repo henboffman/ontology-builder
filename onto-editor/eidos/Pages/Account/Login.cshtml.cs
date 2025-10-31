@@ -11,15 +11,18 @@ namespace Eidos.Pages.Account
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
         public LoginModel(
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IWebHostEnvironment environment)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _configuration = configuration;
+            _environment = environment;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -53,7 +56,7 @@ namespace Eidos.Pages.Account
             [EmailAddress]
             public string Email { get; set; } = "";
 
-            [Required]
+            // Password not required for local development (supports passwordless login)
             [DataType(DataType.Password)]
             public string Password { get; set; } = "";
 
@@ -66,6 +69,12 @@ namespace Eidos.Pages.Account
 
         public async Task<IActionResult> OnPostAsync()
         {
+            // In production (non-development), password is required for login mode
+            if (!_environment.IsDevelopment() && !IsRegisterMode && string.IsNullOrEmpty(Input.Password))
+            {
+                ModelState.AddModelError(nameof(Input.Password), "Password is required.");
+            }
+
             if (!ModelState.IsValid)
             {
                 // Set error message from ModelState validation errors
@@ -145,6 +154,13 @@ namespace Eidos.Pages.Account
             {
                 ErrorMessage = "No account found with this email address.";
                 return Page();
+            }
+
+            // Allow passwordless login ONLY in development for accounts with no password hash set
+            if (_environment.IsDevelopment() && string.IsNullOrEmpty(user.PasswordHash))
+            {
+                await _signInManager.SignInAsync(user, isPersistent: true);
+                return Redirect("/");
             }
 
             var result = await _signInManager.PasswordSignInAsync(

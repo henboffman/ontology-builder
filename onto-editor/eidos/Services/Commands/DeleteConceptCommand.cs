@@ -43,6 +43,7 @@ public class DeleteConceptCommand : ICommand
 
         await _conceptRepository.DeleteAsync(_conceptId);
         await _ontologyRepository.UpdateTimestampAsync(OntologyId);
+        await _ontologyRepository.DecrementConceptCountAsync(OntologyId);
     }
 
     public async Task UndoAsync()
@@ -55,11 +56,13 @@ public class DeleteConceptCommand : ICommand
         context.Concepts.Add(_deletedConcept);
         await context.SaveChangesAsync();
         await _ontologyRepository.UpdateTimestampAsync(OntologyId);
+        await _ontologyRepository.IncrementConceptCountAsync(OntologyId);
     }
 
     public async Task RedoAsync()
     {
         await _conceptRepository.DeleteAsync(_conceptId);
         await _ontologyRepository.UpdateTimestampAsync(OntologyId);
+        await _ontologyRepository.DecrementConceptCountAsync(OntologyId);
     }
 }

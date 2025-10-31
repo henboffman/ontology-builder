@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Eidos.Data;
 using Eidos.Data.Repositories;
 using Eidos.Models;
+using Eidos.Models.Enums;
 using Eidos.Services.Interfaces;
 
 namespace Eidos.Services;
@@ -13,26 +14,47 @@ public class PropertyService : IPropertyService
 {
     private readonly IDbContextFactory<OntologyDbContext> _contextFactory;
     private readonly IOntologyRepository _ontologyRepository;
+    private readonly IUserService _userService;
+    private readonly IOntologyShareService _shareService;
 
     public PropertyService(
         IDbContextFactory<OntologyDbContext> contextFactory,
-        IOntologyRepository ontologyRepository)
+        IOntologyRepository ontologyRepository,
+        IUserService userService,
+        IOntologyShareService shareService)
     {
         _contextFactory = contextFactory;
         _ontologyRepository = ontologyRepository;
+        _userService = userService;
+        _shareService = shareService;
     }
 
     public async Task<Property> CreateAsync(Property property)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        context.Properties.Add(property);
 
         var concept = await context.Concepts.FindAsync(property.ConceptId);
-        if (concept != null)
+        if (concept == null)
         {
-            await _ontologyRepository.UpdateTimestampAsync(concept.OntologyId);
+            throw new InvalidOperationException($"Concept with ID {property.ConceptId} not found");
         }
 
+        // Verify user has permission to add properties (defense in depth)
+        var currentUser = await _userService.GetCurrentUserAsync();
+        var hasPermission = await _shareService.HasPermissionAsync(
+            concept.OntologyId,
+            currentUser?.Id,
+            sessionToken: null,
+            requiredLevel: PermissionLevel.ViewAndAdd);
+
+        if (!hasPermission)
+        {
+            throw new UnauthorizedAccessException(
+                $"User does not have permission to add properties to ontology {concept.OntologyId}");
+        }
+
+        context.Properties.Add(property);
+        await _ontologyRepository.UpdateTimestampAsync(concept.OntologyId);
         await context.SaveChangesAsync();
         return property;
     }
@@ -40,14 +62,29 @@ public class PropertyService : IPropertyService
     public async Task<Property> UpdateAsync(Property property)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        context.Properties.Update(property);
 
         var concept = await context.Concepts.FindAsync(property.ConceptId);
-        if (concept != null)
+        if (concept == null)
         {
-            await _ontologyRepository.UpdateTimestampAsync(concept.OntologyId);
+            throw new InvalidOperationException($"Concept with ID {property.ConceptId} not found");
         }
 
+        // Verify user has permission to edit properties (defense in depth)
+        var currentUser = await _userService.GetCurrentUserAsync();
+        var hasPermission = await _shareService.HasPermissionAsync(
+            concept.OntologyId,
+            currentUser?.Id,
+            sessionToken: null,
+            requiredLevel: PermissionLevel.ViewAddEdit);
+
+        if (!hasPermission)
+        {
+            throw new UnauthorizedAccessException(
+                $"User does not have permission to edit properties in ontology {concept.OntologyId}");
+        }
+
+        context.Properties.Update(property);
+        await _ontologyRepository.UpdateTimestampAsync(concept.OntologyId);
         await context.SaveChangesAsync();
         return property;
     }
@@ -56,18 +93,34 @@ public class PropertyService : IPropertyService
     {
         using var context = await _contextFactory.CreateDbContextAsync();
         var property = await context.Properties.FindAsync(id);
-        if (property != null)
+        if (property == null)
         {
-            var concept = await context.Concepts.FindAsync(property.ConceptId);
-            context.Properties.Remove(property);
-
-            if (concept != null)
-            {
-                await _ontologyRepository.UpdateTimestampAsync(concept.OntologyId);
-            }
-
-            await context.SaveChangesAsync();
+            return; // Property doesn't exist, nothing to delete
         }
+
+        var concept = await context.Concepts.FindAsync(property.ConceptId);
+        if (concept == null)
+        {
+            throw new InvalidOperationException($"Concept with ID {property.ConceptId} not found");
+        }
+
+        // Verify user has permission to delete properties (defense in depth)
+        var currentUser = await _userService.GetCurrentUserAsync();
+        var hasPermission = await _shareService.HasPermissionAsync(
+            concept.OntologyId,
+            currentUser?.Id,
+            sessionToken: null,
+            requiredLevel: PermissionLevel.ViewAddEdit);
+
+        if (!hasPermission)
+        {
+            throw new UnauthorizedAccessException(
+                $"User does not have permission to delete properties from ontology {concept.OntologyId}");
+        }
+
+        context.Properties.Remove(property);
+        await _ontologyRepository.UpdateTimestampAsync(concept.OntologyId);
+        await context.SaveChangesAsync();
     }
 
     public async Task<IEnumerable<Property>> GetByConceptIdAsync(int conceptId)

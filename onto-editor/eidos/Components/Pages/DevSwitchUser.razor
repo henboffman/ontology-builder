@@ -1,0 +1,90 @@
+@page "/dev/switch-user"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject IWebHostEnvironment Environment
+
+<PageTitle>Switch User - Dev Only</PageTitle>
+
+@if (Environment.IsDevelopment())
+{
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="bi bi-bug-fill"></i> Development: Switch User
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            <strong>Current User:</strong> @currentUserEmail
+                        </p>
+
+                        <div class="d-grid gap-2">
+                            <a href="/dev/api/switch-user/dev@localhost.local" class="btn btn-lg btn-primary">
+                                <i class="bi bi-person-fill"></i> Switch to Dev User
+                                <br />
+                                <small class="opacity-75">dev@localhost.local</small>
+                            </a>
+
+                            <a href="/dev/api/switch-user/test@test.com" class="btn btn-lg btn-success">
+                                <i class="bi bi-person-badge"></i> Switch to Test User
+                                <br />
+                                <small class="opacity-75">test@test.com</small>
+                            </a>
+
+                            <a href="/dev/api/switch-user/collab@test.com" class="btn btn-lg btn-info">
+                                <i class="bi bi-people-fill"></i> Switch to Collaborator User
+                                <br />
+                                <small class="opacity-75">collab@test.com</small>
+                            </a>
+
+                            <hr />
+
+                            <a href="/" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Home
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning mt-3">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>Development Only:</strong> This page is only available in development mode.
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container mt-5">
+        <div class="alert alert-danger">
+            <h4>Access Denied</h4>
+            <p>This page is only available in development mode.</p>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private string currentUserEmail = "Not logged in";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationStateTask != null)
+        {
+            var authState = await AuthenticationStateTask;
+            if (authState.User?.Identity?.IsAuthenticated == true)
+            {
+                currentUserEmail = authState.User.FindFirst(ClaimTypes.Email)?.Value
+                    ?? authState.User.Identity.Name
+                    ?? "Unknown";
+            }
+        }
+    }
+}

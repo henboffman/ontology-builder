@@ -32,11 +32,13 @@ public class CreateConceptCommand : ICommand
         var created = await _conceptRepository.AddAsync(_concept);
         _createdId = created.Id;
         await _ontologyRepository.UpdateTimestampAsync(_concept.OntologyId);
+        await _ontologyRepository.IncrementConceptCountAsync(_concept.OntologyId);
     }
 
     public async Task UndoAsync()
     {
         await _conceptRepository.DeleteAsync(_createdId);
         await _ontologyRepository.UpdateTimestampAsync(_concept.OntologyId);
+        await _ontologyRepository.DecrementConceptCountAsync(_concept.OntologyId);
     }
 }

@@ -113,6 +113,11 @@ namespace Eidos.Models
         /// Group permissions for this ontology
         /// </summary>
         public ICollection<OntologyGroupPermission> GroupPermissions { get; set; } = new List<OntologyGroupPermission>();
+
+        /// <summary>
+        /// Tags/folders for organizing ontologies (relational model)
+        /// </summary>
+        public ICollection<OntologyTag> OntologyTags { get; set; } = new List<OntologyTag>();
     }
 
 /// <summary>

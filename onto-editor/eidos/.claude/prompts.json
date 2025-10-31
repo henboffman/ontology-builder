@@ -1,0 +1,54 @@
+{
+  "prompts": [
+    {
+      "name": "Add New Service",
+      "description": "Generate a new service with repository, interface, and registration",
+      "prompt": "Create a new service called {ServiceName} that handles {functionality}. Include:\n1. Service interface in Services/Interfaces/I{ServiceName}.cs\n2. Service implementation in Services/{ServiceName}.cs with:\n   - Constructor injection of dependencies\n   - Comprehensive logging\n   - Error handling with try-catch\n   - XML documentation comments\n3. Repository if needed in Data/Repositories/\n4. Register in Program.cs with appropriate lifetime (Scoped/Singleton/Transient)\n5. Follow existing patterns from OntologyService and ConceptService"
+    },
+    {
+      "name": "Add New Blazor Page",
+      "description": "Create a new routable Blazor page component",
+      "prompt": "Create a new Blazor page component called {PageName} at route /{route}. Include:\n1. @page directive with route\n2. @rendermode InteractiveServer\n3. PageTitle and HeadContent for SEO\n4. Dependency injection for required services\n5. OnInitializedAsync for data loading\n6. Error handling with try-catch and ToastService\n7. Loading state indicators\n8. Responsive Bootstrap layout\n9. Follow patterns from existing pages like Home.razor or CollaborationBoard.razor"
+    },
+    {
+      "name": "Add Database Migration",
+      "description": "Guide for creating and applying database migrations",
+      "prompt": "I need to {describe database change}. Help me:\n1. Create appropriate model changes in Models/\n2. Update DbContext if needed\n3. Generate migration with: dotnet ef migrations add {MigrationName}\n4. Review the generated migration for correctness\n5. Apply migration with: dotnet ef database update\n6. Update any affected repositories or services\n7. Add tests for the new functionality"
+    },
+    {
+      "name": "Add Permission Check",
+      "description": "Implement permission checking in a component or service",
+      "prompt": "Add permission checking to {component/service} for ontology {ontologyId}. Use OntologyPermissionService:\n1. Inject OntologyPermissionService\n2. Get current user ID from AuthenticationStateProvider or Context.User\n3. Call appropriate permission method:\n   - CanViewAsync() for view operations\n   - CanEditAsync() for edit operations\n   - CanManageAsync() for admin operations\n4. Handle permission denied gracefully with user-friendly message\n5. Log permission checks for auditing\n6. Follow patterns from OntologyView.razor and OntologyHub.cs"
+    },
+    {
+      "name": "Add SignalR Hub Method",
+      "description": "Add a new real-time method to OntologyHub",
+      "prompt": "Add a new SignalR hub method called {methodName} that {functionality}. Include:\n1. Method in Hubs/OntologyHub.cs\n2. Permission validation using OntologyPermissionService\n3. Connection verification (user must have joined ontology first)\n4. Comprehensive logging\n5. Error handling with HubException\n6. Broadcast updates to other clients using Clients.OthersInGroup()\n7. Update corresponding JavaScript in wwwroot/js/ if needed\n8. Follow patterns from existing methods like JoinOntology() and UpdateCurrentView()"
+    },
+    {
+      "name": "Debug Permission Issue",
+      "description": "Troubleshoot permission-related problems",
+      "prompt": "User is getting 'Permission denied' error when trying to {action} ontology {ontologyId}. Help me debug:\n1. Check ontology visibility setting in database\n2. Verify user group memberships\n3. Check OntologyGroupPermissions table for group access\n4. Review OntologyHub permission logs\n5. Verify OntologyPermissionService logic\n6. Check if ontology exists and UserId is set correctly\n7. Test with direct SQL queries to understand data state"
+    },
+    {
+      "name": "Add Test Coverage",
+      "description": "Create comprehensive tests for new functionality",
+      "prompt": "Create tests for {feature/service/component}. Include:\n1. Unit tests in Eidos.Tests/Unit/ for isolated logic\n2. Integration tests in Eidos.Tests/Integration/ for service interactions\n3. Component tests with bUnit for Blazor components\n4. Test cases for:\n   - Happy path scenarios\n   - Edge cases\n   - Error conditions\n   - Permission checks\n5. Use in-memory database for repository tests\n6. Mock dependencies appropriately\n7. Follow patterns from existing tests like OntologyPermissionServiceTests.cs\n8. Ensure 100% test pass rate"
+    },
+    {
+      "name": "Optimize Query Performance",
+      "description": "Identify and fix N+1 query problems",
+      "prompt": "The {operation} is slow. Help me optimize:\n1. Review the service method for N+1 queries\n2. Add appropriate Include() statements for related entities\n3. Use AsNoTracking() for read-only operations\n4. Consider projections to reduce data transfer\n5. Add indexes to foreign key columns if missing\n6. Test query performance before and after\n7. Update DEVELOPMENT_LEDGER.md with performance improvements\n8. Follow patterns from optimized services like ConceptService"
+    },
+    {
+      "name": "Add Collaboration Feature",
+      "description": "Extend collaboration board functionality",
+      "prompt": "Add {feature} to the Collaboration Board. Consider:\n1. Update CollaborationPost or CollaborationResponse models if needed\n2. Modify CollaborationBoardService with new methods\n3. Update repository with any new queries\n4. Enhance UI in CollaborationBoard.razor or MyCollaborationPosts.razor\n5. Maintain automatic group management workflow\n6. Add comprehensive logging\n7. Update user documentation in UserGuide.razor\n8. Add release notes in ReleaseNotes.razor\n9. Update DEVELOPMENT_LEDGER.md"
+    },
+    {
+      "name": "Setup Development Environment",
+      "description": "Guide for new developers setting up the project",
+      "prompt": "Help me set up Eidos for development:\n1. Clone repository\n2. Install .NET 9 SDK\n3. Restore packages: dotnet restore\n4. Update database: dotnet ef database update\n5. Configure user secrets for OAuth (optional)\n6. Run application: dotnet run\n7. Access at https://localhost:7216\n8. Auto-login as dev@localhost.local in development\n9. Use /dev/switch-user to test with multiple users\n10. Run tests: dotnet test"
+    }
+  ]
+}

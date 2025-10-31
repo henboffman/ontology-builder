@@ -24,6 +24,13 @@ namespace Eidos.Models
         public int? OntologyId { get; set; }
         public Ontology? Ontology { get; set; }
 
+        /// <summary>
+        /// The user group created for this collaboration project
+        /// Members of this group will have access to the ontology
+        /// </summary>
+        public int? CollaborationProjectGroupId { get; set; }
+        public UserGroup? CollaborationProjectGroup { get; set; }
+
         [Required]
         [StringLength(200)]
         public string Title { get; set; } = string.Empty;

@@ -49,6 +49,9 @@ namespace Eidos.Data
         public DbSet<CollaborationPost> CollaborationPosts { get; set; }
         public DbSet<CollaborationResponse> CollaborationResponses { get; set; }
 
+        // Ontology organization (tags/folders)
+        public DbSet<OntologyTag> OntologyTags { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -387,6 +390,11 @@ namespace Eidos.Data
                     .HasForeignKey(p => p.OntologyId)
                     .OnDelete(DeleteBehavior.SetNull); // Keep post even if ontology is deleted
 
+                entity.HasOne(p => p.CollaborationProjectGroup)
+                    .WithMany()
+                    .HasForeignKey(p => p.CollaborationProjectGroupId)
+                    .OnDelete(DeleteBehavior.SetNull); // Keep post even if group is deleted
+
                 // Add indexes for efficient querying
                 entity.HasIndex(p => p.IsActive)
                     .HasDatabaseName("IX_CollaborationPost_IsActive");
@@ -420,6 +428,23 @@ namespace Eidos.Data
 
                 entity.HasIndex(r => new { r.UserId, r.CollaborationPostId })
                     .HasDatabaseName("IX_CollaborationResponse_UserId_PostId");
+            });
+
+            // Configure OntologyTag
+            modelBuilder.Entity<OntologyTag>(entity =>
+            {
+                entity.HasOne(t => t.Ontology)
+                    .WithMany(o => o.OntologyTags)
+                    .HasForeignKey(t => t.OntologyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Create composite index on OntologyId and Tag for efficient queries
+                entity.HasIndex(t => new { t.OntologyId, t.Tag })
+                    .HasDatabaseName("IX_OntologyTag_OntologyId_Tag");
+
+                // Create index on Tag for finding all ontologies with a specific tag/folder
+                entity.HasIndex(t => t.Tag)
+                    .HasDatabaseName("IX_OntologyTag_Tag");
             });
 
             // Seed feature toggles only

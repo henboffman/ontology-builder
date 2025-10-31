@@ -1,0 +1,79 @@
+{
+  "name": "Eidos Ontology Builder",
+  "version": "1.0.0",
+  "description": "Modern web-based ontology builder with real-time collaboration",
+  "type": "blazor-server",
+  "framework": {
+    "name": ".NET",
+    "version": "9.0"
+  },
+  "languages": ["C#", "Razor", "JavaScript", "CSS"],
+  "mainFiles": [
+    "Program.cs",
+    "DEVELOPMENT_LEDGER.md",
+    "claude.md"
+  ],
+  "importantDirectories": [
+    "Components/Pages",
+    "Services",
+    "Data/Repositories",
+    "Hubs",
+    "Models"
+  ],
+  "conventions": {
+    "namingConventions": {
+      "services": "PascalCase with 'Service' suffix (e.g., OntologyService)",
+      "repositories": "PascalCase with 'Repository' suffix (e.g., OntologyRepository)",
+      "components": "PascalCase (e.g., OntologySettingsDialog)",
+      "endpoints": "PascalCase with 'Endpoint' suffix (e.g., DevSwitchUserEndpoint)"
+    },
+    "patterns": {
+      "dataAccess": "Repository Pattern with IRepository<T> interface",
+      "undo": "Command Pattern for concept/relationship operations",
+      "permissions": "Always use OntologyPermissionService for access checks",
+      "logging": "Structured logging with placeholders for parameters"
+    },
+    "testing": {
+      "framework": "xUnit with bUnit for Blazor components",
+      "location": "Eidos.Tests/",
+      "coverage": "157+ tests, 100% passing"
+    }
+  },
+  "quickStart": {
+    "setup": [
+      "dotnet restore",
+      "dotnet ef database update",
+      "dotnet run"
+    ],
+    "test": "dotnet test",
+    "build": "dotnet build"
+  },
+  "recentFeatures": [
+    {
+      "date": "2025-10-31",
+      "name": "Collaboration Board & Automated Group Management",
+      "description": "Full collaboration discovery system with automatic permission management"
+    },
+    {
+      "date": "2025-10-29",
+      "name": "Individual Visualization",
+      "description": "Show concept instances in graph view with diamond nodes"
+    },
+    {
+      "date": "2025-10-28",
+      "name": "Real-Time Presence Tracking",
+      "description": "Google Docs-style collaboration awareness with user avatars"
+    }
+  ],
+  "keyServices": [
+    "OntologyService - CRUD operations for ontologies",
+    "ConceptService - Concept management with undo/redo",
+    "CollaborationBoardService - Collaboration post management",
+    "OntologyPermissionService - Comprehensive permission checking",
+    "UserGroupService - Group and membership management",
+    "IPresenceService - Real-time user presence tracking"
+  ],
+  "databaseProvider": "SQLite (dev) / Azure SQL (prod)",
+  "authentication": "ASP.NET Core Identity with OAuth (Google, Microsoft, GitHub, Entra ID)",
+  "realtime": "SignalR for presence tracking and concurrent editing"
+}

@@ -4,6 +4,183 @@ This document tracks major development milestones, features, and changes to the 
 
 ---
 
+## 2025-10-31 - Collaboration Board & Automated Group Management
+
+### Features Added
+
+#### 🤝 Collaboration Board System
+- **CollaborationBoardService**: Comprehensive service for managing collaboration posts and responses
+  - `GetActivePostsAsync()`: Get all active collaboration posts
+  - `SearchPostsAsync()`: Search and filter posts by domain, skill level, keywords
+  - `GetPostDetailsAsync()`: Get detailed post information with view tracking
+  - `GetMyPostsAsync()`: Get user's own collaboration posts
+  - `CreatePostAsync()`: Create post with automatic group creation and permission grant
+  - `UpdatePostAsync()`: Update post details
+  - `DeletePostAsync()`: Delete collaboration post
+  - `TogglePostActiveStatusAsync()`: Pause/resume recruiting
+  - `AddResponseAsync()`: Apply to collaboration projects
+  - `GetPostResponsesAsync()`: Get all responses for a post
+  - `UpdateResponseStatusAsync()`: Accept/reject responses with automatic group membership
+
+#### 🔑 Automated Permission Workflow
+- **Automatic Group Creation**: When creating a collaboration post:
+  - Creates user group named "Collaboration: [Project Title]"
+  - Adds post creator as group admin
+  - Links collaboration post to the group via `CollaborationProjectGroupId`
+  - Sets ontology visibility to "Group" if ontology is attached
+  - Grants group "Edit" permission on the ontology
+
+- **Seamless Collaborator Onboarding**: When accepting a collaboration response:
+  - Automatically adds user to the collaboration project group
+  - User immediately gains edit access to the ontology
+  - No manual permission configuration required
+  - When declining/removing, automatically removes user from group
+
+#### 🎨 UI Components
+- **CollaborationBoard.razor** (`/collaboration`): Browse and search active projects
+  - Filter by domain and skill level
+  - Search functionality
+  - View detailed project cards
+  - Apply to projects
+
+- **MyCollaborationPosts.razor** (`/collaboration/my-posts`): Manage your posts
+  - View all your collaboration posts
+  - Toggle active status
+  - Manage responses (accept/reject)
+  - View response details
+
+- **CollaborationPostDetail.razor**: Detailed post view with response management
+  - Full post information
+  - Applicant list with experience and motivation
+  - Accept/decline buttons for post owners
+
+#### 🔧 Permission System Enhancements
+- **PermissionsSettingsTab.razor**: Implemented `LoadGroupAccess()` method
+  - Displays collaboration groups that have access to ontology
+  - Shows group names, member counts, and permission levels
+  - Real-time group permission visibility
+  - Fixed permission level enum mapping (view, edit, admin → View, ViewAddEdit, FullAccess)
+
+- **OntologyHub.cs**: Updated SignalR permission checks
+  - Changed from old `UserShareAccesses` check to `OntologyPermissionService.CanViewAsync()`
+  - Now properly recognizes group-based permissions
+  - Enables real-time collaboration for group members
+
+#### 🧪 Development Tools
+- **DevSwitchUser.razor** (`/dev/switch-user`): Multi-user testing page (development only)
+  - Quick links to switch between test users
+  - Interactive server mode for seamless user switching
+
+- **DevSwitchUserEndpoint.cs**: API endpoint for user switching
+  - Handles authentication outside Blazor response pipeline
+  - Signs out current user and signs in as selected user
+  - Sets cookie to prevent auto-login middleware from overriding
+  - Development-only with environment check
+
+- **DevelopmentAuthMiddleware.cs**: Enhanced auto-login middleware
+  - Checks for "manual-user-switch" cookie
+  - Skips auto-login when user has manually switched accounts
+  - Preserves manual user switches across page refreshes
+
+### Database Changes
+- Uses existing `CollaborationPosts` table with `CollaborationProjectGroupId` column
+- Uses existing `UserGroups`, `UserGroupMembers`, `OntologyGroupPermissions` tables
+- No new migrations required
+
+### Files Modified
+
+#### Services
+- `/Services/CollaborationBoardService.cs` - Added automatic group creation and permission grant logic
+- `/Services/OntologyPermissionService.cs` - Used for permission checks in hub
+
+#### UI Components
+- `/Components/Settings/PermissionsSettingsTab.razor` - Implemented group access display
+- `/Components/Pages/CollaborationBoard.razor` - Main collaboration discovery page
+- `/Components/Pages/MyCollaborationPosts.razor` - User's posts management page
+- `/Components/Pages/DevSwitchUser.razor` - Development user switcher (NEW)
+
+#### SignalR
+- `/Hubs/OntologyHub.cs` - Updated permission checks to use OntologyPermissionService
+
+#### Endpoints
+- `/Endpoints/DevSwitchUserEndpoint.cs` - User switching API (NEW)
+
+#### Middleware
+- `/Middleware/DevelopmentAuthMiddleware.cs` - Added manual switch cookie check
+
+#### Documentation
+- `/Components/Shared/ReleaseNotes.razor` - Documented collaboration features
+- `/DEVELOPMENT_LEDGER.md` - This entry
+
+### Technical Details
+
+#### Collaboration Lifecycle
+1. **Post Creation**:
+   - User creates collaboration post for their ontology
+   - System creates `UserGroup` named "Collaboration: [Title]"
+   - Creator added as group admin
+   - Group granted "Edit" permission to ontology
+   - Ontology visibility changed to "Group"
+
+2. **Response Submission**:
+   - Other users apply to join the project
+   - Response created with "Pending" status
+
+3. **Response Acceptance**:
+   - Post owner accepts response
+   - Status changed to "Accepted"
+   - User automatically added to collaboration group
+   - User immediately gains edit access to ontology
+
+4. **Collaboration**:
+   - Collaborators can view and edit ontology
+   - Real-time presence tracking via SignalR
+   - Permission checks validate group membership
+   - Visible in Permissions tab
+
+#### Permission Level Mapping
+Database stores permission levels as strings, but UI uses enum:
+- `"view"` → `PermissionLevel.View`
+- `"edit"` → `PermissionLevel.ViewAddEdit`
+- `"admin"` → `PermissionLevel.FullAccess`
+
+Fixed in `PermissionsSettingsTab.razor` line 178-183
+
+#### Development Testing Workflow
+1. Navigate to `/dev/switch-user`
+2. Click user to switch to (e.g., test@test.com, collab@test.com)
+3. Cookie prevents auto-login from overriding
+4. Test collaboration workflow from different user perspectives
+
+### Bug Fixes
+- Fixed permission denied errors when group members tried to access ontologies
+- Fixed "No groups have been granted access yet" message when groups existed
+- Fixed enum mapping errors in PermissionsSettingsTab
+- Fixed `OntologyId.HasValue` error (changed to `OntologyId > 0`)
+
+### Performance Considerations
+- Group creation and permission grant happen in single transaction
+- Efficient permission checks via `OntologyPermissionService`
+- Real-time updates via SignalR for collaborators
+- Cookie-based state for user switching (minimal overhead)
+
+### Security Enhancements
+- Development user switcher only works in Development environment
+- Permission checks enforce at multiple layers (Hub, Service, UI)
+- Group membership validated before granting ontology access
+- Automatic permission management reduces manual configuration errors
+
+### Future Improvements
+- [ ] Email notifications when responses are accepted/declined
+- [ ] In-app notifications for collaboration updates
+- [ ] Collaboration analytics (response rates, active projects)
+- [ ] Project completion/archival workflow
+- [ ] Collaboration activity feed
+- [ ] Group chat/messaging for collaborators
+- [ ] Permission level adjustments after acceptance
+
+---
+
 ## 2025-10-26 - Group Management & Permission System
 
 ### Features Added

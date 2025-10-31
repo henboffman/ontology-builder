@@ -493,6 +493,21 @@
             }
             else
             {
+                <!-- Folder Sidebar + Main Content -->
+                <div class="row">
+                    <!-- Folder Sidebar -->
+                    <div class="col-md-3 col-lg-2 d-none d-md-block">
+                        <FolderSidebar Folders="@folderList"
+                                      TotalCount="@ontologies.Count"
+                                      SharedWithMeCount="@sharedWithMeCount"
+                                      PublicOntologiesCount="@publicOntologiesCount"
+                                      SelectedTag="@selectedTagFilter"
+                                      OnFolderSelected="@HandleFolderSelected"
+                                      OnAddFolderClick="@ShowAddFolderDialog" />
+                    </div>
+
+                    <!-- Main Content Area -->
+                    <div class="col-md-9 col-lg-10 ps-3">
                 <!-- Dashboard Controls -->
                 <div class="card mb-4">
                     <div class="card-body">
@@ -565,14 +580,30 @@
                     @foreach (var ontology in FilteredOntologies)
                     {
                         <div class="col">
-                            <div class="card h-100 ontology-card">
+                            <div class="card h-100 ontology-card"
+                                 draggable="true"
+                                 data-ontology-id="@ontology.Id">
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <h3 class="card-title h5">@ontology.Name</h3>
-                                        @if (ontology.Name.Contains("Example"))
-                                        {
-                                            <span class="badge bg-info">Example</span>
-                                        }
+                                        <div class="d-flex gap-1">
+                                            @if (ontology.Visibility == OntologyVisibility.Public)
+                                            {
+                                                <span class="badge bg-success" title="Public - Anyone can view">
+                                                    <i class="bi bi-globe"></i> Public
+                                                </span>
+                                            }
+                                            @if (IsSharedWithMe(ontology))
+                                            {
+                                                <span class="badge bg-primary" title="Shared with you">
+                                                    <i class="bi bi-share"></i> Shared
+                                                </span>
+                                            }
+                                            @if (ontology.Name.Contains("Example"))
+                                            {
+                                                <span class="badge bg-info">Example</span>
+                                            }
+                                        </div>
                                     </div>
                                     <p class="card-text text-muted">
                                         @if (!string.IsNullOrWhiteSpace(ontology.Description))
@@ -603,12 +634,20 @@
                                             </small>
                                         </div>
                                     }
-                                    @if (!string.IsNullOrWhiteSpace(ontology.Tags))
+                                    @if (ontology.OntologyTags?.Any() ?? false)
                                     {
                                         <div class="mt-2">
-                                            @foreach (var tag in ontology.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                            @foreach (var ontologyTag in ontology.OntologyTags)
                                             {
-                                                <span class="badge bg-secondary me-1">@tag</span>
+                                                <span class="badge me-1 d-inline-flex align-items-center tag-badge" style="@(ontologyTag.Color != null ? $"background-color: {ontologyTag.Color}" : "background-color: #6c757d")">
+                                                    <i class="bi bi-folder-fill me-1"></i>
+                                                    <span class="me-1">@ontologyTag.Tag</span>
+                                                    <button type="button" class="tag-remove-btn"
+                                                            @onclick="() => RemoveTag(ontology.Id, ontologyTag.Tag)"
+                                                            @onclick:stopPropagation="true"
+                                                            aria-label="Remove @ontologyTag.Tag tag"
+                                                            title="Remove tag">×</button>
+                                                </span>
                                             }
                                         </div>
                                     }
@@ -645,6 +684,18 @@
                                     <tr style="cursor: pointer;" @onclick="() => ViewOntology(ontology.Id)">
                                         <td>
                                             <strong>@ontology.Name</strong>
+                                            @if (ontology.Visibility == OntologyVisibility.Public)
+                                            {
+                                                <span class="badge bg-success ms-1" title="Public - Anyone can view">
+                                                    <i class="bi bi-globe"></i> Public
+                                                </span>
+                                            }
+                                            @if (IsSharedWithMe(ontology))
+                                            {
+                                                <span class="badge bg-primary ms-1" title="Shared with you">
+                                                    <i class="bi bi-share"></i> Shared
+                                                </span>
+                                            }
                                             @if (ontology.Name.Contains("Example"))
                                             {
                                                 <span class="badge bg-info ms-1">Example</span>
@@ -681,15 +732,23 @@
                                             </small>
                                         </td>
                                         <td>
-                                            @if (!string.IsNullOrWhiteSpace(ontology.Tags))
+                                            @if (ontology.OntologyTags?.Any() ?? false)
                                             {
-                                                @foreach (var tag in ontology.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(2))
+                                                @foreach (var ontologyTag in ontology.OntologyTags.Take(2))
                                                 {
-                                                    <span class="badge bg-secondary me-1">@tag</span>
+                                                    <span class="badge me-1 d-inline-flex align-items-center tag-badge" style="@(ontologyTag.Color != null ? $"background-color: {ontologyTag.Color}" : "background-color: #6c757d")">
+                                                        <i class="bi bi-folder-fill me-1"></i>
+                                                        <span class="me-1">@ontologyTag.Tag</span>
+                                                        <button type="button" class="tag-remove-btn"
+                                                                @onclick="() => RemoveTag(ontology.Id, ontologyTag.Tag)"
+                                                                @onclick:stopPropagation="true"
+                                                                aria-label="Remove @ontologyTag.Tag tag"
+                                                                title="Remove tag">×</button>
+                                                    </span>
                                                 }
-                                                @if (ontology.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).Length > 2)
+                                                @if (ontology.OntologyTags.Count > 2)
                                                 {
-                                                    <span class="badge bg-secondary">+@(ontology.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).Length - 2)</span>
+                                                    <span class="badge bg-secondary">+@(ontology.OntologyTags.Count - 2)</span>
                                                 }
                                             }
                                         </td>
@@ -710,10 +769,59 @@
                         </table>
                     </div>
                 }
+                    </div> <!-- Close col-md-12 col-lg-10 -->
+                </div> <!-- Close row g-0 -->
             }
         </div>
     </div>
 </div>
+
+<!-- Add Folder Modal -->
+@if (showAddFolderDialog)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-folder-plus me-2"></i>Create New Folder
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CancelAddFolder"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="folderName" class="form-label">Folder Name</label>
+                        <input type="text" class="form-control" id="folderName"
+                               @bind="newFolderName"
+                               @bind:event="oninput"
+                               placeholder="e.g., Work Projects, Research, etc."
+                               autofocus />
+                    </div>
+                    <div class="mb-3">
+                        <label for="folderColor" class="form-label">Folder Color (optional)</label>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="color" class="form-control form-control-color" id="folderColor"
+                                   value="@newFolderColor"
+                                   @onchange="@(e => newFolderColor = e.Value?.ToString() ?? "#0d6efd")"
+                                   title="Choose folder color" />
+                            <small class="text-muted">Current: @newFolderColor</small>
+                        </div>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <small>Folders are created when you assign ontologies to them. Drag and drop ontology cards onto folders to organize them.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelAddFolder">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="CreateFolder" disabled="@string.IsNullOrWhiteSpace(newFolderName)">
+                        <i class="bi bi-check-lg me-1"></i>Create Folder
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 <style>
     .ontology-card {
@@ -723,6 +831,52 @@
     .ontology-card:hover {
         transform: translateY(-4px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* Tag badge styles with accessibility considerations */
+    .tag-badge {
+        position: relative;
+        padding-right: 0.5rem !important;
+        color: white;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        gap: 0.25rem;
+    }
+
+    .tag-remove-btn {
+        background-color: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        font-size: 1.3rem;
+        font-weight: bold;
+        line-height: 1;
+        padding: 0;
+        margin-left: 0.25rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        width: 20px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        flex-shrink: 0;
+    }
+
+    .tag-remove-btn:hover {
+        background-color: rgba(0, 0, 0, 0.7);
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: scale(1.15);
+    }
+
+    .tag-remove-btn:focus {
+        outline: 2px solid white;
+        outline-offset: 2px;
+        background-color: rgba(0, 0, 0, 0.7);
+    }
+
+    .tag-remove-btn:active {
+        transform: scale(0.95);
+        background-color: rgba(0, 0, 0, 0.9);
     }
 
     .loading-overlay {
@@ -742,7 +896,85 @@
         text-align: center;
         padding: 2rem;
     }
+
+    .ontology-card[draggable="true"] {
+        cursor: move;
+    }
+
+    .ontology-card.dragging {
+        opacity: 0.5;
+    }
 </style>
+
+<script>
+    // Wrap everything in an IIFE and only initialize once
+    if (!window.homeDragDropInitialized) {
+        window.homeDragDropInitialized = true;
+
+        // Function to set the component reference
+        window.setHomeComponentRef = function(dotNetRef) {
+            window.homeComponentRef = dotNetRef;
+            console.log('Home component reference set');
+        };
+
+        // Setup drag and drop handlers immediately (not waiting for DOMContentLoaded)
+        // This ensures they work with Blazor's dynamic rendering
+        window.draggedOntologyId = 0;
+
+        document.addEventListener('dragstart', function(e) {
+            if (e.target.classList.contains('ontology-card')) {
+                e.target.classList.add('dragging');
+                window.draggedOntologyId = parseInt(e.target.getAttribute('data-ontology-id'));
+                console.log('Drag started, ontology ID:', window.draggedOntologyId);
+            }
+        }, true);
+
+        document.addEventListener('dragend', function(e) {
+            if (e.target.classList.contains('ontology-card')) {
+                e.target.classList.remove('dragging');
+                console.log('Drag ended');
+            }
+        }, true);
+
+        // Handle drop on folder items
+        document.addEventListener('drop', function(e) {
+            const folderItem = e.target.closest('.folder-item');
+            if (folderItem) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const tag = folderItem.getAttribute('data-tag');
+                console.log('Drop on folder:', tag, 'with ontology ID:', window.draggedOntologyId);
+
+                if (tag && window.homeComponentRef && window.draggedOntologyId > 0) {
+                    console.log('Calling HandleDrop with tag:', tag, 'and ID:', window.draggedOntologyId);
+                    window.homeComponentRef.invokeMethodAsync('HandleDrop', tag, window.draggedOntologyId);
+                } else {
+                    console.log('Missing data:', { tag, hasRef: !!window.homeComponentRef, draggedOntologyId: window.draggedOntologyId });
+                }
+
+                folderItem.classList.remove('drag-over');
+                window.draggedOntologyId = 0;
+            }
+        }, true);
+
+        document.addEventListener('dragover', function(e) {
+            const folderItem = e.target.closest('.folder-item');
+            if (folderItem) {
+                e.preventDefault();
+                e.stopPropagation();
+                folderItem.classList.add('drag-over');
+            }
+        }, true);
+
+        document.addEventListener('dragleave', function(e) {
+            const folderItem = e.target.closest('.folder-item');
+            if (folderItem && !folderItem.contains(e.relatedTarget)) {
+                folderItem.classList.remove('drag-over');
+            }
+        }, true);
+    }
+</script>
 
 @code {
     private List<Ontology>? ontologies;
@@ -766,6 +998,14 @@
     private string sortBy = "updated-desc";
     private string selectedTagFilter = string.Empty;
     private string viewType = "grid";
+
+    // Folder/Tag state
+    private List<FolderSidebar.FolderInfo> folderList = new();
+    private bool showAddFolderDialog = false;
+    private string newFolderName = string.Empty;
+    private string newFolderColor = "#0d6efd"; // Bootstrap primary blue
+    private int sharedWithMeCount = 0;
+    private int publicOntologiesCount = 0;
 
     // Collaboration state
     private List<CollaborationPost> recentCollaborationPosts = new();
@@ -793,6 +1033,9 @@
             }
         }
 
+        // Load folders from tags
+        await LoadFolders();
+
         // Load recent collaboration posts
         if (isAuthenticated)
         {
@@ -804,6 +1047,10 @@
     {
         if (firstRender)
         {
+            // Register component reference for drag and drop
+            var dotNetRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("setHomeComponentRef", dotNetRef);
+
             await TutorialService.InitializeAsync(JSRuntime);
 
             if (tutorialOverlay != null)
@@ -839,6 +1086,21 @@
         // Use permission service to get only ontologies the user can access
         ontologies = await PermissionService.GetAccessibleOntologiesAsync(currentUserId);
 
+        // Calculate special folder counts
+        if (ontologies != null && !string.IsNullOrEmpty(currentUserId))
+        {
+            // Shared with Me: ontologies where user is NOT the owner but has access
+            sharedWithMeCount = ontologies.Count(o => o.UserId != currentUserId);
+
+            // Public Ontologies: ontologies with Public visibility
+            publicOntologiesCount = ontologies.Count(o => o.Visibility == OntologyVisibility.Public);
+        }
+        else
+        {
+            sharedWithMeCount = 0;
+            publicOntologiesCount = 0;
+        }
+
         // Reload permission button texts
         if (ontologies != null)
         {
@@ -862,6 +1124,51 @@
             Logger.LogError(ex, "Error loading recent collaboration posts");
             recentCollaborationPosts = new List<CollaborationPost>();
         }
+    }
+
+    private async Task LoadFolders()
+    {
+        if (string.IsNullOrEmpty(currentUserId) || ontologies == null)
+        {
+            folderList.Clear();
+            return;
+        }
+
+        try
+        {
+            // Get all unique tags for the current user
+            var tags = await OntologyService.GetUserTagsAsync(currentUserId);
+
+            // Build folder list with counts
+            folderList = new List<FolderSidebar.FolderInfo>();
+
+            foreach (var tag in tags)
+            {
+                var count = ontologies.Count(o => o.OntologyTags?.Any(t => t.Tag == tag) ?? false);
+                folderList.Add(new FolderSidebar.FolderInfo
+                {
+                    Tag = tag,
+                    Color = ontologies
+                        .SelectMany(o => o.OntologyTags ?? new List<OntologyTag>())
+                        .FirstOrDefault(t => t.Tag == tag)?.Color,
+                    Count = count
+                });
+            }
+
+            // Sort folders alphabetically
+            folderList = folderList.OrderBy(f => f.Tag).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading folders");
+            folderList.Clear();
+        }
+    }
+
+    private bool IsSharedWithMe(Ontology ontology)
+    {
+        // An ontology is "shared with me" if the current user is not the owner
+        return !string.IsNullOrEmpty(currentUserId) && ontology.UserId != currentUserId;
     }
 
     private async Task<string> GetPermissionButtonText(Ontology ontology)
@@ -892,6 +1199,124 @@
         return Task.CompletedTask;
     }
 
+    private Task HandleFolderSelected(string? tag)
+    {
+        selectedTagFilter = tag ?? string.Empty;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task ShowAddFolderDialog()
+    {
+        showAddFolderDialog = true;
+        newFolderName = string.Empty;
+        newFolderColor = "#0d6efd";
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task CreateFolder()
+    {
+        if (string.IsNullOrWhiteSpace(newFolderName))
+        {
+            return;
+        }
+
+        // Add the folder to the list immediately with 0 count
+        // The folder will show in the sidebar and be ready to receive ontologies via drag & drop
+        if (!folderList.Any(f => f.Tag.Equals(newFolderName, StringComparison.OrdinalIgnoreCase)))
+        {
+            folderList.Add(new FolderSidebar.FolderInfo
+            {
+                Tag = newFolderName,
+                Color = newFolderColor,
+                Count = 0
+            });
+
+            // Sort folders alphabetically
+            folderList = folderList.OrderBy(f => f.Tag).ToList();
+        }
+
+        showAddFolderDialog = false;
+        StateHasChanged();
+    }
+
+    private Task CancelAddFolder()
+    {
+        showAddFolderDialog = false;
+        newFolderName = string.Empty;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public async Task HandleDrop(string tag, int ontologyId)
+    {
+        if (ontologyId == 0 || string.IsNullOrEmpty(currentUserId))
+        {
+            Logger.LogWarning("HandleDrop called with invalid data: ontologyId={OntologyId}, userId={UserId}", ontologyId, currentUserId);
+            return;
+        }
+
+        // Prevent dropping on special folders
+        if (tag == "$$SHARED_WITH_ME$$" || tag == "$$PUBLIC$$")
+        {
+            Logger.LogWarning("Attempted to drop ontology on special folder: {Tag}", tag);
+            return;
+        }
+
+        await InvokeAsync(async () =>
+        {
+            try
+            {
+                // Get the folder color if it exists
+                var folder = folderList.FirstOrDefault(f => f.Tag.Equals(tag, StringComparison.OrdinalIgnoreCase));
+                var color = folder?.Color;
+
+                // Add the tag to the ontology with the folder's color
+                await OntologyService.AddTagAsync(ontologyId, tag, color);
+
+                // Reload ontologies and folders to reflect the change
+                await LoadOntologies();
+                await LoadFolders();
+
+                // Force a UI update
+                await InvokeAsync(StateHasChanged);
+
+                Logger.LogInformation("Successfully added tag '{Tag}' to ontology {OntologyId}", tag, ontologyId);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error adding tag via drag and drop");
+            }
+        });
+    }
+
+    private async Task RemoveTag(int ontologyId, string tag)
+    {
+        try
+        {
+            await OntologyService.RemoveTagAsync(ontologyId, tag);
+
+            // Force a complete data refresh by directly calling the database again
+            var freshOntologies = await PermissionService.GetAccessibleOntologiesAsync(currentUserId);
+
+            // Create a completely new list to break any reference caching
+            ontologies = freshOntologies.Select(o => o).ToList();
+
+            await LoadFolders();
+
+            // Force complete UI re-render
+            await InvokeAsync(StateHasChanged);
+
+            Logger.LogInformation("Successfully removed tag '{Tag}' from ontology {OntologyId}", tag, ontologyId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error removing tag");
+        }
+    }
+
     private IEnumerable<Ontology> FilteredOntologies
     {
         get
@@ -912,14 +1337,27 @@
                 );
             }
 
-            // Apply tag filter
+            // Apply tag filter (including special folders)
             if (!string.IsNullOrWhiteSpace(selectedTagFilter))
             {
-                filtered = filtered.Where(o =>
-                    !string.IsNullOrWhiteSpace(o.Tags) &&
-                    o.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .Any(t => t.Equals(selectedTagFilter, StringComparison.OrdinalIgnoreCase))
-                );
+                // Handle special folders
+                if (selectedTagFilter == "$$SHARED_WITH_ME$$")
+                {
+                    // Filter for ontologies NOT owned by current user
+                    filtered = filtered.Where(o => o.UserId != currentUserId);
+                }
+                else if (selectedTagFilter == "$$PUBLIC$$")
+                {
+                    // Filter for public ontologies
+                    filtered = filtered.Where(o => o.Visibility == OntologyVisibility.Public);
+                }
+                else
+                {
+                    // Regular tag filter
+                    filtered = filtered.Where(o =>
+                        o.OntologyTags?.Any(t => t.Tag.Equals(selectedTagFilter, StringComparison.OrdinalIgnoreCase)) ?? false
+                    );
+                }
             }
 
             // Apply sorting
@@ -945,8 +1383,8 @@
         if (ontologies == null) return new List<string>();
 
         return ontologies
-            .Where(o => !string.IsNullOrWhiteSpace(o.Tags))
-            .SelectMany(o => o.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Where(o => o.OntologyTags != null && o.OntologyTags.Any())
+            .SelectMany(o => o.OntologyTags.Select(t => t.Tag))
             .Distinct()
             .OrderBy(t => t)
             .ToList();

@@ -32,11 +32,13 @@ public class CreateRelationshipCommand : ICommand
         var created = await _relationshipRepository.AddAsync(_relationship);
         _createdId = created.Id;
         await _ontologyRepository.UpdateTimestampAsync(_relationship.OntologyId);
+        await _ontologyRepository.IncrementRelationshipCountAsync(_relationship.OntologyId);
     }
 
     public async Task UndoAsync()
     {
         await _relationshipRepository.DeleteAsync(_createdId);
         await _ontologyRepository.UpdateTimestampAsync(_relationship.OntologyId);
+        await _ontologyRepository.DecrementRelationshipCountAsync(_relationship.OntologyId);
     }
 }

@@ -43,6 +43,7 @@ public class DeleteRelationshipCommand : ICommand
 
         await _relationshipRepository.DeleteAsync(_relationshipId);
         await _ontologyRepository.UpdateTimestampAsync(OntologyId);
+        await _ontologyRepository.DecrementRelationshipCountAsync(OntologyId);
     }
 
     public async Task UndoAsync()
@@ -55,11 +56,13 @@ public class DeleteRelationshipCommand : ICommand
         context.Relationships.Add(_deletedRelationship);
         await context.SaveChangesAsync();
         await _ontologyRepository.UpdateTimestampAsync(OntologyId);
+        await _ontologyRepository.IncrementRelationshipCountAsync(OntologyId);
     }
 
     public async Task RedoAsync()
     {
         await _relationshipRepository.DeleteAsync(_relationshipId);
         await _ontologyRepository.UpdateTimestampAsync(OntologyId);
+        await _ontologyRepository.DecrementRelationshipCountAsync(OntologyId);
     }
 }

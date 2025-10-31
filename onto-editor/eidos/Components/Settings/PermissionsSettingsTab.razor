@@ -164,21 +164,51 @@
         }
     }
 
-    private Task LoadGroupAccess()
+    /// <summary>
+    /// Loads group access permissions for the ontology.
+    /// Maps database permission levels (view, edit, admin) to PermissionLevel enum values.
+    /// </summary>
+    private async Task LoadGroupAccess()
     {
         try
         {
-            // TODO: Load actual group access from service
-            // For now, using placeholder data
-            groupAccess = new List<GroupAccessInfo>();
+            if (OntologyId > 0)
+            {
+                Logger.LogInformation("Loading group access for ontology {OntologyId}", OntologyId);
+
+                var permissions = await PermissionService.GetGroupPermissionsAsync(OntologyId);
+
+                // Map database permission strings to PermissionLevel enum
+                // Database stores: "view", "edit", "admin"
+                // Enum values: View, ViewAddEdit, FullAccess
+                groupAccess = permissions.Select(p => new GroupAccessInfo
+                {
+                    GroupId = p.UserGroupId.ToString(),
+                    GroupName = p.UserGroup?.Name ?? "Unknown Group",
+                    PermissionLevel = p.PermissionLevel.ToLowerInvariant() switch
+                    {
+                        "view" => PermissionLevel.View,
+                        "edit" => PermissionLevel.ViewAddEdit,
+                        "admin" => PermissionLevel.FullAccess,
+                        _ => PermissionLevel.View
+                    },
+                    MemberCount = p.UserGroup?.Members?.Count ?? 0
+                }).ToList();
+
+                Logger.LogInformation("Loaded {Count} group permissions for ontology {OntologyId}",
+                    groupAccess.Count, OntologyId);
+            }
+            else
+            {
+                groupAccess = new List<GroupAccessInfo>();
+            }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading group access");
+            Logger.LogError(ex, "Error loading group access for ontology {OntologyId}", OntologyId);
             ToastService.ShowError("Failed to load group access");
+            groupAccess = new List<GroupAccessInfo>();
         }
-
-        return Task.CompletedTask;
     }
 
     private async Task HandleSave()

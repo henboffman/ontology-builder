@@ -46,4 +46,11 @@ public interface IOntologyService
     Task<Ontology> ForkOntologyAsync(int sourceOntologyId, string newName, string? provenanceNotes = null);
     Task<List<Ontology>> GetOntologyLineageAsync(int ontologyId); // Get parent chain
     Task<List<Ontology>> GetOntologyDescendantsAsync(int ontologyId); // Get all children/forks
+
+    // Tag/Folder operations
+    Task<OntologyTag> AddTagAsync(int ontologyId, string tag, string? color = null);
+    Task RemoveTagAsync(int ontologyId, string tag);
+    Task<List<Ontology>> GetOntologiesByTagAsync(string userId, string tag);
+    Task<List<string>> GetUserTagsAsync(string userId);
+    Task<OntologyTag?> UpdateTagColorAsync(int ontologyId, string tag, string color);
 }

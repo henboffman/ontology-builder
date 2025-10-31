@@ -14,23 +14,43 @@ public class DevelopmentAuthMiddleware
     private readonly RequestDelegate _next;
     private readonly IConfiguration _configuration;
     private readonly ILogger<DevelopmentAuthMiddleware> _logger;
+    private readonly IWebHostEnvironment _environment;
 
     public DevelopmentAuthMiddleware(
         RequestDelegate next,
         IConfiguration configuration,
-        ILogger<DevelopmentAuthMiddleware> logger)
+        ILogger<DevelopmentAuthMiddleware> logger,
+        IWebHostEnvironment environment)
     {
         _next = next;
         _configuration = configuration;
         _logger = logger;
+        _environment = environment;
     }
 
     public async Task InvokeAsync(HttpContext context, UserManager<ApplicationUser> userManager)
     {
-        // Only run in Development environment
+        // SECURITY: Enforce development environment check - NEVER run in production
+        if (!_environment.IsDevelopment())
+        {
+            _logger.LogCritical(
+                "SECURITY VIOLATION: DevelopmentAuthMiddleware was invoked in {Environment} environment! " +
+                "This middleware should ONLY be registered in Development mode.",
+                _environment.EnvironmentName);
+
+            // Fail fast - do not process request
+            context.Response.StatusCode = 500;
+            await context.Response.WriteAsync("Internal server error: Invalid middleware configuration");
+            return;
+        }
+
+        // Only run if explicitly enabled via configuration
         var enableAutoLogin = _configuration.GetValue<bool>("Development:EnableAutoLogin");
 
-        if (enableAutoLogin && !context.User.Identity?.IsAuthenticated == true)
+        // Check if user manually switched (don't override manual switches)
+        var hasManualSwitch = context.Request.Cookies.ContainsKey("manual-user-switch");
+
+        if (enableAutoLogin && !context.User.Identity?.IsAuthenticated == true && !hasManualSwitch)
         {
             var email = _configuration["Development:AutoLoginEmail"] ?? "dev@localhost.local";
             var name = _configuration["Development:AutoLoginName"] ?? "Dev User";

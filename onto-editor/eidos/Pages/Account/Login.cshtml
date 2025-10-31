@@ -40,7 +40,6 @@
                         }
 
                         <form method="post" asp-page="/Account/Login">
-                            @Html.AntiForgeryToken()
                             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
                             <input type="hidden" name="Mode" value="@Model.Mode" />
 
@@ -59,7 +58,7 @@
 
                             <div class="mb-3">
                                 <label class="form-label">Password</label>
-                                <input type="password" class="form-control" name="Input.Password" autocomplete="current-password" required />
+                                <input type="password" class="form-control" name="Input.Password" autocomplete="current-password" />
                                 @if (Model.IsRegisterMode)
                                 {
                                     <small class="form-text text-muted">

@@ -672,5 +672,87 @@ namespace Eidos.Services
 
             return await GetOntologyAsync(ontologyId) ?? ontology;
         }
+
+        // ==================== Tag/Folder Management ====================
+
+        public async Task<OntologyTag> AddTagAsync(int ontologyId, string tag, string? color = null)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            // Check if tag already exists for this ontology
+            var existingTag = await context.OntologyTags
+                .FirstOrDefaultAsync(t => t.OntologyId == ontologyId && t.Tag == tag);
+
+            if (existingTag != null)
+            {
+                return existingTag; // Tag already exists, return it
+            }
+
+            var ontologyTag = new OntologyTag
+            {
+                OntologyId = ontologyId,
+                Tag = tag,
+                Color = color,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            context.OntologyTags.Add(ontologyTag);
+            await context.SaveChangesAsync();
+
+            return ontologyTag;
+        }
+
+        public async Task RemoveTagAsync(int ontologyId, string tag)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            var ontologyTag = await context.OntologyTags
+                .FirstOrDefaultAsync(t => t.OntologyId == ontologyId && t.Tag == tag);
+
+            if (ontologyTag != null)
+            {
+                context.OntologyTags.Remove(ontologyTag);
+                await context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<List<Ontology>> GetOntologiesByTagAsync(string userId, string tag)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            return await context.Ontologies
+                .Include(o => o.OntologyTags)
+                .Where(o => o.UserId == userId && o.OntologyTags.Any(t => t.Tag == tag))
+                .OrderByDescending(o => o.UpdatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetUserTagsAsync(string userId)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            return await context.OntologyTags
+                .Where(t => t.Ontology.UserId == userId)
+                .Select(t => t.Tag)
+                .Distinct()
+                .OrderBy(t => t)
+                .ToListAsync();
+        }
+
+        public async Task<OntologyTag?> UpdateTagColorAsync(int ontologyId, string tag, string color)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            var ontologyTag = await context.OntologyTags
+                .FirstOrDefaultAsync(t => t.OntologyId == ontologyId && t.Tag == tag);
+
+            if (ontologyTag != null)
+            {
+                ontologyTag.Color = color;
+                await context.SaveChangesAsync();
+            }
+
+            return ontologyTag;
+        }
     }
 }

@@ -422,21 +422,7 @@
 
     private async Task HandleSaveClick()
     {
-        // Save visibility changes if needed
-        if (OntologyId > 0 && !string.IsNullOrEmpty(CurrentUserId))
-        {
-            try
-            {
-                await PermissionService.UpdateVisibilityAsync(OntologyId, visibility, allowPublicEdit);
-            }
-            catch (Exception ex)
-            {
-                ToastService.ShowError($"Failed to update visibility: {ex.Message}");
-                return;
-            }
-        }
-
-        // Invoke the parent's save handler for general settings
+        // Invoke the parent's save handler which will save all settings including visibility
         await OnSaveClick.InvokeAsync();
     }
 

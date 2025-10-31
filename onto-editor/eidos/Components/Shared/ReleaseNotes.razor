@@ -9,9 +9,189 @@
     </div>
 
     <div class="release-timeline">
-        <!-- Latest: Individual Visualization in Graph View -->
+        <!-- Latest: Dashboard Organization & Group Permission Fixes -->
         <div class="release-item">
             <div class="release-badge badge bg-primary">Latest</div>
+            <div class="release-date">November 1, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-folder text-primary me-2"></i>
+                Dashboard Organization & Group Permission Fixes
+            </h4>
+            <div class="release-content">
+                <p class="lead">Better organize your ontologies and seamless group-based collaboration!</p>
+
+                <h5>Dashboard Organization</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Folder & Tag Filtering</strong>
+                        <ul>
+                            <li>Filter ontologies by tags on the dashboard</li>
+                            <li>Quick access to categorized ontologies</li>
+                            <li>Visual tag badges with colors</li>
+                            <li>Multi-tag support for flexible organization</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Improved Dashboard Layout</strong>
+                        <ul>
+                            <li>Cleaner, more organized ontology cards</li>
+                            <li>Tag display on each ontology card</li>
+                            <li>Better visual hierarchy</li>
+                            <li>Responsive tag management</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>Group Permission System Fixes</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Collaborator Access Fix</strong>
+                        <ul>
+                            <li>Fixed: Collaborators can now access group ontologies immediately</li>
+                            <li>Fixed: Permission checks now properly recognize group membership</li>
+                            <li>Fixed: SignalR hub permission validation uses comprehensive service</li>
+                            <li>Fixed: Permissions tab now displays collaboration groups correctly</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Enhanced Permission Display</strong>
+                        <ul>
+                            <li>Settings > Permissions tab shows all collaboration groups</li>
+                            <li>View group member counts and permission levels</li>
+                            <li>See which groups have access to your ontologies</li>
+                            <li>Real-time permission updates</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Permission Level Mapping</strong>
+                        <ul>
+                            <li>Correct mapping between database and UI permission levels</li>
+                            <li>View, Edit (ViewAddEdit), and Admin (FullAccess) properly displayed</li>
+                            <li>Consistent permission enforcement across all features</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>Bug Fixes</h5>
+                <ul class="feature-list">
+                    <li>Fixed "No groups have been granted access yet" message when groups exist</li>
+                    <li>Fixed permission denied errors for valid group members</li>
+                    <li>Fixed enum mapping errors in permissions display</li>
+                    <li>Improved error messages and logging for permission issues</li>
+                </ul>
+
+                <div class="alert alert-success mt-3">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <strong>Fixed:</strong> Collaborators accepted through the Collaboration Board now have immediate access to ontologies without permission errors!
+                </div>
+            </div>
+        </div>
+
+        <!-- Collaboration Board & Automated Group Management -->
+        <div class="release-item">
+            <div class="release-date">October 31, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-people-fill text-primary me-2"></i>
+                Collaboration Board & Automated Group Management
+            </h4>
+            <div class="release-content">
+                <p class="lead">Find collaborators and seamlessly work together on ontologies with automatic permission management!</p>
+
+                <h5>Collaboration Board</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Project Discovery</strong>
+                        <ul>
+                            <li>Browse active collaboration opportunities from all users</li>
+                            <li>Filter by domain (e.g., Healthcare, Finance, Technology)</li>
+                            <li>Filter by required skill level (Beginner, Intermediate, Advanced, Expert)</li>
+                            <li>Search by keywords and tags</li>
+                            <li>View detailed project descriptions and requirements</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Post Your Projects</strong>
+                        <ul>
+                            <li>Create collaboration posts for your ontologies</li>
+                            <li>Specify required skills and commitment level</li>
+                            <li>Manage responses from interested collaborators</li>
+                            <li>Accept/reject collaboration requests</li>
+                            <li>Toggle post active status to pause/resume recruiting</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Response Management</strong>
+                        <ul>
+                            <li>Apply to join projects with a message</li>
+                            <li>Track response status (Pending, Accepted, Declined)</li>
+                            <li>View applicant experience and motivation</li>
+                            <li>Manage all responses from "My Posts" page</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>Automated Permission System</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Automatic Group Creation</strong>
+                        <ul>
+                            <li>Collaboration groups created automatically when posting projects</li>
+                            <li>Named "Collaboration: [Project Title]"</li>
+                            <li>Post creator becomes group admin automatically</li>
+                            <li>Linked ontology visibility set to "Group" mode</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Seamless Access Grant</strong>
+                        <ul>
+                            <li>Accepted collaborators automatically added to project group</li>
+                            <li>Group receives edit permission to the ontology</li>
+                            <li>No manual permission configuration needed</li>
+                            <li>Works immediately - collaborators can start editing right away</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Permission Visibility</strong>
+                        <ul>
+                            <li>View collaboration groups in Ontology Settings > Permissions</li>
+                            <li>See all group members and their permission levels</li>
+                            <li>Track when permissions were granted</li>
+                            <li>Monitor group membership counts</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>Developer Testing Tools</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Multi-User Testing (Development Only)</strong>
+                        <ul>
+                            <li>User switching page at /dev/switch-user</li>
+                            <li>Quick toggle between test accounts</li>
+                            <li>Cookie-based state to prevent auto-login override</li>
+                            <li>Fully integrated with development middleware</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>Technical Implementation</h5>
+                <ul class="feature-list">
+                    <li>CollaborationBoardService orchestrates post and permission lifecycle</li>
+                    <li>Automatic group creation via UserGroupService</li>
+                    <li>OntologyPermissionService handles comprehensive permission checks</li>
+                    <li>SignalR hub updated to recognize group-based permissions</li>
+                    <li>Permission level enum mapping for database/UI consistency</li>
+                </ul>
+
+                <div class="alert alert-success mt-3">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    <strong>Try it now:</strong> Visit the Collaboration Board to find projects or post your own. When you accept collaborators, they'll automatically get access to work on your ontology!
+                </div>
+            </div>
+        </div>
+
+        <!-- Individual Visualization in Graph View -->
+        <div class="release-item">
             <div class="release-date">October 29, 2025</div>
             <h4 class="release-title">
                 <i class="bi bi-diagram-3 text-primary me-2"></i>

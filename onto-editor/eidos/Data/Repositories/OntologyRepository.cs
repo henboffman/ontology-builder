@@ -122,6 +122,7 @@ public class OntologyRepository : BaseRepository<Ontology>, IOntologyRepository
             .AsNoTracking()
             .Include(o => o.Concepts)
             .Include(o => o.Relationships)
+            .Include(o => o.OntologyTags)
             .OrderByDescending(o => o.UpdatedAt)
             .ToListAsync();
     }
@@ -218,6 +219,8 @@ public class OntologyRepository : BaseRepository<Ontology>, IOntologyRepository
         existingOntology.UsesBFO = ontology.UsesBFO;
         existingOntology.UsesProvO = ontology.UsesProvO;
         existingOntology.Notes = ontology.Notes;
+        existingOntology.Visibility = ontology.Visibility;
+        existingOntology.AllowPublicEdit = ontology.AllowPublicEdit;
         existingOntology.UpdatedAt = DateTime.UtcNow;
 
         await context.SaveChangesAsync();

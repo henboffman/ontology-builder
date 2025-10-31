@@ -158,8 +158,11 @@ public class OntologyPermissionService
     /// </summary>
     public async Task<List<Ontology>> GetAccessibleOntologiesAsync(string? userId)
     {
-        // Load ontologies without navigation properties to avoid performance issues
-        var ontologies = await _context.Ontologies.ToListAsync();
+        // Load ontologies with OntologyTags for folder/tag functionality
+        var ontologies = await _context.Ontologies
+            .Include(o => o.OntologyTags)
+            .AsNoTracking()
+            .ToListAsync();
 
         // Load group permissions with members for group visibility checks
         if (ontologies.Any(o => o.Visibility == OntologyVisibility.Group))

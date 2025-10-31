@@ -24,13 +24,19 @@ public class CollaborationBoardService : ICollaborationBoardService
 {
     private readonly ICollaborationPostRepository _postRepository;
     private readonly IDbContextFactory<OntologyDbContext> _contextFactory;
+    private readonly UserGroupService _userGroupService;
+    private readonly ILogger<CollaborationBoardService> _logger;
 
     public CollaborationBoardService(
         ICollaborationPostRepository postRepository,
-        IDbContextFactory<OntologyDbContext> contextFactory)
+        IDbContextFactory<OntologyDbContext> contextFactory,
+        UserGroupService userGroupService,
+        ILogger<CollaborationBoardService> logger)
     {
         _postRepository = postRepository;
         _contextFactory = contextFactory;
+        _userGroupService = userGroupService;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<CollaborationPost>> GetActivePostsAsync()
@@ -63,13 +69,94 @@ public class CollaborationBoardService : ICollaborationBoardService
 
     public async Task<CollaborationPost> CreatePostAsync(CollaborationPost post)
     {
-        post.CreatedAt = DateTime.UtcNow;
-        post.UpdatedAt = DateTime.UtcNow;
-        post.IsActive = true;
-        post.ViewCount = 0;
-        post.ResponseCount = 0;
+        UserGroup? group = null;
 
-        return await _postRepository.AddAsync(post);
+        try
+        {
+            _logger.LogInformation("Creating collaboration post '{Title}' for user {UserId} with ontology {OntologyId}",
+                post.Title, post.UserId, post.OntologyId);
+
+            post.CreatedAt = DateTime.UtcNow;
+            post.UpdatedAt = DateTime.UtcNow;
+            post.IsActive = true;
+            post.ViewCount = 0;
+            post.ResponseCount = 0;
+
+            // Create a user group for this collaboration project
+            var groupName = $"Collaboration: {post.Title}";
+            var groupDescription = $"Collaboration group for project '{post.Title}'";
+
+            group = await _userGroupService.CreateGroupAsync(
+                groupName,
+                groupDescription,
+                post.UserId,
+                "#3b82f6" // Blue color for collaboration groups
+            );
+
+            _logger.LogInformation("Created collaboration group {GroupId} '{GroupName}'", group.Id, groupName);
+
+            // Add the post creator as a group admin
+            await _userGroupService.AddUserToGroupAsync(
+                group.Id,
+                post.UserId,
+                post.UserId,
+                isGroupAdmin: true
+            );
+
+            _logger.LogInformation("Added user {UserId} as admin to group {GroupId}", post.UserId, group.Id);
+
+            // If there's an associated ontology, grant the group edit permission and update visibility
+            if (post.OntologyId.HasValue)
+            {
+                _logger.LogInformation("Granting group {GroupId} edit permission to ontology {OntologyId}",
+                    group.Id, post.OntologyId.Value);
+
+                // Grant group permission
+                await _userGroupService.GrantGroupPermissionAsync(
+                    post.OntologyId.Value,
+                    group.Id,
+                    PermissionLevels.Edit,
+                    post.UserId
+                );
+
+                // Update ontology visibility to Group so permissions apply
+                using var context = await _contextFactory.CreateDbContextAsync();
+                var ontology = await context.Ontologies.FindAsync(post.OntologyId.Value);
+                if (ontology != null)
+                {
+                    ontology.Visibility = OntologyVisibility.Group;
+                    ontology.UpdatedAt = DateTime.UtcNow;
+                    await context.SaveChangesAsync();
+
+                    _logger.LogInformation("Updated ontology {OntologyId} visibility to Group and granted edit permission to group {GroupId}",
+                        post.OntologyId.Value, group.Id);
+                }
+                else
+                {
+                    _logger.LogWarning("Ontology {OntologyId} not found when trying to update visibility",
+                        post.OntologyId.Value);
+                }
+            }
+
+            // Link the group to the post
+            post.CollaborationProjectGroupId = group.Id;
+
+            var createdPost = await _postRepository.AddAsync(post);
+
+            _logger.LogInformation("Successfully created collaboration post {PostId} with group {GroupId}",
+                createdPost.Id, group.Id);
+
+            return createdPost;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating collaboration post '{Title}' for user {UserId}. Group {GroupId} may need cleanup.",
+                post.Title, post.UserId, group?.Id);
+
+            // Note: Group cleanup could be added here if needed, but leaving orphaned groups
+            // for investigation is preferred over automatic deletion in case of partial failures
+            throw;
+        }
     }
 
     public async Task<CollaborationPost> UpdatePostAsync(CollaborationPost post)
@@ -134,12 +221,59 @@ public class CollaborationBoardService : ICollaborationBoardService
     public async Task<bool> UpdateResponseStatusAsync(int responseId, string newStatus)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        var response = await context.CollaborationResponses.FindAsync(responseId);
+        var response = await context.CollaborationResponses
+            .Include(r => r.CollaborationPost)
+            .FirstOrDefaultAsync(r => r.Id == responseId);
 
         if (response == null)
             return false;
 
+        var oldStatus = response.Status;
         response.Status = newStatus;
+
+        // If response is being accepted, add the user to the collaboration group
+        if (newStatus == "Accepted" && oldStatus != "Accepted" && response.CollaborationPost.CollaborationProjectGroupId.HasValue)
+        {
+            var groupId = response.CollaborationPost.CollaborationProjectGroupId.Value;
+
+            try
+            {
+                // Add user to the collaboration group
+                await _userGroupService.AddUserToGroupAsync(
+                    groupId,
+                    response.UserId,
+                    response.CollaborationPost.UserId, // Added by the post creator
+                    isGroupAdmin: false
+                );
+
+                _logger.LogInformation("Added user {UserId} to collaboration group {GroupId} for post {PostId}",
+                    response.UserId, groupId, response.CollaborationPostId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add user {UserId} to group {GroupId}", response.UserId, groupId);
+                // Don't fail the status update if adding to group fails
+            }
+        }
+        // If response is being declined/removed after being accepted, remove from group
+        else if (oldStatus == "Accepted" && newStatus != "Accepted" && response.CollaborationPost.CollaborationProjectGroupId.HasValue)
+        {
+            var groupId = response.CollaborationPost.CollaborationProjectGroupId.Value;
+
+            try
+            {
+                await _userGroupService.RemoveUserFromGroupAsync(groupId, response.UserId);
+
+                _logger.LogInformation("Removed user {UserId} from collaboration group {GroupId}",
+                    response.UserId, groupId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to remove user {UserId} from group {GroupId}", response.UserId, groupId);
+                // Don't fail the status update if removing from group fails
+            }
+        }
+
         await context.SaveChangesAsync();
         return true;
     }

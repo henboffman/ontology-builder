@@ -3,6 +3,7 @@ using System;
 using Eidos.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Eidos.Migrations
 {
     [DbContext(typeof(OntologyDbContext))]
-    partial class OntologyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251030234652_AddOntologyTags")]
+    partial class AddOntologyTags
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.10");
@@ -168,7 +171,7 @@ namespace Eidos.Migrations
                     b.HasIndex("IsActive", "CreatedAt")
                         .HasDatabaseName("IX_CollaborationPost_IsActive_CreatedAt");
 
-                    b.ToTable("CollaborationPosts", (string)null);
+                    b.ToTable("CollaborationPosts");
                 });
 
             modelBuilder.Entity("Eidos.Models.CollaborationResponse", b =>
@@ -209,7 +212,7 @@ namespace Eidos.Migrations
                     b.HasIndex("UserId", "CollaborationPostId")
                         .HasDatabaseName("IX_CollaborationResponse_UserId_PostId");
 
-                    b.ToTable("CollaborationResponses", (string)null);
+                    b.ToTable("CollaborationResponses");
                 });
 
             modelBuilder.Entity("Eidos.Models.Concept", b =>
@@ -258,7 +261,7 @@ namespace Eidos.Migrations
                     b.HasIndex("OntologyId")
                         .HasDatabaseName("IX_Concept_OntologyId");
 
-                    b.ToTable("Concepts", (string)null);
+                    b.ToTable("Concepts");
                 });
 
             modelBuilder.Entity("Eidos.Models.ConceptRestriction", b =>
@@ -324,7 +327,7 @@ namespace Eidos.Migrations
                     b.HasIndex("ConceptId")
                         .HasDatabaseName("IX_ConceptRestriction_ConceptId");
 
-                    b.ToTable("ConceptRestrictions", (string)null);
+                    b.ToTable("ConceptRestrictions");
                 });
 
             modelBuilder.Entity("Eidos.Models.CustomConceptTemplate", b =>
@@ -368,7 +371,7 @@ namespace Eidos.Migrations
 
                     b.HasIndex("OntologyId");
 
-                    b.ToTable("CustomConceptTemplates", (string)null);
+                    b.ToTable("CustomConceptTemplates");
                 });
 
             modelBuilder.Entity("Eidos.Models.FeatureToggle", b =>
@@ -408,7 +411,7 @@ namespace Eidos.Migrations
                     b.HasIndex("Key")
                         .IsUnique();
 
-                    b.ToTable("FeatureToggles", (string)null);
+                    b.ToTable("FeatureToggles");
 
                     b.HasData(
                         new
@@ -485,7 +488,7 @@ namespace Eidos.Migrations
                     b.HasIndex("SessionToken")
                         .IsUnique();
 
-                    b.ToTable("GuestSessions", (string)null);
+                    b.ToTable("GuestSessions");
                 });
 
             modelBuilder.Entity("Eidos.Models.Individual", b =>
@@ -529,7 +532,7 @@ namespace Eidos.Migrations
                     b.HasIndex("OntologyId")
                         .HasDatabaseName("IX_Individual_OntologyId");
 
-                    b.ToTable("Individuals", (string)null);
+                    b.ToTable("Individuals");
                 });
 
             modelBuilder.Entity("Eidos.Models.IndividualProperty", b =>
@@ -563,7 +566,7 @@ namespace Eidos.Migrations
 
                     b.HasIndex("IndividualId");
 
-                    b.ToTable("IndividualProperties", (string)null);
+                    b.ToTable("IndividualProperties");
                 });
 
             modelBuilder.Entity("Eidos.Models.IndividualRelationship", b =>
@@ -608,7 +611,7 @@ namespace Eidos.Migrations
 
                     b.HasIndex("TargetIndividualId");
 
-                    b.ToTable("IndividualRelationships", (string)null);
+                    b.ToTable("IndividualRelationships");
                 });
 
             modelBuilder.Entity("Eidos.Models.Ontology", b =>
@@ -694,7 +697,7 @@ namespace Eidos.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Ontologies", (string)null);
+                    b.ToTable("Ontologies");
                 });
 
             modelBuilder.Entity("Eidos.Models.OntologyActivity", b =>
@@ -772,7 +775,7 @@ namespace Eidos.Migrations
                     b.HasIndex("OntologyId", "VersionNumber")
                         .HasDatabaseName("IX_OntologyActivity_OntologyId_VersionNumber");
 
-                    b.ToTable("OntologyActivities", (string)null);
+                    b.ToTable("OntologyActivities");
                 });
 
             modelBuilder.Entity("Eidos.Models.OntologyGroupPermission", b =>
@@ -808,7 +811,7 @@ namespace Eidos.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_OntologyGroupPermission_OntologyId_GroupId");
 
-                    b.ToTable("OntologyGroupPermissions", (string)null);
+                    b.ToTable("OntologyGroupPermissions");
                 });
 
             modelBuilder.Entity("Eidos.Models.OntologyLink", b =>
@@ -850,7 +853,7 @@ namespace Eidos.Migrations
 
                     b.HasIndex("OntologyId");
 
-                    b.ToTable("OntologyLinks", (string)null);
+                    b.ToTable("OntologyLinks");
                 });
 
             modelBuilder.Entity("Eidos.Models.OntologyShare", b =>
@@ -903,7 +906,7 @@ namespace Eidos.Migrations
                     b.HasIndex("ShareToken")
                         .IsUnique();
 
-                    b.ToTable("OntologyShares", (string)null);
+                    b.ToTable("OntologyShares");
                 });
 
             modelBuilder.Entity("Eidos.Models.OntologyTag", b =>
@@ -935,7 +938,7 @@ namespace Eidos.Migrations
                     b.HasIndex("OntologyId", "Tag")
                         .HasDatabaseName("IX_OntologyTag_OntologyId_Tag");
 
-                    b.ToTable("OntologyTags", (string)null);
+                    b.ToTable("OntologyTags");
                 });
 
             modelBuilder.Entity("Eidos.Models.Property", b =>
@@ -965,7 +968,7 @@ namespace Eidos.Migrations
 
                     b.HasIndex("ConceptId");
 
-                    b.ToTable("Properties", (string)null);
+                    b.ToTable("Properties");
                 });
 
             modelBuilder.Entity("Eidos.Models.Relationship", b =>
@@ -1015,7 +1018,7 @@ namespace Eidos.Migrations
 
                     b.HasIndex("TargetConceptId");
 
-                    b.ToTable("Relationships", (string)null);
+                    b.ToTable("Relationships");
                 });
 
             modelBuilder.Entity("Eidos.Models.User", b =>
@@ -1088,7 +1091,7 @@ namespace Eidos.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("UserGroups", (string)null);
+                    b.ToTable("UserGroups");
                 });
 
             modelBuilder.Entity("Eidos.Models.UserGroupMember", b =>
@@ -1123,7 +1126,7 @@ namespace Eidos.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_UserGroupMember_GroupId_UserId");
 
-                    b.ToTable("UserGroupMembers", (string)null);
+                    b.ToTable("UserGroupMembers");
                 });
 
             modelBuilder.Entity("Eidos.Models.UserPreferences", b =>
@@ -1240,7 +1243,7 @@ namespace Eidos.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("UserPreferences", (string)null);
+                    b.ToTable("UserPreferences");
                 });
 
             modelBuilder.Entity("Eidos.Models.UserShareAccess", b =>
@@ -1273,7 +1276,7 @@ namespace Eidos.Migrations
                     b.HasIndex("UserId", "OntologyShareId")
                         .IsUnique();
 
-                    b.ToTable("UserShareAccesses", (string)null);
+                    b.ToTable("UserShareAccesses");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>

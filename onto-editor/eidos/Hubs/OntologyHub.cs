@@ -6,7 +6,6 @@ using Eidos.Models;
 using Eidos.Services;
 using Eidos.Services.Interfaces;
 using System.Security.Claims;
-using System.Collections.Concurrent;
 
 namespace Eidos.Hubs;
 
@@ -19,10 +18,7 @@ public class OntologyHub : Hub
 {
     private readonly ILogger<OntologyHub> _logger;
     private readonly IServiceScopeFactory _serviceScopeFactory;
-
-    // In-memory storage for presence tracking
-    // Key: OntologyId, Value: Dictionary of ConnectionId -> PresenceInfo
-    private static readonly ConcurrentDictionary<int, ConcurrentDictionary<string, PresenceInfo>> _presenceByOntology = new();
+    private readonly IPresenceService _presenceService;
 
     // Color palette for user avatars
     private static readonly string[] _avatarColors = new[]
@@ -34,10 +30,12 @@ public class OntologyHub : Hub
 
     public OntologyHub(
         ILogger<OntologyHub> logger,
-        IServiceScopeFactory serviceScopeFactory)
+        IServiceScopeFactory serviceScopeFactory,
+        IPresenceService presenceService)
     {
         _logger = logger;
         _serviceScopeFactory = serviceScopeFactory;
+        _presenceService = presenceService;
     }
 
     /// <summary>
@@ -86,41 +84,27 @@ public class OntologyHub : Hub
                 ontology.UserId ?? "NULL",
                 userId ?? "NULL");
 
-            // Check if user has permission to join:
-            // 1. Owner always has permission
-            // 2. Users with share access have permission
-            // 3. Check OntologyShares and UserShareAccesses tables
-            var hasPermission = false;
-            var permissionReason = "none";
+            // Check if user has permission to join using the OntologyPermissionService
+            // This will check: owner, public visibility, group permissions, and share access
+            var permissionService = scope.ServiceProvider.GetRequiredService<OntologyPermissionService>();
+            var hasPermission = await permissionService.CanViewAsync(ontologyId, userId);
 
+            var permissionReason = "none";
             if (string.IsNullOrEmpty(userId))
             {
                 permissionReason = "not_authenticated";
             }
             else if (ontology.UserId == userId)
             {
-                // Owner always has permission
-                hasPermission = true;
                 permissionReason = "owner";
+            }
+            else if (hasPermission)
+            {
+                permissionReason = "has_access";
             }
             else
             {
-                // Check if user has been granted access via sharing
-                var hasShareAccess = await context.UserShareAccesses
-                    .Where(usa => usa.UserId == userId)
-                    .Where(usa => usa.OntologyShare != null && usa.OntologyShare.OntologyId == ontologyId)
-                    .Where(usa => usa.OntologyShare != null && usa.OntologyShare.IsActive)
-                    .AnyAsync();
-
-                if (hasShareAccess)
-                {
-                    hasPermission = true;
-                    permissionReason = "shared_access";
-                }
-                else
-                {
-                    permissionReason = "no_access";
-                }
+                permissionReason = "no_access";
             }
 
             _logger.LogInformation(
@@ -169,9 +153,8 @@ public class OntologyHub : Hub
                 IsGuest = isGuest
             };
 
-            // Add to presence tracking
-            var ontologyPresence = _presenceByOntology.GetOrAdd(ontologyId, _ => new ConcurrentDictionary<string, PresenceInfo>());
-            ontologyPresence[Context.ConnectionId] = presenceInfo;
+            // Add to presence tracking (distributed or in-memory based on configuration)
+            await _presenceService.AddOrUpdatePresenceAsync(ontologyId, presenceInfo);
 
             _logger.LogInformation(
                 "User {UserId} joined ontology {OntologyId}",
@@ -179,7 +162,7 @@ public class OntologyHub : Hub
                 ontologyId);
 
             // Get all current users in this ontology
-            var currentUsers = ontologyPresence.Values.ToList();
+            var currentUsers = await _presenceService.GetPresenceListAsync(ontologyId);
 
             // Notify other users that someone joined (with their presence info)
             await Clients.OthersInGroup(groupName).SendAsync("UserJoined", presenceInfo);
@@ -210,16 +193,7 @@ public class OntologyHub : Hub
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
 
             // Remove from presence tracking
-            if (_presenceByOntology.TryGetValue(ontologyId, out var ontologyPresence))
-            {
-                ontologyPresence.TryRemove(Context.ConnectionId, out _);
-
-                // Clean up empty ontology presence dictionaries
-                if (ontologyPresence.IsEmpty)
-                {
-                    _presenceByOntology.TryRemove(ontologyId, out _);
-                }
-            }
+            await _presenceService.RemovePresenceAsync(ontologyId, Context.ConnectionId);
 
             var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             _logger.LogInformation(
@@ -252,21 +226,29 @@ public class OntologyHub : Hub
                 return;
             }
 
-            if (_presenceByOntology.TryGetValue(ontologyId, out var ontologyPresence))
+            // Verify user has joined this ontology (permission already checked in JoinOntology)
+            if (!await _presenceService.ConnectionExistsAsync(ontologyId, Context.ConnectionId))
             {
-                if (ontologyPresence.TryGetValue(Context.ConnectionId, out var presence))
-                {
-                    presence.CurrentView = viewName;
-                    presence.LastSeenAt = DateTime.UtcNow;
-
-                    var groupName = GetOntologyGroupName(ontologyId);
-                    await Clients.OthersInGroup(groupName).SendAsync("UserViewChanged", Context.ConnectionId, viewName);
-                }
+                _logger.LogWarning(
+                    "User {ConnectionId} attempted to update view for ontology {OntologyId} without joining first",
+                    Context.ConnectionId,
+                    ontologyId);
+                throw new HubException("You must join the ontology before updating your view");
             }
+
+            await _presenceService.UpdateCurrentViewAsync(ontologyId, Context.ConnectionId, viewName);
+
+            var groupName = GetOntologyGroupName(ontologyId);
+            await Clients.OthersInGroup(groupName).SendAsync("UserViewChanged", Context.ConnectionId, viewName);
+        }
+        catch (HubException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating view for ontology {OntologyId}", ontologyId);
+            throw new HubException("An error occurred while updating your view");
         }
     }
 
@@ -277,18 +259,26 @@ public class OntologyHub : Hub
     {
         try
         {
-            if (_presenceByOntology.TryGetValue(ontologyId, out var ontologyPresence))
+            // Verify user has joined this ontology (permission already checked in JoinOntology)
+            if (!await _presenceService.ConnectionExistsAsync(ontologyId, Context.ConnectionId))
             {
-                if (ontologyPresence.TryGetValue(Context.ConnectionId, out var presence))
-                {
-                    presence.LastSeenAt = DateTime.UtcNow;
-                }
+                _logger.LogWarning(
+                    "User {ConnectionId} attempted to send heartbeat for ontology {OntologyId} without joining first",
+                    Context.ConnectionId,
+                    ontologyId);
+                throw new HubException("You must join the ontology before sending heartbeats");
             }
-            await Task.CompletedTask;
+
+            await _presenceService.UpdateLastSeenAsync(ontologyId, Context.ConnectionId);
+        }
+        catch (HubException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing heartbeat for ontology {OntologyId}", ontologyId);
+            throw new HubException("An error occurred while processing heartbeat");
         }
     }
 
@@ -300,20 +290,7 @@ public class OntologyHub : Hub
         _logger.LogInformation("User {ConnectionId} disconnected", Context.ConnectionId);
 
         // Remove this connection from all ontologies it was in
-        foreach (var (ontologyId, ontologyPresence) in _presenceByOntology)
-        {
-            if (ontologyPresence.TryRemove(Context.ConnectionId, out _))
-            {
-                var groupName = GetOntologyGroupName(ontologyId);
-                await Clients.OthersInGroup(groupName).SendAsync("UserLeft", Context.ConnectionId);
-
-                // Clean up empty dictionaries
-                if (ontologyPresence.IsEmpty)
-                {
-                    _presenceByOntology.TryRemove(ontologyId, out _);
-                }
-            }
-        }
+        await _presenceService.RemoveConnectionFromAllOntologiesAsync(Context.ConnectionId);
 
         await base.OnDisconnectedAsync(exception);
     }
