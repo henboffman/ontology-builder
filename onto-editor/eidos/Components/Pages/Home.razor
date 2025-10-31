@@ -20,6 +20,7 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ToastService ToastService
 @inject ICollaborationBoardService CollaborationService
+@inject HolidayThemeService HolidayService
 @rendermode InteractiveServer
 
 <PageTitle>Eidos</PageTitle>
@@ -67,7 +68,7 @@
             <!-- Header Section -->
             <div class="d-flex justify-content-between align-items-start mb-3">
                 <div>
-                    <h1 class="display-4 mb-2">Eidos</h1>
+                    <h1 class="display-4 mb-2">@GetHolidayEmoji(0) Eidos @GetHolidayEmoji(1)</h1>
                     <p class="lead text-muted mb-0">Shape the essence of knowledge</p>
                 </div>
             </div>
@@ -113,7 +114,7 @@
                     }
                     <button class="btn btn-primary btn-lg" @onclick="ShowCreateOntologyDialog" disabled="@(!isAuthenticated)"
                             title="@(isAuthenticated ? "Create a new ontology" : "Please sign in to create ontologies")">
-                        <i class="bi bi-plus-circle"></i> Create New Ontology
+                        <i class="bi bi-plus-circle"></i> Create New Ontology @GetHolidayEmoji(2)
                     </button>
                 </div>
             </div>
@@ -398,7 +399,7 @@
                     <div class="card-header" style="cursor: pointer;" @onclick="() => collaborationExpanded = !collaborationExpanded">
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">
-                                <i class="bi bi-people"></i> Looking for Group
+                                @GetHolidayEmoji(3) <i class="bi bi-people"></i> Looking for Group
                                 @if (recentCollaborationPosts.Any())
                                 {
                                     <span class="badge bg-primary ms-2">@recentCollaborationPosts.Count new</span>
@@ -487,7 +488,7 @@
             else if (!ontologies.Any())
             {
                 <div class="alert alert-info text-center p-5">
-                    <h2 class="h4">No ontologies yet</h2>
+                    <h2 class="h4">@GetHolidayEmoji(0) No ontologies yet @GetHolidayEmoji(1)</h2>
                     <p>Get started by creating your first ontology, or explore the example that came with the app!</p>
                 </div>
             }
@@ -1576,5 +1577,15 @@
         if (timeSpan.TotalDays < 365) return $"{(int)(timeSpan.TotalDays / 30)}mo ago";
 
         return $"{(int)(timeSpan.TotalDays / 365)}y ago";
+    }
+
+    /// <summary>
+    /// Gets a holiday emoji based on the current date
+    /// Returns empty string if no holiday is active
+    /// </summary>
+    private string GetHolidayEmoji(int index)
+    {
+        var holiday = HolidayService.GetCurrentHoliday();
+        return holiday?.GetEmoji(index) ?? string.Empty;
     }
 }
