@@ -1,8 +1,28 @@
 @using Eidos.Models
 @using Eidos.Models.Enums
 
-<!-- Concepts Card -->
-<div class="card mb-3">
+<!-- List View Tabs -->
+<div class="list-view-tabs-container">
+    <!-- Tab Navigation -->
+    <div class="list-view-tabs-nav">
+        <button class="list-view-tab @(activeListTab == "concepts" ? "active" : "")"
+                @onclick='() => activeListTab = "concepts"'>
+            <i class="bi bi-lightbulb"></i>
+            <span>Concepts</span>
+        </button>
+        <button class="list-view-tab @(activeListTab == "relationships" ? "active" : "")"
+                @onclick='() => activeListTab = "relationships"'>
+            <i class="bi bi-diagram-3"></i>
+            <span>Relationships</span>
+        </button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="list-view-tab-content">
+        <!-- Concepts Tab -->
+        <div class="list-view-tab-pane @(activeListTab == "concepts" ? "active" : "")">
+            <!-- Concepts Card -->
+            <div class="card mb-3">
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
             <div>
@@ -174,9 +194,12 @@
         }
     </div>
 </div>
+        </div>
 
-<!-- Relationships Card -->
-<div class="card">
+        <!-- Relationships Tab -->
+        <div class="list-view-tab-pane @(activeListTab == "relationships" ? "active" : "")">
+            <!-- Relationships Card -->
+            <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Relationships</h5>
         <button class="btn btn-sm btn-primary" @onclick="OnAddRelationshipClick">
@@ -282,10 +305,16 @@
         }
     </div>
 </div>
+        </div>
+    </div>
+</div>
 
 @inject IJSRuntime JSRuntime
 
 @code {
+    // Tab state
+    private string activeListTab = "concepts";
+
     [Parameter, EditorRequired]
     public ICollection<Concept> Concepts { get; set; } = new List<Concept>();
 
@@ -496,3 +525,79 @@
         };
     }
 }
+
+<style>
+    /* List View Tabs Container */
+    .list-view-tabs-container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    /* Tab Navigation */
+    .list-view-tabs-nav {
+        display: flex;
+        background: var(--bs-secondary-bg);
+        border-bottom: 2px solid var(--bs-border-color);
+        margin-bottom: 1rem;
+    }
+
+    .list-view-tab {
+        flex: 1;
+        padding: 0.75rem 1.5rem;
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: var(--bs-secondary-color);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .list-view-tab:hover {
+        background: var(--bs-body-bg);
+        color: var(--bs-body-color);
+    }
+
+    .list-view-tab.active {
+        background: var(--bs-body-bg);
+        color: var(--bs-primary);
+        border-bottom-color: var(--bs-primary);
+    }
+
+    .list-view-tab i {
+        font-size: 1.1rem;
+    }
+
+    /* Tab Content */
+    .list-view-tab-content {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .list-view-tab-pane {
+        display: none;
+    }
+
+    .list-view-tab-pane.active {
+        display: block;
+    }
+
+    /* Dark mode adjustments */
+    [data-bs-theme="dark"] .list-view-tabs-nav {
+        background: var(--bs-dark);
+    }
+
+    [data-bs-theme="dark"] .list-view-tab:hover {
+        background: var(--bs-gray-800);
+    }
+
+    [data-bs-theme="dark"] .list-view-tab.active {
+        background: var(--bs-gray-900);
+    }
+</style>

@@ -1,0 +1,141 @@
+.ontology-ribbon {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--bs-body-bg);
+    border-bottom: 2px solid var(--bs-border-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    min-height: 60px;
+    transition: min-height 0.2s ease;
+}
+
+.ontology-ribbon.compact {
+    min-height: 48px;
+}
+
+.ribbon-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.section-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--bs-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0 0.25rem;
+}
+
+.ribbon-buttons {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.ribbon-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    min-width: 60px;
+    font-size: 0.75rem;
+}
+
+.ontology-ribbon.compact .ribbon-btn {
+    flex-direction: row;
+    min-width: 40px;
+    padding: 0.4rem 0.5rem;
+}
+
+.ribbon-btn i {
+    font-size: 1.1rem;
+}
+
+.ontology-ribbon.compact .ribbon-btn i {
+    font-size: 1rem;
+}
+
+.ribbon-btn span {
+    white-space: nowrap;
+}
+
+.ribbon-btn:hover:not(:disabled) {
+    background: var(--bs-secondary-bg);
+    border-color: var(--bs-primary);
+    transform: translateY(-1px);
+}
+
+.ribbon-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.ribbon-btn.active {
+    background: var(--bs-primary);
+    color: white;
+    border-color: var(--bs-primary);
+}
+
+.ribbon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.ribbon-divider {
+    width: 1px;
+    height: 40px;
+    background: var(--bs-border-color);
+    margin: 0 0.5rem;
+}
+
+.ribbon-spacer {
+    flex: 1;
+}
+
+.ribbon-toggle-btn {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ribbon-toggle-btn:hover {
+    background: var(--bs-secondary-bg);
+    border-color: var(--bs-primary);
+}
+
+.ribbon-toggle-btn i {
+    font-size: 1rem;
+}
+
+/* Responsive - stack sections on small screens */
+@media (max-width: 991px) {
+    .ontology-ribbon {
+        flex-wrap: wrap;
+    }
+
+    .ribbon-divider {
+        display: none;
+    }
+}
+
+/* Dark mode adjustments */
+[data-bs-theme="dark"] .ontology-ribbon {
+    background: var(--bs-dark);
+    border-bottom-color: var(--bs-gray-700);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}

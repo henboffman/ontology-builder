@@ -15,17 +15,6 @@
             </small>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-primary" @onclick="OnAddConceptClick" title="Add a new concept to your ontology"
-                    disabled="@(!CanAdd)">
-                <i class="bi bi-plus-circle"></i> Add Concept
-            </button>
-            @if ((FilteredOntology?.Concepts?.Count ?? 0) >= 2)
-            {
-                <button class="btn btn-sm btn-success" @onclick="OnAddRelationshipClick" title="Create a relationship between concepts"
-                        disabled="@(!CanAdd)">
-                    <i class="bi bi-arrow-left-right"></i> Add Relationship
-                </button>
-            }
             @if ((FilteredOntology?.Concepts?.Count ?? 0) > 0)
             {
                 <div class="btn-group" title="Color nodes by custom colors or by source ontology">
@@ -74,7 +63,7 @@
             <div class="text-center p-5">
                 <i class="bi bi-diagram-3 display-1 text-muted"></i>
                 <h4 class="mt-3">No concepts to visualize</h4>
-                <p class="text-muted">Click "Add Concept" above to create your first concept and see it appear in the graph!</p>
+                <p class="text-muted">Use the "Add Concept" button in the actions bar to create your first concept and see it appear in the graph!</p>
                 <div class="mt-3">
                     <button class="btn btn-primary" @onclick="OnAddConceptClick" disabled="@(!CanAdd)">
                         <i class="bi bi-plus-circle"></i> Add Your First Concept

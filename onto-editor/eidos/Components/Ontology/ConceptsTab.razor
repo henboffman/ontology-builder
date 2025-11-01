@@ -1,0 +1,90 @@
+@using Eidos.Models
+@* Concepts Tab - Displays all concepts in a table *@
+
+<div class="ontology-tab-pane @(IsActive ? "active" : "")">
+    <h4 class="mb-3"><i class="bi bi-lightbulb me-2"></i>Concepts</h4>
+    @if (Concepts.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;"></th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Description</th>
+                        @if (CanEdit)
+                        {
+                            <th style="width: 100px;">Actions</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var concept in Concepts.OrderBy(c => c.Name))
+                    {
+                        <tr @onclick="@(() => OnConceptSelect.InvokeAsync(concept))" style="cursor: pointer;">
+                            <td>
+                                <div style="width: 30px; height: 30px; background-color: @concept.Color; border-radius: 4px;"></div>
+                            </td>
+                            <td><strong>@concept.Name</strong></td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(concept.Category))
+                                {
+                                    <span class="badge bg-secondary">@concept.Category</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(concept.SimpleExplanation))
+                                {
+                                    <small class="text-muted">@concept.SimpleExplanation</small>
+                                }
+                            </td>
+                            @if (CanEdit)
+                            {
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="@(() => OnConceptEdit.InvokeAsync(concept))">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="@(() => OnConceptDelete.InvokeAsync(concept))">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            No concepts yet. Click "Add Concept" to get started.
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public bool IsActive { get; set; }
+
+    [Parameter]
+    public IEnumerable<Concept> Concepts { get; set; } = new List<Concept>();
+
+    [Parameter]
+    public bool CanEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<Concept> OnConceptSelect { get; set; }
+
+    [Parameter]
+    public EventCallback<Concept> OnConceptEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<Concept> OnConceptDelete { get; set; }
+}

@@ -1,0 +1,107 @@
+@using Eidos.Models
+@* Relationships Tab - Displays all relationships in a table *@
+
+<div class="ontology-tab-pane @(IsActive ? "active" : "")">
+    <h4 class="mb-3"><i class="bi bi-arrow-left-right me-2"></i>Relationships</h4>
+    @if (Relationships.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>From</th>
+                        <th>Relationship</th>
+                        <th>To</th>
+                        <th>Description</th>
+                        @if (CanEdit)
+                        {
+                            <th style="width: 100px;">Actions</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var rel in Relationships.OrderBy(r => r.RelationType))
+                    {
+                        var fromConcept = Concepts.FirstOrDefault(c => c.Id == rel.SourceConceptId);
+                        var toConcept = Concepts.FirstOrDefault(c => c.Id == rel.TargetConceptId);
+
+                        <tr @onclick="@(() => OnRelationshipSelect.InvokeAsync(rel))" style="cursor: pointer;">
+                            <td>
+                                @if (fromConcept != null)
+                                {
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div style="width: 20px; height: 20px; background-color: @fromConcept.Color; border-radius: 3px;"></div>
+                                        <span>@fromConcept.Name</span>
+                                    </div>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">@rel.RelationType</span>
+                            </td>
+                            <td>
+                                @if (toConcept != null)
+                                {
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div style="width: 20px; height: 20px; background-color: @toConcept.Color; border-radius: 3px;"></div>
+                                        <span>@toConcept.Name</span>
+                                    </div>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(rel.Description))
+                                {
+                                    <small class="text-muted">@rel.Description</small>
+                                }
+                            </td>
+                            @if (CanEdit)
+                            {
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="@(() => OnRelationshipEdit.InvokeAsync(rel))">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="@(() => OnRelationshipDelete.InvokeAsync(rel))">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            No relationships yet. Click "Add Relationship" to connect concepts.
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public bool IsActive { get; set; }
+
+    [Parameter]
+    public IEnumerable<Relationship> Relationships { get; set; } = new List<Relationship>();
+
+    [Parameter]
+    public IEnumerable<Concept> Concepts { get; set; } = new List<Concept>();
+
+    [Parameter]
+    public bool CanEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<Relationship> OnRelationshipSelect { get; set; }
+
+    [Parameter]
+    public EventCallback<Relationship> OnRelationshipEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<Relationship> OnRelationshipDelete { get; set; }
+}

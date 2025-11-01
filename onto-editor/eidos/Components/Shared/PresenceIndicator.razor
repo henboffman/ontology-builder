@@ -8,35 +8,29 @@
             <div class="presence-avatars">
                 @foreach (var user in Users.Take(5))
                 {
-                    <div class="presence-avatar-container">
-                        <div class="presence-avatar"
-                             style="background-color: @user.Color; border-color: @user.Color;"
-                             title="@GetUserTooltip(user)">
-                            @if (!string.IsNullOrEmpty(user.ProfilePhotoUrl))
-                            {
-                                <img src="@user.ProfilePhotoUrl"
-                                     alt="@user.UserName"
-                                     class="avatar-photo"
-                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-                                <span class="avatar-initials" style="display: none;">@GetInitials(user.UserName)</span>
-                            }
-                            else
-                            {
-                                <span class="avatar-initials">@GetInitials(user.UserName)</span>
-                            }
-                            @if (!string.IsNullOrEmpty(user.CurrentView))
-                            {
-                                <span class="avatar-view-indicator"
-                                      title="Click to view @user.CurrentView"
-                                      @onclick="@(() => HandleNavigateToView(user))"
-                                      @onclick:stopPropagation="true">
-                                    <i class="bi @GetViewIcon(user.CurrentView)"></i>
-                                </span>
-                            }
-                        </div>
+                    <div class="presence-avatar"
+                         style="background-color: @user.Color; border-color: @user.Color;"
+                         title="@GetUserTooltip(user)">
+                        @if (!string.IsNullOrEmpty(user.ProfilePhotoUrl))
+                        {
+                            <img src="@user.ProfilePhotoUrl"
+                                 alt="@user.UserName"
+                                 class="avatar-photo"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                            <span class="avatar-initials" style="display: none;">@GetInitials(user.UserName)</span>
+                        }
+                        else
+                        {
+                            <span class="avatar-initials">@GetInitials(user.UserName)</span>
+                        }
                         @if (!string.IsNullOrEmpty(user.CurrentView))
                         {
-                            <div class="view-label">@user.CurrentView</div>
+                            <span class="avatar-view-indicator"
+                                  title="Click to view @user.CurrentView"
+                                  @onclick="@(() => HandleNavigateToView(user))"
+                                  @onclick:stopPropagation="true">
+                                <i class="bi @GetViewIcon(user.CurrentView)"></i>
+                            </span>
                         }
                     </div>
                 }
@@ -123,29 +117,23 @@
 
 <style>
     .presence-indicator {
-        padding: 8px 12px;
+        padding: 6px 12px;
         background: var(--bs-light);
-        border-radius: 8px;
+        border-radius: 6px;
         border: 1px solid var(--bs-border-color);
     }
 
     .presence-content {
         display: flex;
-        flex-direction: column;
-        gap: 8px;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
     }
 
     .presence-avatars {
         display: flex;
         align-items: center;
         gap: 8px;
-    }
-
-    .presence-avatar-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
     }
 
     .presence-avatar {
@@ -163,14 +151,6 @@
         cursor: pointer;
         transition: transform 0.2s, z-index 0.2s;
         z-index: 1;
-    }
-
-    .view-label {
-        font-size: 0.65rem;
-        color: var(--bs-secondary);
-        text-align: center;
-        white-space: nowrap;
-        font-weight: 500;
     }
 
     .presence-avatar:hover {

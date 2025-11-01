@@ -1,0 +1,120 @@
+@using Eidos.Models
+
+<div class="ontology-ribbon @(IsCompact ? "compact" : "")">
+    <div class="ribbon-section">
+        <div class="section-label">VIEW</div>
+        <div class="ribbon-buttons">
+            <button class="ribbon-btn @(CurrentViewMode == ViewMode.Graph ? "active" : "")"
+                    @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Graph)"
+                    title="Graph View">
+                <i class="bi bi-diagram-3"></i>
+                @if (!IsCompact) { <span>Graph</span> }
+            </button>
+            <button class="ribbon-btn @(CurrentViewMode == ViewMode.List ? "active" : "")"
+                    @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.List)"
+                    title="List View">
+                <i class="bi bi-list-ul"></i>
+                @if (!IsCompact) { <span>List</span> }
+            </button>
+            <button class="ribbon-btn @(CurrentViewMode == ViewMode.Hierarchy ? "active" : "")"
+                    @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Hierarchy)"
+                    title="Hierarchy View">
+                <i class="bi bi-diagram-2"></i>
+                @if (!IsCompact) { <span>Hierarchy</span> }
+            </button>
+            <button class="ribbon-btn @(CurrentViewMode == ViewMode.Instances ? "active" : "")"
+                    @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Instances)"
+                    title="Instances View">
+                <i class="bi bi-person"></i>
+                @if (!IsCompact) { <span>Instances</span> }
+            </button>
+            <button class="ribbon-btn @(CurrentViewMode == ViewMode.Ttl ? "active" : "")"
+                    @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Ttl)"
+                    title="TTL View">
+                <i class="bi bi-file-code"></i>
+                @if (!IsCompact) { <span>TTL</span> }
+            </button>
+            <button class="ribbon-btn @(CurrentViewMode == ViewMode.Notes ? "active" : "")"
+                    @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)"
+                    title="Notes">
+                <i class="bi bi-journal-text"></i>
+                @if (!IsCompact) { <span>Notes</span> }
+            </button>
+            <button class="ribbon-btn @(CurrentViewMode == ViewMode.Templates ? "active" : "")"
+                    @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Templates)"
+                    title="Templates">
+                <i class="bi bi-journal-code"></i>
+                @if (!IsCompact) { <span>Templates</span> }
+            </button>
+            <button class="ribbon-btn @(CurrentViewMode == ViewMode.Links ? "active" : "")"
+                    @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Links)"
+                    title="Links">
+                <i class="bi bi-link-45deg"></i>
+                @if (!IsCompact) { <span>Links</span> }
+            </button>
+            <button class="ribbon-btn @(CurrentViewMode == ViewMode.Collaborators ? "active" : "")"
+                    @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Collaborators)"
+                    title="Collaborators">
+                <i class="bi bi-people-fill"></i>
+                @if (!IsCompact) { <span>Collaborators</span> }
+            </button>
+            <button class="ribbon-btn @(CurrentViewMode == ViewMode.VersionHistory ? "active" : "")"
+                    @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.VersionHistory)"
+                    title="History">
+                <i class="bi bi-clock-history"></i>
+                @if (!IsCompact) { <span>History</span> }
+            </button>
+            <button class="ribbon-btn @(CurrentViewMode == ViewMode.Help ? "active" : "")"
+                    @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Help)"
+                    title="Help">
+                <i class="bi bi-question-circle"></i>
+                @if (!IsCompact) { <span>Help</span> }
+            </button>
+        </div>
+    </div>
+
+    <div class="ribbon-divider"></div>
+
+    <div class="ribbon-section">
+        <div class="section-label">EDIT</div>
+        <div class="ribbon-buttons">
+            <button class="ribbon-btn"
+                    @onclick="OnUndoClick"
+                    disabled="@(!CanUndo)"
+                    title="Undo (Ctrl+Z)">
+                <i class="bi bi-arrow-counterclockwise"></i>
+                @if (!IsCompact) { <span>Undo</span> }
+            </button>
+            <button class="ribbon-btn"
+                    @onclick="OnRedoClick"
+                    disabled="@(!CanRedo)"
+                    title="Redo (Ctrl+Y)">
+                <i class="bi bi-arrow-clockwise"></i>
+                @if (!IsCompact) { <span>Redo</span> }
+            </button>
+        </div>
+    </div>
+
+    <div class="ribbon-spacer"></div>
+
+    <button class="ribbon-toggle-btn" @onclick="ToggleCompact" title="Toggle Compact Mode">
+        <i class="bi @(IsCompact ? "bi-chevron-bar-down" : "bi-chevron-bar-up")"></i>
+    </button>
+</div>
+
+@code {
+    [Parameter] public ViewMode CurrentViewMode { get; set; }
+    [Parameter] public EventCallback<ViewMode> OnViewModeChanged { get; set; }
+    [Parameter] public bool CanUndo { get; set; }
+    [Parameter] public bool CanRedo { get; set; }
+    [Parameter] public EventCallback OnUndoClick { get; set; }
+    [Parameter] public EventCallback OnRedoClick { get; set; }
+    [Parameter] public bool IsCompact { get; set; } = false;
+    [Parameter] public EventCallback<bool> IsCompactChanged { get; set; }
+
+    private async Task ToggleCompact()
+    {
+        IsCompact = !IsCompact;
+        await IsCompactChanged.InvokeAsync(IsCompact);
+    }
+}

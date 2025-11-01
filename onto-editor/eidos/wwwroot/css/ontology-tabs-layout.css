@@ -1,0 +1,234 @@
+/* Ontology View Tabbed Layout
+ * ============================================================================
+ * Creates a tabbed interface with:
+ * - Horizontal tabs for Concepts and Relationships
+ * - Main content area (70% height)
+ * - Bottom validation panel (30% height)
+ * - Right sidebar for view navigation
+ */
+
+.ontology-tabs-container {
+    display: grid;
+    grid-template-columns: 1fr 250px;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+        "tabs view-nav"
+        "tab-content view-nav"
+        "validation validation";
+    gap: 0;
+    height: calc(100vh - 220px);
+    max-height: calc(100vh - 220px);
+    overflow: hidden;
+}
+
+/* Tab Navigation */
+.ontology-tabs-nav {
+    grid-area: tabs;
+    display: flex;
+    background: var(--bs-secondary-bg);
+    border-bottom: 2px solid var(--bs-border-color);
+    border-right: 1px solid var(--bs-border-color);
+}
+
+.ontology-tab {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--bs-secondary-color);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.ontology-tab:hover {
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+.ontology-tab.active {
+    background: var(--bs-body-bg);
+    color: var(--bs-primary);
+    border-bottom-color: var(--bs-primary);
+}
+
+.ontology-tab i {
+    font-size: 1.1rem;
+}
+
+/* Tab Content */
+.ontology-tab-content {
+    grid-area: tab-content;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+    padding-bottom: 0;
+    background: var(--bs-body-bg);
+    border-right: 1px solid var(--bs-border-color);
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.ontology-tab-content > .card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-bottom: 0;
+}
+
+.ontology-tab-content > .card > .card-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.ontology-tab-pane {
+    display: none;
+}
+
+.ontology-tab-pane.active {
+    display: block;
+}
+
+/* View Navigation Sidebar */
+.ontology-view-nav {
+    grid-area: view-nav;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+    background: var(--bs-secondary-bg);
+}
+
+/* Validation Panel */
+.ontology-validation-section {
+    grid-area: validation;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-top: 2px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    padding: 0;
+    margin: 0;
+    max-height: fit-content;
+}
+
+/* Scrollbar styling */
+.ontology-tab-content::-webkit-scrollbar,
+.ontology-view-nav::-webkit-scrollbar,
+.ontology-validation-section::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.ontology-tab-content::-webkit-scrollbar-track,
+.ontology-view-nav::-webkit-scrollbar-track,
+.ontology-validation-section::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ontology-tab-content::-webkit-scrollbar-thumb,
+.ontology-view-nav::-webkit-scrollbar-thumb,
+.ontology-validation-section::-webkit-scrollbar-thumb {
+    background: var(--bs-border-color);
+    border-radius: 4px;
+}
+
+.ontology-tab-content::-webkit-scrollbar-thumb:hover,
+.ontology-view-nav::-webkit-scrollbar-thumb:hover,
+.ontology-validation-section::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-secondary);
+}
+
+/* Responsive behavior for tablets */
+@media (max-width: 991px) {
+    .ontology-tabs-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto auto;
+        grid-template-areas:
+            "tabs"
+            "tab-content"
+            "view-nav"
+            "validation";
+        height: auto;
+    }
+
+    .ontology-tabs-nav {
+        border-right: none;
+    }
+
+    .ontology-tab-content {
+        border-right: none;
+    }
+
+    .ontology-view-nav {
+        border-top: 1px solid var(--bs-border-color);
+    }
+}
+
+/* Mobile optimization */
+@media (max-width: 767px) {
+    .ontology-tabs-container {
+        gap: 0;
+        min-height: auto;
+    }
+
+    .ontology-tab {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .ontology-tab-content,
+    .ontology-view-nav,
+    .ontology-validation-section {
+        padding: 0.75rem;
+    }
+}
+
+/* Dark mode adjustments */
+[data-bs-theme="dark"] .ontology-tabs-nav {
+    background: var(--bs-dark);
+}
+
+[data-bs-theme="dark"] .ontology-view-nav {
+    background: var(--bs-dark);
+}
+
+[data-bs-theme="dark"] .ontology-validation-section {
+    border-top-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .ontology-tab:hover {
+    background: var(--bs-gray-800);
+}
+
+[data-bs-theme="dark"] .ontology-tab.active {
+    background: var(--bs-gray-900);
+}
+
+/* Validation Issue Items */
+.validation-issue-item:hover {
+    background-color: var(--bs-secondary-bg);
+}
+
+/* Validation Highlight Animation */
+.validation-highlight {
+    animation: highlight-pulse 2s ease-in-out;
+    border: 2px solid var(--bs-primary) !important;
+    background-color: var(--bs-primary-bg-subtle) !important;
+}
+
+@keyframes highlight-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}

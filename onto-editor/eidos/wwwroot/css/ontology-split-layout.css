@@ -1,0 +1,240 @@
+/* Ontology View Split Layout with Resizable Panels
+ * ============================================================================
+ * Layout structure:
+ * - Top: Ribbon toolbar (fixed height)
+ * - Middle: Horizontal split (main content + details panel)
+ * - Bottom: Resizable validation panel
+ */
+
+.ontology-split-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 200px);
+    min-height: 600px;
+    gap: 0;
+}
+
+/* Horizontal split for main content and details */
+.ontology-horizontal-split {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.ontology-main-content {
+    flex: 1;
+    min-width: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+    background: var(--bs-body-bg);
+}
+
+.ontology-details-panel {
+    width: 350px;
+    min-width: 250px;
+    max-width: 600px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+    background: var(--bs-secondary-bg);
+    border-left: 1px solid var(--bs-border-color);
+    position: relative;
+}
+
+.ontology-details-panel.collapsed {
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    border-left: none;
+    overflow: hidden;
+}
+
+/* Vertical resizer for horizontal split */
+.vertical-resizer {
+    width: 6px;
+    background: var(--bs-border-color);
+    cursor: col-resize;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+}
+
+.vertical-resizer:hover,
+.vertical-resizer.resizing {
+    background: var(--bs-primary);
+}
+
+.vertical-resizer::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px;
+    height: 40px;
+    background: var(--bs-body-bg);
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.vertical-resizer:hover::after,
+.vertical-resizer.resizing::after {
+    opacity: 1;
+}
+
+/* Validation panel at bottom */
+.ontology-validation-panel {
+    height: 250px;
+    min-height: 100px;
+    max-height: 600px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-top: 2px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    position: relative;
+}
+
+.ontology-validation-panel.collapsed {
+    height: 40px;
+    min-height: 40px;
+    overflow: hidden;
+}
+
+/* Horizontal resizer for validation panel */
+.horizontal-resizer {
+    height: 6px;
+    background: var(--bs-border-color);
+    cursor: row-resize;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+}
+
+.horizontal-resizer:hover,
+.horizontal-resizer.resizing {
+    background: var(--bs-primary);
+}
+
+.horizontal-resizer::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 3px;
+    background: var(--bs-body-bg);
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.horizontal-resizer:hover::after,
+.horizontal-resizer.resizing::after {
+    opacity: 1;
+}
+
+/* Panel collapse buttons */
+.panel-collapse-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 10;
+    padding: 0.25rem 0.5rem;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.panel-collapse-btn:hover {
+    background: var(--bs-secondary-bg);
+    border-color: var(--bs-primary);
+}
+
+.panel-collapse-btn i {
+    font-size: 0.875rem;
+}
+
+/* Scrollbar styling */
+.ontology-main-content::-webkit-scrollbar,
+.ontology-details-panel::-webkit-scrollbar,
+.ontology-validation-panel::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.ontology-main-content::-webkit-scrollbar-track,
+.ontology-details-panel::-webkit-scrollbar-track,
+.ontology-validation-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ontology-main-content::-webkit-scrollbar-thumb,
+.ontology-details-panel::-webkit-scrollbar-thumb,
+.ontology-validation-panel::-webkit-scrollbar-thumb {
+    background: var(--bs-border-color);
+    border-radius: 4px;
+}
+
+.ontology-main-content::-webkit-scrollbar-thumb:hover,
+.ontology-details-panel::-webkit-scrollbar-thumb:hover,
+.ontology-validation-panel::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-secondary);
+}
+
+/* Responsive behavior */
+@media (max-width: 991px) {
+    .ontology-horizontal-split {
+        flex-direction: column;
+    }
+
+    .ontology-details-panel {
+        width: 100%;
+        max-width: none;
+        border-left: none;
+        border-top: 1px solid var(--bs-border-color);
+        height: 300px;
+    }
+
+    .vertical-resizer {
+        display: none;
+    }
+}
+
+@media (max-width: 767px) {
+    .ontology-split-container {
+        gap: 0;
+        min-height: auto;
+    }
+
+    .ontology-main-content,
+    .ontology-details-panel,
+    .ontology-validation-panel {
+        padding: 0.75rem;
+    }
+}
+
+/* Dark mode adjustments */
+[data-bs-theme="dark"] .ontology-details-panel {
+    background: var(--bs-dark);
+}
+
+[data-bs-theme="dark"] .ontology-validation-panel {
+    border-top-color: var(--bs-gray-700);
+}
+
+/* User select prevention during resize */
+.resizing-in-progress * {
+    user-select: none;
+    cursor: col-resize;
+}
+
+.resizing-in-progress.horizontal * {
+    cursor: row-resize;
+}
