@@ -482,6 +482,7 @@ builder.Services.AddScoped<IOntologyActivityService, OntologyActivityService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<IIndividualService, IndividualService>();
 builder.Services.AddScoped<ICollaborationBoardService, CollaborationBoardService>();
+builder.Services.AddScoped<IOntologyValidationService, OntologyValidationService>();
 builder.Services.AddScoped<IRestrictionService, RestrictionService>();
 builder.Services.AddScoped<IRelationshipSuggestionService, RelationshipSuggestionService>();
 

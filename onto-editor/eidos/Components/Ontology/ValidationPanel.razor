@@ -1,0 +1,183 @@
+@using Eidos.Models
+@using Eidos.Models.Enums
+@using Eidos.Services.Interfaces
+@inject IOntologyValidationService ValidationService
+@inject IJSRuntime JSRuntime
+
+@if (ValidationResult != null)
+{
+    <div class="validation-panel @(isCollapsed ? "collapsed" : "expanded") mb-3">
+        <div class="validation-header" @onclick="TogglePanel">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-chevron-@(isCollapsed ? "down" : "up") text-muted"></i>
+                <i class="bi bi-exclamation-triangle-fill text-@GetHeaderColor()"></i>
+                <strong>Problems</strong>
+
+                @if (ValidationResult.ErrorCount > 0)
+                {
+                    <span class="badge bg-danger">@ValidationResult.ErrorCount @Pluralize("error", ValidationResult.ErrorCount)</span>
+                }
+                @if (ValidationResult.WarningCount > 0)
+                {
+                    <span class="badge bg-warning text-dark">@ValidationResult.WarningCount @Pluralize("warning", ValidationResult.WarningCount)</span>
+                }
+                @if (ValidationResult.InfoCount > 0)
+                {
+                    <span class="badge bg-info text-dark">@ValidationResult.InfoCount @Pluralize("info", ValidationResult.InfoCount)</span>
+                }
+                @if (ValidationResult.TotalIssues == 0)
+                {
+                    <span class="badge bg-success">
+                        <i class="bi bi-check-circle"></i> No issues
+                    </span>
+                }
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-primary"
+                        @onclick="RefreshValidation"
+                        @onclick:stopPropagation="true"
+                        title="Refresh validation">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <small class="text-muted">@GetTimeSinceValidation()</small>
+            </div>
+        </div>
+
+        @if (!isCollapsed && ValidationResult.TotalIssues > 0)
+        {
+            <div class="validation-body">
+                @foreach (var issue in GetGroupedIssues())
+                {
+                    <div class="validation-issue severity-@issue.Severity.ToString().ToLower()"
+                         @onclick="() => OnIssueClick.InvokeAsync(issue)"
+                         role="button"
+                         tabindex="0">
+                        <div class="issue-icon">
+                            <i class="bi bi-@GetIconForSeverity(issue.Severity) text-@GetColorForSeverity(issue.Severity)"></i>
+                        </div>
+                        <div class="issue-content flex-grow-1">
+                            <div class="issue-message">@issue.Message</div>
+                            <div class="issue-details text-muted small">
+                                @issue.EntityType · @issue.Details
+                            </div>
+                        </div>
+                        <div class="issue-action">
+                            <i class="bi bi-arrow-right text-muted"></i>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int OntologyId { get; set; }
+    [Parameter] public EventCallback<ValidationIssue> OnIssueClick { get; set; }
+    [Parameter] public ValidationResult? ValidationResult { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+
+    private bool isCollapsed = false;
+    private bool isLoading = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Auto-expand if there are errors
+        if (ValidationResult != null && ValidationResult.ErrorCount > 0)
+        {
+            isCollapsed = false;
+        }
+        else if (ValidationResult != null && ValidationResult.TotalIssues == 0)
+        {
+            isCollapsed = true;
+        }
+    }
+
+    private void TogglePanel()
+    {
+        isCollapsed = !isCollapsed;
+    }
+
+    private async Task RefreshValidation()
+    {
+        if (isLoading) return;
+
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            ValidationService.InvalidateCache(OntologyId);
+            await OnRefresh.InvokeAsync();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private List<ValidationIssue> GetGroupedIssues()
+    {
+        if (ValidationResult == null) return new List<ValidationIssue>();
+
+        // Group by severity: Errors first, then Warnings, then Info
+        return ValidationResult.Issues
+            .OrderBy(i => i.Severity)
+            .ThenBy(i => i.EntityType)
+            .ThenBy(i => i.EntityName)
+            .ToList();
+    }
+
+    private string GetHeaderColor()
+    {
+        if (ValidationResult == null) return "secondary";
+        if (ValidationResult.ErrorCount > 0) return "danger";
+        if (ValidationResult.WarningCount > 0) return "warning";
+        if (ValidationResult.InfoCount > 0) return "info";
+        return "success";
+    }
+
+    private string GetIconForSeverity(ValidationSeverity severity)
+    {
+        return severity switch
+        {
+            ValidationSeverity.Error => "x-circle-fill",
+            ValidationSeverity.Warning => "exclamation-triangle-fill",
+            ValidationSeverity.Info => "info-circle-fill",
+            _ => "circle-fill"
+        };
+    }
+
+    private string GetColorForSeverity(ValidationSeverity severity)
+    {
+        return severity switch
+        {
+            ValidationSeverity.Error => "danger",
+            ValidationSeverity.Warning => "warning",
+            ValidationSeverity.Info => "info",
+            _ => "secondary"
+        };
+    }
+
+    private string Pluralize(string word, int count)
+    {
+        return count == 1 ? word : word + "s";
+    }
+
+    private string GetTimeSinceValidation()
+    {
+        if (ValidationResult == null) return "";
+
+        var timeSpan = DateTime.UtcNow - ValidationResult.ValidatedAt;
+
+        if (timeSpan.TotalMinutes < 1)
+            return "just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+
+        return ValidationResult.ValidatedAt.ToLocalTime().ToString("MMM d, h:mm tt");
+    }
+}

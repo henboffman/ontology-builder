@@ -1,4 +1,5 @@
 @using Eidos.Models
+@using Eidos.Models.Enums
 
 <!-- Concepts Card -->
 <div class="card mb-3">
@@ -59,12 +60,20 @@
             <div class="list-group" style="max-height: 600px; overflow-y: auto;">
                 @foreach (var concept in SortedConcepts)
                 {
-                    <div class="list-group-item list-group-item-action concept-list-item"
+                    var conceptIssue = GetConceptIssue(concept.Id);
+                    var borderClass = conceptIssue != null ? GetValidationBorderClass(conceptIssue.Severity) : "";
+                    <div class="list-group-item list-group-item-action concept-list-item @borderClass"
+                         id="concept-@concept.Id"
                          @onclick="() => OnConceptSelect.InvokeAsync(concept)"
                          style="cursor: pointer; border-left: 4px solid @(concept.Color ?? "var(--concept-secondary)")">
                         <div class="concept-item-layout">
                             <div class="concept-content">
                                 <div class="concept-header">
+                                    @if (conceptIssue != null)
+                                    {
+                                        <i class="@GetValidationIconClass(conceptIssue.Severity) me-1"
+                                           title="@conceptIssue.Message"></i>
+                                    }
                                     <h6 class="concept-name">@concept.Name</h6>
                                     @if (!string.IsNullOrWhiteSpace(concept.Category))
                                     {
@@ -192,10 +201,17 @@
             <div class="list-group">
                 @foreach (var rel in Relationships.OrderBy(r => r.SourceConcept.Name))
                 {
-                    <div class="list-group-item">
+                    var relIssue = GetRelationshipIssue(rel.Id);
+                    var relBorderClass = relIssue != null ? GetValidationBorderClass(relIssue.Severity) : "";
+                    <div class="list-group-item @relBorderClass" id="relationship-@rel.Id">
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="flex-grow-1">
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    @if (relIssue != null)
+                                    {
+                                        <i class="@GetValidationIconClass(relIssue.Severity)"
+                                           title="@relIssue.Message"></i>
+                                    }
                                     <span class="badge" style="background-color: @rel.SourceConcept.Color">
                                         @rel.SourceConcept.Name
                                     </span>
@@ -315,6 +331,9 @@
     [Parameter]
     public EventCallback<int> OnRelationshipDelete { get; set; }
 
+    [Parameter]
+    public ValidationResult? ValidationResult { get; set; }
+
     // Caching for relationship lookups
     private Dictionary<int, List<Relationship>>? _outgoingRelationshipsCache;
     private Dictionary<int, List<Relationship>>? _incomingRelationshipsCache;
@@ -432,5 +451,48 @@
                 _ => FilteredConcepts.OrderBy(c => c.Name)
             };
         }
+    }
+
+    // Validation helpers
+    private ValidationIssue? GetConceptIssue(int conceptId)
+    {
+        if (ValidationResult == null) return null;
+
+        return ValidationResult.Issues
+            .Where(i => i.EntityType == "Concept" && i.EntityId == conceptId)
+            .OrderBy(i => i.Severity) // Errors first
+            .FirstOrDefault();
+    }
+
+    private ValidationIssue? GetRelationshipIssue(int relationshipId)
+    {
+        if (ValidationResult == null) return null;
+
+        return ValidationResult.Issues
+            .Where(i => i.EntityType == "Relationship" && i.EntityId == relationshipId)
+            .OrderBy(i => i.Severity) // Errors first
+            .FirstOrDefault();
+    }
+
+    private string GetValidationIconClass(ValidationSeverity severity)
+    {
+        return severity switch
+        {
+            ValidationSeverity.Error => "bi-exclamation-circle-fill text-danger",
+            ValidationSeverity.Warning => "bi-exclamation-triangle-fill text-warning",
+            ValidationSeverity.Info => "bi-info-circle-fill text-info",
+            _ => ""
+        };
+    }
+
+    private string GetValidationBorderClass(ValidationSeverity severity)
+    {
+        return severity switch
+        {
+            ValidationSeverity.Error => "validation-error-border",
+            ValidationSeverity.Warning => "validation-warning-border",
+            ValidationSeverity.Info => "validation-info-border",
+            _ => ""
+        };
     }
 }

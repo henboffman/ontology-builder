@@ -28,6 +28,7 @@
 @inject ConfirmService ConfirmService
 @inject ToastService ToastService
 @inject ILogger<OntologyView> Logger
+@inject IOntologyValidationService ValidationService
 @rendermode InteractiveServer
 
 <PageTitle>@(ontology?.Name ?? "Ontology")</PageTitle>
@@ -184,9 +185,28 @@ else
         <!-- Export Dialog -->
         <ExportDialog @ref="exportDialog" Ontology="@ontology" />
 
+        <!-- Bulk Create Dialog -->
+        @if (showBulkCreate)
+        {
+            <BulkCreateDialog OntologyId="@Id"
+                             ExistingConcepts="@ontology.Concepts.ToList()"
+                             ExistingRelationships="@ontology.Relationships.ToList()"
+                             OnClose="@(() => showBulkCreate = false)"
+                             OnItemsCreated="@OnBulkCreateComplete" />
+        }
+
         <div class="row ontology-layout">
             <!-- Main Content Area -->
             <div class="col-12 col-md-9 ontology-main-content">
+                <!-- Validation Panel -->
+                @if (validationResult != null)
+                {
+                    <ValidationPanel OntologyId="@Id"
+                                   ValidationResult="@validationResult"
+                                   OnIssueClick="@HandleIssueClick"
+                                   OnRefresh="@RefreshValidation" />
+                }
+
                 @if (viewMode == ViewMode.Ttl)
                 {
                     <TtlView TtlContent="@ttlContent"
@@ -236,6 +256,7 @@ else
                     <ListView @key="@($"listview-{ontology.Id}-{ontology.UpdatedAt.Ticks}")"
                              Concepts="@ontology.Concepts"
                              Relationships="@ontology.Relationships"
+                             ValidationResult="@validationResult"
                              SortOption="@sortOption"
                              SortOptionChanged="@((value) => sortOption = value)"
                              OnAddConceptClick="@GetConditionalCallback(CanAdd(), ShowAddConceptDialog)"
@@ -609,6 +630,12 @@ else
                                         @onclick="ShowAddRelationshipDialog"
                                         disabled="@(!CanAdd())">
                                     <i class="bi bi-arrow-left-right"></i> Add Relationship
+                                </button>
+                                <button class="btn btn-warning btn-sm text-dark"
+                                        @onclick="ShowBulkCreateDialog"
+                                        disabled="@(!CanAdd())"
+                                        title="Create multiple concepts or relationships at once">
+                                    <i class="bi bi-table"></i> Bulk Create
                                 </button>
                             </div>
                         </div>
@@ -994,6 +1021,7 @@ else
     private bool showAddConcept = false;
     private bool showAddRelationship = false;
     private bool showAddIndividual = false;
+    private bool showBulkCreate = false;
     private Concept? selectedConcept = null;
     private Relationship? selectedRelationship = null;
     private Concept? editingConcept = null;
@@ -1022,6 +1050,9 @@ else
     private string sortOption = "category";
     private bool shouldPulseSidebar = false;
     private int? firstSelectedConceptId = null;
+
+    // Validation
+    private ValidationResult? validationResult = null;
 
     // Hierarchy view state
     private IEnumerable<ConceptHierarchyNode>? hierarchyNodes;
@@ -1134,6 +1165,9 @@ else
                     return;
                 }
             }
+
+            // Load validation results
+            await LoadValidation();
         }
         catch (Exception ex)
         {
@@ -1275,6 +1309,21 @@ else
         showAddConcept = true;
         showAddRelationship = false;
         selectedConcept = null;
+    }
+
+    private void ShowBulkCreateDialog()
+    {
+        showBulkCreate = true;
+        showAddConcept = false;
+        showAddRelationship = false;
+        showAddIndividual = false;
+    }
+
+    private async Task OnBulkCreateComplete()
+    {
+        showBulkCreate = false;
+        await LoadOntology();
+        ToastService.ShowSuccess("Bulk creation completed successfully!");
     }
 
     private async Task OnConceptCategoryChanged(string? category)
@@ -2839,6 +2888,76 @@ else
             }
         }
     }
+
+    #region Validation
+
+    private async Task LoadValidation()
+    {
+        try
+        {
+            validationResult = await ValidationService.ValidateOntologyAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load validation for ontology {OntologyId}", Id);
+        }
+    }
+
+    private async Task RefreshValidation()
+    {
+        await LoadValidation();
+        StateHasChanged();
+    }
+
+    private async Task HandleIssueClick(ValidationIssue issue)
+    {
+        try
+        {
+            if (issue.EntityType == "Concept")
+            {
+                // Switch to list view
+                viewMode = ViewMode.List;
+                StateHasChanged();
+
+                // Find and select the concept
+                var concept = ontology?.Concepts.FirstOrDefault(c => c.Id == issue.EntityId);
+                if (concept != null)
+                {
+                    selectedConcept = concept;
+
+                    // Scroll to the concept
+                    await Task.Delay(100); // Let UI update
+                    await JS.InvokeVoidAsync("scrollToElement", $"concept-{issue.EntityId}");
+                }
+            }
+            else if (issue.EntityType == "Relationship")
+            {
+                // Switch to list view
+                viewMode = ViewMode.List;
+                StateHasChanged();
+
+                // Find and select the relationship
+                var relationship = ontology?.Relationships.FirstOrDefault(r => r.Id == issue.EntityId);
+                if (relationship != null)
+                {
+                    selectedRelationship = relationship;
+
+                    // Scroll to the relationship
+                    await Task.Delay(100); // Let UI update
+                    await JS.InvokeVoidAsync("scrollToElement", $"relationship-{issue.EntityId}");
+                }
+            }
+
+            ToastService.ShowInfo($"Navigated to: {issue.EntityName}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to navigate to issue {IssueId}", issue.Id);
+            ToastService.ShowError("Failed to navigate to issue");
+        }
+    }
+
+    #endregion
 
 }
 

@@ -98,3 +98,19 @@
         font-size: 0.85rem;
     }
 }
+
+/* Validation Border Classes */
+.validation-error-border {
+    border-right: 4px solid var(--bs-danger) !important;
+    background-color: rgba(var(--bs-danger-rgb), 0.03);
+}
+
+.validation-warning-border {
+    border-right: 4px solid var(--bs-warning) !important;
+    background-color: rgba(var(--bs-warning-rgb), 0.03);
+}
+
+.validation-info-border {
+    border-right: 4px solid var(--bs-info) !important;
+    background-color: rgba(var(--bs-info-rgb), 0.03);
+}

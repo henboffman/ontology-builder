@@ -1,0 +1,974 @@
+@using Eidos.Models
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@inject IConceptService ConceptService
+@inject IRelationshipService RelationshipService
+@inject ToastService ToastService
+@inject IJSRuntime JSRuntime
+
+<div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-table"></i> Bulk Create
+                </h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="OnClose"></button>
+            </div>
+            <div class="modal-body">
+                @if (currentStep == BulkCreateStep.SelectMode)
+                {
+                    <div class="text-center py-4">
+                        <h4 class="mb-4">What would you like to bulk create?</h4>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="card h-100 hover-shadow cursor-pointer" @onclick="() => SelectMode(BulkMode.Concepts)">
+                                    <div class="card-body text-center p-4">
+                                        <i class="bi bi-circle-fill text-primary" style="font-size: 3rem;"></i>
+                                        <h5 class="mt-3">Concepts Only</h5>
+                                        <p class="text-muted">
+                                            Enter a list of concept names (one per line).
+                                            Perfect for quickly adding multiple concepts.
+                                        </p>
+                                        <div class="alert alert-light small text-start">
+                                            <strong>Example:</strong><br/>
+                                            Person<br/>
+                                            Organization<br/>
+                                            Product
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100 hover-shadow cursor-pointer" @onclick="() => SelectMode(BulkMode.Relationships)">
+                                    <div class="card-body text-center p-4">
+                                        <i class="bi bi-arrow-left-right text-success" style="font-size: 3rem;"></i>
+                                        <h5 class="mt-3">Relationships</h5>
+                                        <p class="text-muted">
+                                            Create relationships using simple format or full triples.
+                                            Concepts will be auto-created if they don't exist.
+                                        </p>
+                                        <div class="alert alert-light small text-start">
+                                            <strong>Simple (1 column):</strong> is-a, part-of<br/>
+                                            <strong>Full (3 columns):</strong> Dog | is-a | Mammal
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (currentStep == BulkCreateStep.EnterData)
+                {
+                    <div class="alert alert-info mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <i class="bi bi-lightbulb"></i> <strong>Pro Tips:</strong>
+                                <ul class="mb-0 mt-2">
+                                    <li>Paste from Excel/Google Sheets using Ctrl+V</li>
+                                    <li>Use Tab to move between cells, Enter for new row</li>
+                                    @if (selectedMode == BulkMode.Relationships)
+                                    {
+                                        <li>Use <code>|</code> or <code>tab</code> to separate Subject | Relationship | Object</li>
+                                        <li>Missing concepts will be created automatically</li>
+                                    }
+                                </ul>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="BackToModeSelect">
+                                <i class="bi bi-arrow-left"></i> Change Mode
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (selectedMode == BulkMode.Concepts)
+                    {
+                        <h6>Enter Concept Names (one per line)</h6>
+                        <textarea class="form-control font-monospace"
+                                  rows="15"
+                                  @bind="conceptsText"
+                                  @ref="conceptsTextAreaRef"
+                                  placeholder="Person&#10;Organization&#10;Product&#10;Event&#10;Location"
+                                  style="resize: vertical;"></textarea>
+                        <small class="text-muted">@GetLineCount(conceptsText) concepts to create</small>
+                    }
+                    else if (selectedMode == BulkMode.Relationships)
+                    {
+                        <div class="mb-3">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <input type="radio" class="btn-check" id="relSimple" checked="@(relationshipFormat == RelationshipFormat.Simple)" @onchange="() => relationshipFormat = RelationshipFormat.Simple">
+                                <label class="btn btn-outline-primary" for="relSimple">
+                                    Simple (Relationship types only)
+                                </label>
+                                <input type="radio" class="btn-check" id="relFull" checked="@(relationshipFormat == RelationshipFormat.Full)" @onchange="() => relationshipFormat = RelationshipFormat.Full">
+                                <label class="btn btn-outline-primary" for="relFull">
+                                    Full Triples (Subject | Relationship | Object)
+                                </label>
+                            </div>
+                        </div>
+
+                        @if (relationshipFormat == RelationshipFormat.Simple)
+                        {
+                            <h6>Enter Relationship Types (one per line)</h6>
+                            <p class="small text-muted">These will be available for use in the relationship editor</p>
+                            <textarea class="form-control font-monospace"
+                                      rows="15"
+                                      @bind="relationshipsText"
+                                      @ref="relationshipsTextAreaRef"
+                                      placeholder="manages&#10;employs&#10;owns&#10;creates&#10;influences"
+                                      style="resize: vertical;"></textarea>
+                            <small class="text-muted">@GetLineCount(relationshipsText) relationship types to add</small>
+                        }
+                        else
+                        {
+                            <h6>Enter Relationship Triples</h6>
+                            <div class="alert alert-info py-2 small mb-3">
+                                <strong><i class="bi bi-lightbulb"></i> Excel Paste Support:</strong>
+                                <ol class="mb-0 mt-1">
+                                    <li>Copy 3 columns from Excel/Sheets (Subject, Relationship, Object)</li>
+                                    <li><strong>Click anywhere in the grid below</strong></li>
+                                    <li>Press <kbd>Ctrl+V</kbd> (or <kbd>Cmd+V</kbd> on Mac)</li>
+                                    <li>All rows will auto-populate - no need to paste into each cell!</li>
+                                </ol>
+                            </div>
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; cursor: pointer;"
+                                 @onpaste="HandleGridPaste"
+                                 @onpaste:preventDefault="true"
+                                 tabindex="0"
+                                 title="Click here and paste Excel data (Ctrl+V)">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead class="sticky-top bg-light">
+                                        <tr>
+                                            <th style="width: 5%;">#</th>
+                                            <th style="width: 30%;">Subject (From)</th>
+                                            <th style="width: 30%;">Relationship</th>
+                                            <th style="width: 30%;">Object (To)</th>
+                                            <th style="width: 5%;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (int i = 0; i < relationshipTriples.Count; i++)
+                                        {
+                                            var index = i;
+                                            var triple = relationshipTriples[i];
+                                            <tr class="@(triple.HasError ? "table-danger" : "")">
+                                                <td class="text-muted small">@(i + 1)</td>
+                                                <td>
+                                                    <input type="text" class="form-control form-control-sm"
+                                                           @bind="triple.Subject"
+                                                           @onkeydown="@((e) => HandleGridKeyDown(e, index, 0))"
+                                                           placeholder="e.g., Dog" />
+                                                </td>
+                                                <td>
+                                                    <input type="text" class="form-control form-control-sm"
+                                                           @bind="triple.Relationship"
+                                                           @onkeydown="@((e) => HandleGridKeyDown(e, index, 1))"
+                                                           placeholder="e.g., is-a" />
+                                                </td>
+                                                <td>
+                                                    <input type="text" class="form-control form-control-sm"
+                                                           @bind="triple.Object"
+                                                           @onkeydown="@((e) => HandleGridKeyDown(e, index, 2))"
+                                                           placeholder="e.g., Mammal" />
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveTriple(index)" title="Remove row">
+                                                        <i class="bi bi-x"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            @if (triple.HasError)
+                                            {
+                                                <tr class="table-danger">
+                                                    <td colspan="5" class="small">
+                                                        <i class="bi bi-exclamation-triangle"></i> @triple.ErrorMessage
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="AddTripleRow">
+                                    <i class="bi bi-plus"></i> Add Row
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="ParsePastedTriples">
+                                    <i class="bi bi-clipboard"></i> Parse from Text
+                                </button>
+                                <small class="text-muted ms-3">@GetValidTripleCount() valid triples ready</small>
+                            </div>
+
+                            @if (showPasteDialog)
+                            {
+                                <div class="mt-3">
+                                    <label class="form-label">Paste triples here (Subject | Relationship | Object or tab-separated)</label>
+                                    <textarea class="form-control font-monospace"
+                                              rows="8"
+                                              @bind="pastedTriplesText"
+                                              placeholder="Dog | is-a | Mammal&#10;Cat | is-a | Mammal&#10;Mammal | is-a | Animal"></textarea>
+                                    <div class="mt-2">
+                                        <button class="btn btn-sm btn-primary" @onclick="ImportPastedTriples">
+                                            <i class="bi bi-download"></i> Import
+                                        </button>
+                                        <button class="btn btn-sm btn-secondary" @onclick="() => showPasteDialog = false">Cancel</button>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    }
+                }
+                else if (currentStep == BulkCreateStep.Preview)
+                {
+                    <h5 class="mb-3">Preview & Confirm</h5>
+
+                    @if (duplicateWarnings.Any())
+                    {
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> <strong>Duplicate Detection</strong>
+                            <p class="mb-2 mt-2">The following duplicates were found and will be skipped (ontologies don't allow duplicate concepts or relationships):</p>
+                            <ul class="mb-0 small">
+                                @foreach (var warning in duplicateWarnings.Take(10))
+                                {
+                                    <li>@warning</li>
+                                }
+                                @if (duplicateWarnings.Count > 10)
+                                {
+                                    <li class="text-muted">... and @(duplicateWarnings.Count - 10) more</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    @if (previewItems.Any())
+                    {
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i> Ready to create <strong>@previewItems.Count</strong> unique @(selectedMode == BulkMode.Concepts ? "concepts" : "relationships")
+                            @if (selectedMode == BulkMode.Relationships && relationshipFormat == RelationshipFormat.Full && newConceptsToCreate.Any())
+                            {
+                                <span> and <strong>@newConceptsToCreate.Count</strong> new concepts</span>
+                            }
+                        </div>
+
+                        @if (selectedMode == BulkMode.Relationships && relationshipFormat == RelationshipFormat.Full && newConceptsToCreate.Any())
+                        {
+                            <div class="mb-3">
+                                <h6>New Concepts to Create</h6>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var concept in newConceptsToCreate.OrderBy(c => c))
+                                    {
+                                        <span class="badge bg-info">@concept</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <div class="table-responsive" style="max-height: 400px;">
+                            <table class="table table-sm table-striped">
+                                <thead class="sticky-top bg-light">
+                                    <tr>
+                                        <th>#</th>
+                                        @if (selectedMode == BulkMode.Concepts)
+                                        {
+                                            <th>Concept Name</th>
+                                        }
+                                        else if (relationshipFormat == RelationshipFormat.Simple)
+                                        {
+                                            <th>Relationship Type</th>
+                                        }
+                                        else
+                                        {
+                                            <th>Subject</th>
+                                            <th>Relationship</th>
+                                            <th>Object</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (int i = 0; i < previewItems.Count; i++)
+                                    {
+                                        <tr>
+                                            <td class="text-muted">@(i + 1)</td>
+                                            @if (selectedMode == BulkMode.Concepts)
+                                            {
+                                                <td>@previewItems[i]</td>
+                                            }
+                                            else if (relationshipFormat == RelationshipFormat.Simple)
+                                            {
+                                                <td>@previewItems[i]</td>
+                                            }
+                                            else
+                                            {
+                                                var parts = previewItems[i].Split('|');
+                                                <td>@parts[0]</td>
+                                                <td><span class="badge bg-secondary">@parts[1]</span></td>
+                                                <td>@parts[2]</td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> No valid items to create
+                        </div>
+                    }
+                }
+                else if (currentStep == BulkCreateStep.Processing)
+                {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+                            <span class="visually-hidden">Creating...</span>
+                        </div>
+                        <h5>@progressMessage</h5>
+                        <div class="progress mt-3" style="max-width: 400px; margin: 0 auto;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                 role="progressbar"
+                                 style="width: @progressPercentage%"
+                                 aria-valuenow="@progressPercentage"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100">
+                                @progressPercentage%
+                            </div>
+                        </div>
+                        <small class="text-muted mt-2 d-block">@progressCurrent / @progressTotal</small>
+                    </div>
+                }
+                else if (currentStep == BulkCreateStep.Complete)
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                        <h4 class="mt-3">Successfully Created!</h4>
+                        <p class="text-muted">
+                            @if (selectedMode == BulkMode.Concepts)
+                            {
+                                <span>@successCount concepts have been added to your ontology</span>
+                            }
+                            else if (relationshipFormat == RelationshipFormat.Simple)
+                            {
+                                <span>@successCount relationship types are now available</span>
+                            }
+                            else
+                            {
+                                <span>@successCount relationships (@newConceptsCreated new concepts) have been added</span>
+                            }
+                        </p>
+                        @if (errorCount > 0)
+                        {
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i> @errorCount items could not be created
+                                @if (errorMessages.Any())
+                                {
+                                    <ul class="mt-2 mb-0 small text-start">
+                                        @foreach (var error in errorMessages.Take(5))
+                                        {
+                                            <li>@error</li>
+                                        }
+                                        @if (errorMessages.Count > 5)
+                                        {
+                                            <li class="text-muted">... and @(errorMessages.Count - 5) more errors</li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                @if (currentStep == BulkCreateStep.EnterData)
+                {
+                    <button class="btn btn-outline-primary" @onclick="BackToModeSelect">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </button>
+                    <button class="btn btn-primary" @onclick="PreviewData" disabled="@(!HasValidData())">
+                        <i class="bi bi-eye"></i> Preview
+                    </button>
+                }
+                else if (currentStep == BulkCreateStep.Preview)
+                {
+                    <button class="btn btn-outline-primary" @onclick="BackToEnterData">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </button>
+                    <button class="btn btn-success" @onclick="CreateItems" disabled="@(!previewItems.Any() || isProcessing)">
+                        <i class="bi bi-check-circle"></i> Create All
+                    </button>
+                }
+                else if (currentStep == BulkCreateStep.Complete)
+                {
+                    <button class="btn btn-secondary" @onclick="CreateMore">
+                        <i class="bi bi-plus-circle"></i> Create More
+                    </button>
+                    <button class="btn btn-primary" @onclick="OnClose">
+                        <i class="bi bi-check"></i> Done
+                    </button>
+                }
+                @if (currentStep != BulkCreateStep.Processing && currentStep != BulkCreateStep.Complete)
+                {
+                    <button class="btn btn-outline-secondary" @onclick="OnClose">
+                        Cancel
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-shadow {
+        transition: box-shadow 0.2s ease-in-out;
+    }
+    .hover-shadow:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    .sticky-top {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+</style>
+
+@code {
+    [Parameter] public int OntologyId { get; set; }
+    [Parameter] public List<Concept> ExistingConcepts { get; set; } = new();
+    [Parameter] public List<Relationship> ExistingRelationships { get; set; } = new();
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnItemsCreated { get; set; }
+
+    private enum BulkCreateStep { SelectMode, EnterData, Preview, Processing, Complete }
+    private enum BulkMode { Concepts, Relationships }
+    private enum RelationshipFormat { Simple, Full }
+
+    private BulkCreateStep currentStep = BulkCreateStep.SelectMode;
+    private BulkMode selectedMode = BulkMode.Concepts;
+    private RelationshipFormat relationshipFormat = RelationshipFormat.Full;
+
+    private string conceptsText = string.Empty;
+    private string relationshipsText = string.Empty;
+    private List<RelationshipTriple> relationshipTriples = new();
+    private bool showPasteDialog = false;
+    private string pastedTriplesText = string.Empty;
+
+    private ElementReference conceptsTextAreaRef;
+    private ElementReference relationshipsTextAreaRef;
+
+    private List<string> previewItems = new();
+    private HashSet<string> newConceptsToCreate = new();
+    private List<string> duplicateWarnings = new();
+
+    private bool isProcessing = false;
+    private string progressMessage = "";
+    private int progressPercentage = 0;
+    private int progressCurrent = 0;
+    private int progressTotal = 0;
+
+    private int successCount = 0;
+    private int errorCount = 0;
+    private int newConceptsCreated = 0;
+    private List<string> errorMessages = new();
+
+    protected override void OnInitialized()
+    {
+        // Initialize with a few empty rows for the grid
+        for (int i = 0; i < 5; i++)
+        {
+            relationshipTriples.Add(new RelationshipTriple());
+        }
+    }
+
+    private void SelectMode(BulkMode mode)
+    {
+        selectedMode = mode;
+        currentStep = BulkCreateStep.EnterData;
+    }
+
+    private void BackToModeSelect()
+    {
+        currentStep = BulkCreateStep.SelectMode;
+        // Clear data
+        conceptsText = string.Empty;
+        relationshipsText = string.Empty;
+        relationshipTriples.Clear();
+        for (int i = 0; i < 5; i++)
+        {
+            relationshipTriples.Add(new RelationshipTriple());
+        }
+    }
+
+    private void BackToEnterData()
+    {
+        currentStep = BulkCreateStep.EnterData;
+    }
+
+    private int GetLineCount(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return 0;
+        return text.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Count();
+    }
+
+    private int GetValidTripleCount()
+    {
+        return relationshipTriples.Count(t => t.IsValid());
+    }
+
+    private bool HasValidData()
+    {
+        if (selectedMode == BulkMode.Concepts)
+        {
+            return GetLineCount(conceptsText) > 0;
+        }
+        else if (relationshipFormat == RelationshipFormat.Simple)
+        {
+            return GetLineCount(relationshipsText) > 0;
+        }
+        else
+        {
+            return GetValidTripleCount() > 0;
+        }
+    }
+
+    private void AddTripleRow()
+    {
+        relationshipTriples.Add(new RelationshipTriple());
+    }
+
+    private void RemoveTriple(int index)
+    {
+        if (index >= 0 && index < relationshipTriples.Count)
+        {
+            relationshipTriples.RemoveAt(index);
+        }
+    }
+
+    private void ParsePastedTriples()
+    {
+        showPasteDialog = true;
+        pastedTriplesText = string.Empty;
+    }
+
+    private void ImportPastedTriples()
+    {
+        if (string.IsNullOrWhiteSpace(pastedTriplesText))
+        {
+            showPasteDialog = false;
+            return;
+        }
+
+        var lines = pastedTriplesText.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        relationshipTriples.Clear();
+
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedLine)) continue;
+
+            string[] parts;
+            if (trimmedLine.Contains('|'))
+            {
+                parts = trimmedLine.Split('|', StringSplitOptions.TrimEntries);
+            }
+            else if (trimmedLine.Contains('\t'))
+            {
+                parts = trimmedLine.Split('\t', StringSplitOptions.TrimEntries);
+            }
+            else
+            {
+                // Single column - try to parse as relationship type only
+                relationshipTriples.Add(new RelationshipTriple { Relationship = trimmedLine });
+                continue;
+            }
+
+            if (parts.Length >= 3)
+            {
+                relationshipTriples.Add(new RelationshipTriple
+                {
+                    Subject = parts[0],
+                    Relationship = parts[1],
+                    Object = parts[2]
+                });
+            }
+        }
+
+        // Add some empty rows at the end
+        for (int i = 0; i < 3; i++)
+        {
+            relationshipTriples.Add(new RelationshipTriple());
+        }
+
+        showPasteDialog = false;
+        ToastService.ShowSuccess($"Imported {lines.Length} rows");
+    }
+
+    private async Task HandleGridKeyDown(KeyboardEventArgs e, int rowIndex, int colIndex)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            // Move to next row, same column
+            if (rowIndex == relationshipTriples.Count - 1)
+            {
+                AddTripleRow();
+            }
+            await Task.Delay(10);
+            // Focus would need JS interop for enhanced UX
+        }
+        else if (e.Key == "Tab" && !e.ShiftKey && colIndex < 2)
+        {
+            // Tab naturally moves to next cell
+        }
+    }
+
+    private async Task HandleGridPaste(ClipboardEventArgs e)
+    {
+        try
+        {
+            // Get clipboard text via JS interop
+            var clipboardText = await JSRuntime.InvokeAsync<string>("navigator.clipboard.readText");
+
+            if (string.IsNullOrWhiteSpace(clipboardText))
+            {
+                return;
+            }
+
+            // Parse the pasted content
+            var lines = clipboardText.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            if (!lines.Any())
+            {
+                return;
+            }
+
+            // Clear existing empty rows
+            relationshipTriples.Clear();
+
+            int successfulRows = 0;
+            foreach (var line in lines)
+            {
+                var trimmedLine = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmedLine)) continue;
+
+                string[] parts;
+
+                // Try tab-separated first (from Excel)
+                if (trimmedLine.Contains('\t'))
+                {
+                    parts = trimmedLine.Split('\t', StringSplitOptions.TrimEntries);
+                }
+                // Then try pipe-delimited
+                else if (trimmedLine.Contains('|'))
+                {
+                    parts = trimmedLine.Split('|', StringSplitOptions.TrimEntries);
+                }
+                // Single value - skip or treat as subject only
+                else
+                {
+                    continue;
+                }
+
+                // We need at least 3 parts for a valid triple
+                if (parts.Length >= 3)
+                {
+                    relationshipTriples.Add(new RelationshipTriple
+                    {
+                        Subject = parts[0].Trim(),
+                        Relationship = parts[1].Trim(),
+                        Object = parts[2].Trim()
+                    });
+                    successfulRows++;
+                }
+            }
+
+            // Add a few empty rows at the end for manual entry
+            for (int i = 0; i < 3; i++)
+            {
+                relationshipTriples.Add(new RelationshipTriple());
+            }
+
+            if (successfulRows > 0)
+            {
+                ToastService.ShowSuccess($"Pasted {successfulRows} rows from clipboard");
+            }
+            else
+            {
+                ToastService.ShowWarning("No valid rows found in clipboard. Expected tab-separated or pipe-delimited format: Subject | Relationship | Object");
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to paste: {ex.Message}");
+        }
+    }
+
+    private void PreviewData()
+    {
+        previewItems.Clear();
+        newConceptsToCreate.Clear();
+        duplicateWarnings.Clear();
+
+        if (selectedMode == BulkMode.Concepts)
+        {
+            var lines = conceptsText.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var existingConceptNames = ExistingConcepts.Select(c => c.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var seenInBatch = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                if (!string.IsNullOrWhiteSpace(trimmed))
+                {
+                    // Check for duplicates with existing concepts
+                    if (existingConceptNames.Contains(trimmed))
+                    {
+                        duplicateWarnings.Add($"Concept '{trimmed}' already exists in ontology (will skip)");
+                    }
+                    // Check for duplicates within this batch
+                    else if (seenInBatch.Contains(trimmed))
+                    {
+                        duplicateWarnings.Add($"Duplicate '{trimmed}' in batch (will skip duplicate)");
+                    }
+                    else
+                    {
+                        previewItems.Add(trimmed);
+                        seenInBatch.Add(trimmed);
+                    }
+                }
+            }
+        }
+        else if (relationshipFormat == RelationshipFormat.Simple)
+        {
+            var lines = relationshipsText.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                if (!string.IsNullOrWhiteSpace(trimmed))
+                {
+                    previewItems.Add(trimmed);
+                }
+            }
+        }
+        else
+        {
+            // Full triples - validate and collect new concepts
+            var existingConceptNames = ExistingConcepts.Select(c => c.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // Build a set of existing relationship triples from the ontology
+            var existingTriples = ExistingRelationships
+                .Select(r => $"{r.SourceConcept.Name}|{r.RelationType}|{r.TargetConcept.Name}")
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var seenTriples = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var triple in relationshipTriples.Where(t => t.IsValid()))
+            {
+                var tripleKey = $"{triple.Subject}|{triple.Relationship}|{triple.Object}";
+
+                // Check against EXISTING relationships in the ontology
+                if (existingTriples.Contains(tripleKey))
+                {
+                    duplicateWarnings.Add($"Relationship '{tripleKey}' already exists in ontology (will skip)");
+                    continue;
+                }
+
+                // Check for duplicate triples in batch
+                if (seenTriples.Contains(tripleKey))
+                {
+                    duplicateWarnings.Add($"Duplicate relationship: {tripleKey} (will skip)");
+                    continue;
+                }
+
+                previewItems.Add(tripleKey);
+                seenTriples.Add(tripleKey);
+
+                if (!existingConceptNames.Contains(triple.Subject!) && !newConceptsToCreate.Contains(triple.Subject!))
+                {
+                    newConceptsToCreate.Add(triple.Subject!);
+                }
+                if (!existingConceptNames.Contains(triple.Object!) && !newConceptsToCreate.Contains(triple.Object!))
+                {
+                    newConceptsToCreate.Add(triple.Object!);
+                }
+            }
+        }
+
+        currentStep = BulkCreateStep.Preview;
+    }
+
+    private async Task CreateItems()
+    {
+        isProcessing = true;
+        currentStep = BulkCreateStep.Processing;
+        successCount = 0;
+        errorCount = 0;
+        errorMessages.Clear();
+        newConceptsCreated = 0;
+
+        progressTotal = previewItems.Count;
+        if (newConceptsToCreate.Any())
+        {
+            progressTotal += newConceptsToCreate.Count;
+        }
+        progressCurrent = 0;
+
+        try
+        {
+            // First, create any new concepts needed
+            if (newConceptsToCreate.Any())
+            {
+                progressMessage = "Creating new concepts...";
+                foreach (var conceptName in newConceptsToCreate)
+                {
+                    try
+                    {
+                        await ConceptService.CreateAsync(new Concept
+                        {
+                            Name = conceptName,
+                            OntologyId = OntologyId
+                        });
+                        newConceptsCreated++;
+                        progressCurrent++;
+                        progressPercentage = (int)((progressCurrent / (double)progressTotal) * 100);
+                        StateHasChanged();
+                        await Task.Delay(10); // Allow UI to update
+                    }
+                    catch (Exception ex)
+                    {
+                        errorCount++;
+                        errorMessages.Add($"Concept '{conceptName}': {ex.Message}");
+                    }
+                }
+
+                // Reload concepts after creating new ones
+                var concepts = await ConceptService.GetByOntologyIdAsync(OntologyId);
+                ExistingConcepts = concepts.ToList();
+            }
+
+            // Now create the main items
+            if (selectedMode == BulkMode.Concepts)
+            {
+                progressMessage = "Creating concepts...";
+                foreach (var conceptName in previewItems)
+                {
+                    try
+                    {
+                        await ConceptService.CreateAsync(new Concept
+                        {
+                            Name = conceptName,
+                            OntologyId = OntologyId
+                        });
+                        successCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        errorCount++;
+                        errorMessages.Add($"Concept '{conceptName}': {ex.Message}");
+                    }
+                    progressCurrent++;
+                    progressPercentage = (int)((progressCurrent / (double)progressTotal) * 100);
+                    StateHasChanged();
+                    await Task.Delay(10);
+                }
+            }
+            else if (relationshipFormat == RelationshipFormat.Full)
+            {
+                progressMessage = "Creating relationships...";
+                var conceptLookup = ExistingConcepts.ToDictionary(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
+
+                foreach (var item in previewItems)
+                {
+                    try
+                    {
+                        var parts = item.Split('|');
+                        var fromId = conceptLookup[parts[0]];
+                        var toId = conceptLookup[parts[2]];
+
+                        await RelationshipService.CreateAsync(new Relationship
+                        {
+                            SourceConceptId = fromId,
+                            TargetConceptId = toId,
+                            RelationType = parts[1],
+                            OntologyId = OntologyId
+                        });
+                        successCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        errorCount++;
+                        errorMessages.Add($"Relationship '{item}': {ex.Message}");
+                    }
+                    progressCurrent++;
+                    progressPercentage = (int)((progressCurrent / (double)progressTotal) * 100);
+                    StateHasChanged();
+                    await Task.Delay(10);
+                }
+            }
+            else
+            {
+                // Simple relationship types - just validate them for now
+                // In real implementation, you might want to store these as available types
+                progressMessage = "Validating relationship types...";
+                foreach (var relType in previewItems)
+                {
+                    successCount++;
+                    progressCurrent++;
+                    progressPercentage = (int)((progressCurrent / (double)progressTotal) * 100);
+                    StateHasChanged();
+                    await Task.Delay(10);
+                }
+
+                ToastService.ShowInfo($"{successCount} relationship types are now available for use");
+            }
+
+            currentStep = BulkCreateStep.Complete;
+            await OnItemsCreated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Bulk creation failed: {ex.Message}");
+            currentStep = BulkCreateStep.EnterData;
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void CreateMore()
+    {
+        conceptsText = string.Empty;
+        relationshipsText = string.Empty;
+        relationshipTriples.Clear();
+        for (int i = 0; i < 5; i++)
+        {
+            relationshipTriples.Add(new RelationshipTriple());
+        }
+        previewItems.Clear();
+        newConceptsToCreate.Clear();
+        successCount = 0;
+        errorCount = 0;
+        errorMessages.Clear();
+        currentStep = BulkCreateStep.SelectMode;
+    }
+
+    private class RelationshipTriple
+    {
+        public string? Subject { get; set; }
+        public string? Relationship { get; set; }
+        public string? Object { get; set; }
+        public bool HasError { get; set; }
+        public string? ErrorMessage { get; set; }
+
+        public bool IsValid()
+        {
+            return !string.IsNullOrWhiteSpace(Subject) &&
+                   !string.IsNullOrWhiteSpace(Relationship) &&
+                   !string.IsNullOrWhiteSpace(Object);
+        }
+    }
+}

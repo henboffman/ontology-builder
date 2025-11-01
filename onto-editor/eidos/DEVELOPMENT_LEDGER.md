@@ -4,6 +4,295 @@ This document tracks major development milestones, features, and changes to the 
 
 ---
 
+## 2025-11-01 - Bulk Creation Feature with Spreadsheet-Like Interface
+
+**Update 2**: Added direct Excel paste support into grid and improved button visibility
+
+### Features Added
+
+#### 📊 Bulk Creation Dialog
+A comprehensive bulk creation system that allows users to create multiple concepts or relationships at once using a spreadsheet-like interface.
+
+**Key Capabilities:**
+- **Two Creation Modes**:
+  - **Concepts Only**: Single-column entry for quickly adding multiple concept names
+  - **Relationships**: Create relationship types or full triples (Subject | Relationship | Object)
+
+- **Relationship Formats**:
+  - **Simple Mode**: Just relationship type names (e.g., manages, employs, owns)
+  - **Full Triple Mode**: Complete relationship definitions with auto-concept creation
+
+- **Spreadsheet-Like Grid**:
+  - Editable table interface for relationship triples
+  - Tab to move between cells, Enter for new row
+  - Add/remove rows dynamically
+  - Real-time validation with error highlighting
+
+- **Paste Support**:
+  - **Direct Grid Paste**: Copy rows from Excel and paste directly into the grid (NEW in Update 2)
+  - Automatic tab-separated parsing (from Excel/Sheets)
+  - Parse pipe-delimited format (Subject | Relationship | Object)
+  - Bulk import from text area
+  - Toast notifications confirm successful paste
+
+- **Auto-Concept Creation**:
+  - When creating relationship triples, missing concepts are automatically created
+  - Preview shows which new concepts will be created
+  - Concepts created first, then relationships
+
+- **Multi-Step Workflow**:
+  1. **Mode Selection**: Choose concepts vs relationships
+  2. **Data Entry**: Textarea or grid input with paste support
+  3. **Preview**: Review items and new concepts before creation
+  4. **Processing**: Progress bar with real-time updates
+  5. **Results**: Success count, error summary, and option to create more
+
+- **User Experience Enhancements**:
+  - Pro tips with keyboard shortcuts
+  - Line/row counters
+  - Valid item counts
+  - Progress tracking (percentage and current/total)
+  - Error collection and display
+  - Success toast notifications
+
+#### 🎨 UI Components
+
+**BulkCreateDialog.razor** (`Components/Ontology/BulkCreateDialog.razor`):
+- Modal dialog with 5-step wizard interface
+- Responsive card-based mode selection
+- Textarea for simple bulk entry
+- Editable grid for relationship triples
+- Preview table with validation
+- Animated progress indicator
+- Success/error summary
+
+**OntologyView.razor** (Modified):
+- Added "Bulk Create" button to action panel
+- Button positioned after "Add Concept" and "Add Relationship"
+- **Warning color styling** (yellow/orange) for high visibility (Update 2)
+- Permission-aware (disabled if user can't add)
+
+### Files Modified
+
+#### UI Components
+- `Components/Ontology/BulkCreateDialog.razor` (NEW - 850+ lines)
+  - Complete wizard-based bulk creation interface
+  - Handles both concepts and relationships
+  - Multi-format support (text, grid, paste)
+  - **Direct grid paste handler** with clipboard API (Update 2 - line 601-681)
+  - Auto-parse tab-separated and pipe-delimited data
+
+- `Components/Pages/OntologyView.razor` (Modified)
+  - Line 613-618: Added "Bulk Create" button
+  - Line 1003: Added `showBulkCreate` flag
+  - Line 1287-1300: Added `ShowBulkCreateDialog()` and `OnBulkCreateComplete()` methods
+  - Line 187-194: Added BulkCreateDialog component instance
+
+#### Documentation
+- `DEVELOPMENT_LEDGER.md` (This entry)
+
+### Technical Details
+
+#### Direct Excel Paste (Update 2)
+
+**Feature**: Users can now copy data from Excel/Google Sheets and paste directly into the grid without using the textarea.
+
+**Implementation**:
+```csharp
+private async Task HandleGridPaste(ClipboardEventArgs e)
+{
+    // Get clipboard via JS interop
+    var clipboardText = await JSRuntime.InvokeAsync<string>("navigator.clipboard.readText");
+
+    // Parse tab-separated (Excel) or pipe-delimited data
+    foreach (var line in lines)
+    {
+        if (line.Contains('\t'))
+            parts = line.Split('\t');  // Excel format
+        else if (line.Contains('|'))
+            parts = line.Split('|');   // Pipe format
+
+        // Create RelationshipTriple from parsed parts
+        relationshipTriples.Add(new RelationshipTriple {
+            Subject = parts[0],
+            Relationship = parts[1],
+            Object = parts[2]
+        });
+    }
+}
+```
+
+**User Experience**:
+1. Copy rows from Excel (Subject, Relationship, Object columns)
+2. Click on the grid area (it has `tabindex="0"` for focus)
+3. Press Ctrl+V (or Cmd+V on Mac)
+4. Grid instantly populates with parsed data
+5. Toast notification shows "Pasted X rows from clipboard"
+6. Empty rows added at end for manual additions
+
+**Button Visibility Enhancement**:
+- Changed from `btn-outline-primary` (subtle blue outline)
+- To `btn-warning text-dark` (yellow/orange with dark text)
+- Much more prominent in the action panel
+- Stands out between green "Add Concept" and blue "Add Relationship"
+
+#### Bulk Creation Workflow
+
+**Concepts Mode:**
+1. User enters concept names (one per line) in textarea
+2. Preview shows all concepts to be created
+3. Click "Create All" to add concepts via `ConceptService.CreateConceptAsync()`
+4. Progress updates in real-time
+5. Success summary shows created count
+
+**Relationships - Simple Mode:**
+1. User enters relationship type names (one per line)
+2. Preview shows all types
+3. Types are validated and made available for use
+4. Useful for pre-defining common relationship vocabularies
+
+**Relationships - Full Triple Mode:**
+1. User enters triples in grid or pastes from spreadsheet
+2. System parses format: `Subject | Relationship | Object` or tab-separated
+3. Validates all fields are present
+4. Identifies concepts that don't exist in ontology
+5. Preview shows:
+   - All triples to be created
+   - New concepts that will be auto-created
+6. Creation process:
+   - First: Create missing concepts via `ConceptService.CreateConceptAsync()`
+   - Reload concepts to get new IDs
+   - Second: Create relationships via `RelationshipService.CreateRelationshipAsync()`
+   - Lookup concept IDs using case-insensitive dictionary
+7. Progress tracking for both concepts and relationships
+8. Error collection with detailed messages
+
+#### Paste Parsing Logic
+Supports multiple formats:
+- **Pipe-delimited**: `Dog | is-a | Mammal`
+- **Tab-separated**: `Dog\tis-a\tMammal` (from Excel/Sheets)
+- **Single column**: Just relationship types (Simple mode)
+
+Parser splits by delimiter, trims whitespace, validates field count.
+
+#### Grid Interaction
+- Each row is a `RelationshipTriple` object with Subject, Relationship, Object properties
+- Keyboard shortcuts:
+  - **Enter**: Move to next row (auto-add if on last row)
+  - **Tab**: Move to next cell
+- Validation marks rows as error if any field is missing
+- Error messages displayed inline beneath invalid rows
+
+#### Permission Checks
+Bulk create respects ontology permissions:
+- Button disabled if `!CanAdd()` returns false
+- Uses existing permission checking infrastructure
+- Same permissions as individual concept/relationship creation
+
+### Design Patterns & Code Style
+
+**Patterns Used:**
+- **Wizard/Stepper Pattern**: Multi-step modal with clear progression
+- **Repository Pattern**: Uses `IConceptService` and `IRelationshipService` (existing)
+- **Error Collection**: Captures errors without stopping batch process
+- **Progress Reporting**: Real-time progress updates with percentage calculation
+- **Auto-Complete**: Creates dependent entities (concepts) before main entities (relationships)
+
+**Code Style Consistency:**
+- Bootstrap 5 classes for styling (consistent with app)
+- Icon usage from Bootstrap Icons (`bi-table`, `bi-plus-circle`, etc.)
+- Small button sizes (`btn-sm`) for compact UI
+- Toast notifications for user feedback
+- `@code` block organization following existing Eidos conventions
+- Logging pattern would follow existing `Logger.LogInformation()` style (not yet implemented)
+
+**Error Handling:**
+- Try-catch around individual item creation to prevent one error from stopping batch
+- Error messages collected in list
+- Display up to 5 errors in summary, indicate if more exist
+- Continue processing remaining items after error
+
+### User Benefits
+
+1. **Efficiency**: Create dozens of concepts/relationships in seconds instead of one-by-one
+2. **Spreadsheet Familiarity**: Users can prepare data in Excel/Sheets and paste
+3. **Reduced Friction**: Auto-create concepts eliminates need to create them separately first
+4. **Visibility**: Preview step prevents accidental bulk creation
+5. **Error Recovery**: Partial success still creates valid items, shows errors for manual fix
+6. **Flexibility**: Multiple input methods (textarea, grid, paste) suit different workflows
+
+### Known Limitations & Future Enhancements
+
+**Current Limitations:**
+- Simple relationship mode doesn't actually store types as reusable templates (would need new table)
+- No import/export of bulk data to CSV
+- Grid doesn't have advanced Excel features (copy/paste within grid, drag-fill, etc.)
+- No undo for bulk operations (would need batch command pattern)
+
+**Potential Future Enhancements:**
+- Import from CSV/Excel files directly
+- Export validation errors to file
+- Template saving for common bulk patterns
+- Bulk edit (update existing items)
+- Bulk delete with multi-select
+- Drag-and-drop file upload
+- Relationship type storage and autocomplete
+- Individual property bulk setting (category, color for concepts)
+- Relationship property bulk setting (custom labels, bidirectionality)
+
+### Testing Recommendations
+
+**Manual Testing Scenarios:**
+1. **Concepts - Simple Entry**:
+   - Enter 5-10 concept names
+   - Verify preview shows all
+   - Verify all created successfully
+
+2. **Concepts - Paste from Spreadsheet**:
+   - Copy column of names from Excel
+   - Paste into textarea
+   - Verify parsing works correctly
+
+3. **Relationships - Simple Mode**:
+   - Enter relationship types like "manages", "employs"
+   - Verify they appear in relationship editor dropdown
+
+4. **Relationships - Full Triples (All Concepts Exist)**:
+   - Create concepts: Dog, Cat, Mammal
+   - Bulk create: `Dog | is-a | Mammal`, `Cat | is-a | Mammal`
+   - Verify both relationships created
+
+5. **Relationships - Full Triples (Auto-Create Concepts)**:
+   - Bulk create: `Apple | is-a | Fruit`, `Banana | is-a | Fruit`
+   - Verify "Fruit" preview shows as new concept
+   - Verify all 3 items created (1 concept, 2 relationships)
+
+6. **Error Handling**:
+   - Try creating duplicate concepts
+   - Try creating self-referencing relationships
+   - Verify errors shown but other items created
+
+7. **Permission Checks**:
+   - Open ontology with view-only access
+   - Verify Bulk Create button is disabled
+
+8. **Progress Tracking**:
+   - Create 20+ items
+   - Verify progress bar animates smoothly
+   - Verify counts update correctly
+
+### Performance Considerations
+
+- Creates items sequentially (not parallel) to avoid race conditions
+- Uses small delay (`await Task.Delay(10)`) to allow UI updates
+- For very large batches (100+), consider:
+  - Batch chunking
+  - Background job processing
+  - WebSocket/SignalR progress updates
+- Current implementation suitable for typical usage (5-50 items)
+
+---
+
 ## 2025-10-31 - Collaboration Board & Automated Group Management
 
 ### Features Added

@@ -36,14 +36,23 @@ public class OntologyRepository : BaseRepository<Ontology>, IOntologyRepository
             .AsNoTracking()
             .Include(o => o.Concepts)
                 .ThenInclude(c => c.Properties)
+            .Include(o => o.Concepts)
+                .ThenInclude(c => c.Restrictions)
+                    .ThenInclude(r => r.AllowedConcept)
             .Include(o => o.Relationships)
                 .ThenInclude(r => r.SourceConcept)
             .Include(o => o.Relationships)
                 .ThenInclude(r => r.TargetConcept)
             .Include(o => o.Individuals)                    // Required for individual visualization
+                .ThenInclude(i => i.Concept)                 // Load concept for export
+            .Include(o => o.Individuals)
                 .ThenInclude(i => i.Properties)
             .Include(o => o.IndividualRelationships)        // Required for individual relationship edges
+                .ThenInclude(ir => ir.SourceIndividual)
+            .Include(o => o.IndividualRelationships)
+                .ThenInclude(ir => ir.TargetIndividual)
             .Include(o => o.LinkedOntologies)
+            .Include(o => o.CustomTemplates)
             .FirstOrDefaultAsync(o => o.Id == id);
     }
 
