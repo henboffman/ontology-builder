@@ -1,0 +1,143 @@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@if (IsVisible)
+{
+    @* Backdrop *@
+    @if (ShowBackdrop)
+    {
+        <div class="floating-panel-backdrop @(IsVisible ? "visible" : "")"
+             @onclick="HandleBackdropClick"></div>
+    }
+
+    @* Panel *@
+    <div id="@PanelId"
+         class="floating-panel size-@Size.ToString().ToLower() @(IsVisible ? "visible" : "")"
+         @ref="panelElement"
+         @onkeydown="HandleKeyDown">
+
+        @* Header (Drag Handle) *@
+        <div class="floating-panel-header">
+            <h5>
+                @if (!string.IsNullOrEmpty(Icon))
+                {
+                    <i class="bi bi-@Icon"></i>
+                }
+                @Title
+            </h5>
+            <button type="button" class="close-btn" @onclick="Close" title="Close (Esc)">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        @* Body *@
+        <div class="floating-panel-body">
+            @ChildContent
+        </div>
+
+        @* Footer *@
+        @if (ShowFooter && FooterContent != null)
+        {
+            <div class="floating-panel-footer">
+                @FooterContent
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public PanelSize Size { get; set; } = PanelSize.Standard;
+    [Parameter] public bool IsDraggable { get; set; } = true;
+    [Parameter] public bool ShowBackdrop { get; set; } = true;
+    [Parameter] public bool CloseOnBackdropClick { get; set; } = false;
+    [Parameter] public bool ShowFooter { get; set; } = false;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+
+    private ElementReference panelElement;
+    private string PanelId { get; set; } = "";
+    private bool isInitialized = false;
+
+    public enum PanelSize { Compact, Standard, Expanded }
+
+    protected override void OnInitialized()
+    {
+        // Generate stable ID based on Title
+        PanelId = $"floating-panel-{Title.ToLower().Replace(" ", "-")}-{GetHashCode()}";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsVisible && IsDraggable)
+        {
+            if (!isInitialized)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("initializeFloatingPanel", PanelId);
+                    isInitialized = true;
+                }
+                catch (Exception)
+                {
+                    // JS not ready yet, will retry on next render
+                }
+            }
+        }
+        else if (!IsVisible && isInitialized && IsDraggable)
+        {
+            // Clean up when panel is closed
+            try
+            {
+                await JS.InvokeVoidAsync("destroyFloatingPanel", PanelId);
+                isInitialized = false;
+            }
+            catch (Exception)
+            {
+                // JS may not be available
+            }
+        }
+    }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        if (CloseOnBackdropClick)
+        {
+            await Close();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await Close();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (isInitialized && IsDraggable)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("destroyFloatingPanel", PanelId);
+            }
+            catch (Exception)
+            {
+                // JS may not be available during disposal
+            }
+        }
+    }
+}

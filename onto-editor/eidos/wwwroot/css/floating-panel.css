@@ -1,0 +1,203 @@
+/* Floating Panel Styles */
+
+/* Backdrop */
+.floating-panel-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    z-index: 1040;
+    opacity: 0;
+    transition: opacity 200ms ease-in-out;
+    pointer-events: none;
+}
+
+.floating-panel-backdrop.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Panel Container */
+.floating-panel {
+    position: fixed;
+    z-index: 1050;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 200ms ease-in-out, transform 200ms ease-in-out;
+    pointer-events: none;
+}
+
+.floating-panel.visible {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+.floating-panel.dragging {
+    cursor: move;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25);
+    transition: box-shadow 100ms ease-in-out;
+}
+
+/* Size Variants */
+.floating-panel.size-compact {
+    width: 350px;
+    max-height: min(650px, 85vh);
+}
+
+.floating-panel.size-standard {
+    width: 450px;
+    max-height: min(750px, 85vh);
+}
+
+.floating-panel.size-expanded {
+    width: 600px;
+    max-height: min(850px, 85vh);
+}
+
+/* Header */
+.floating-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: var(--bs-secondary-bg);
+    border-radius: 8px 8px 0 0;
+    cursor: move;
+    user-select: none;
+}
+
+.floating-panel-header h5 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.floating-panel-header h5 i {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+.floating-panel-header .close-btn {
+    background: none;
+    border: none;
+    color: var(--bs-body-color);
+    opacity: 0.6;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 150ms ease;
+    font-size: 0.875rem;
+}
+
+.floating-panel-header .close-btn:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.floating-panel-header .close-btn:active {
+    transform: scale(0.95);
+}
+
+/* Body */
+.floating-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
+}
+
+/* Custom scrollbar for body */
+.floating-panel-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.floating-panel-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.floating-panel-body::-webkit-scrollbar-thumb {
+    background: var(--bs-border-color);
+    border-radius: 4px;
+}
+
+.floating-panel-body::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-secondary);
+}
+
+/* Footer */
+.floating-panel-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--bs-border-color);
+    background: var(--bs-secondary-bg);
+    border-radius: 0 0 8px 8px;
+}
+
+/* Dark Mode Support */
+[data-bs-theme="dark"] .floating-panel-backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+[data-bs-theme="dark"] .floating-panel {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+[data-bs-theme="dark"] .floating-panel.dragging {
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+}
+
+[data-bs-theme="dark"] .floating-panel-header .close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .floating-panel.size-compact,
+    .floating-panel.size-standard,
+    .floating-panel.size-expanded {
+        width: calc(100vw - 32px);
+        max-width: 450px;
+        max-height: 70vh;
+    }
+}
+
+/* Animations for smooth appearance */
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}

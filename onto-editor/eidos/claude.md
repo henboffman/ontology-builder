@@ -6,6 +6,25 @@
 
 **Live Site**: <https://eidosonto.com>
 
+### Starting Large Tasks
+
+When exiting plan mode with an accepted plan: 1.**Create Task Directory**:
+mkdir -p ~/docs/dev/active/[task-name]/
+
+2.**Create Documents**:
+
+- `[task-name]-plan.md` - The accepted plan
+- `[task-name]-context.md` - Key files, decisions
+- `[task-name]-tasks.md` - Checklist of work
+
+3.**Update Regularly**: Mark tasks complete immediately
+
+### Continuing Tasks
+
+- Check `/dev/active/` for existing tasks
+- Read all three files before proceeding
+- Update "Last Updated" timestamps
+
 ## Technology Stack
 
 ### Backend
@@ -30,25 +49,6 @@
 - **Application Insights** - Monitoring and telemetry
 - **GitHub Actions** - CI/CD
 - **Redis** (Optional) - Distributed caching and SignalR backplane
-
-### Starting Large Tasks
-
-When exiting plan mode with an accepted plan: 1.**Create Task Directory**:
-mkdir -p ~/docs/dev/active/[task-name]/
-
-2.**Create Documents**:
-
-- `[task-name]-plan.md` - The accepted plan
-- `[task-name]-context.md` - Key files, decisions
-- `[task-name]-tasks.md` - Checklist of work
-
-3.**Update Regularly**: Mark tasks complete immediately
-
-### Continuing Tasks
-
-- Check `/dev/active/` for existing tasks
-- Read all three files before proceeding
-- Update "Last Updated" timestamps
 
 ## Project Structure
 
@@ -342,6 +342,12 @@ _logger.LogError(ex, "Failed to load ontology {OntologyId} for user {UserId}", o
 - Log errors with context
 - Provide user-friendly error messages
 - Use ToastService for user notifications
+
+### Feature Toggles
+
+- When implementing new features, add them to the application feature toggles so that they can be toggled on and off
+- The features should appear in the feature toggle dialog
+- Features should be added to the FeatureToggles database table
 
 ## Recent Major Features
 

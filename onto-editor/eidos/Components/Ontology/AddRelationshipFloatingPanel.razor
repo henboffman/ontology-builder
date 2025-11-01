@@ -1,0 +1,59 @@
+@using Eidos.Models
+@using Eidos.Components.Shared
+
+<FloatingPanel Title="@(IsEditing ? "Edit Relationship" : "Add Relationship")"
+               Icon="@(IsEditing ? "pencil" : "arrow-left-right")"
+               IsVisible="@IsVisible"
+               IsVisibleChanged="@IsVisibleChanged"
+               OnClose="@OnClose"
+               Size="@PanelSize"
+               IsDraggable="true"
+               ShowBackdrop="true"
+               CloseOnBackdropClick="false"
+               ShowFooter="false">
+    <RelationshipEditor IsEditing="@IsEditing"
+                        ShouldPulse="@ShouldPulse"
+                        Concepts="@Concepts"
+                        ExistingRelationshipTypes="@ExistingRelationshipTypes"
+                        SourceConceptId="@SourceConceptId"
+                        SourceConceptIdChanged="@SourceConceptIdChanged"
+                        TargetConceptId="@TargetConceptId"
+                        TargetConceptIdChanged="@TargetConceptIdChanged"
+                        RelationType="@RelationType"
+                        RelationTypeChanged="@RelationTypeChanged"
+                        CustomType="@CustomType"
+                        CustomTypeChanged="@CustomTypeChanged"
+                        Label="@Label"
+                        LabelChanged="@LabelChanged"
+                        Description="@Description"
+                        DescriptionChanged="@DescriptionChanged"
+                        OnSaveClick="@OnSaveClick"
+                        OnCancelClick="@OnCancelClick" />
+</FloatingPanel>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public bool IsEditing { get; set; } = false;
+    [Parameter] public bool ShouldPulse { get; set; } = false;
+    [Parameter] public FloatingPanel.PanelSize PanelSize { get; set; } = FloatingPanel.PanelSize.Standard;
+
+    // RelationshipEditor parameters
+    [Parameter] public ICollection<Concept> Concepts { get; set; } = new List<Concept>();
+    [Parameter] public IEnumerable<string>? ExistingRelationshipTypes { get; set; }
+    [Parameter] public int SourceConceptId { get; set; }
+    [Parameter] public EventCallback<int> SourceConceptIdChanged { get; set; }
+    [Parameter] public int TargetConceptId { get; set; }
+    [Parameter] public EventCallback<int> TargetConceptIdChanged { get; set; }
+    [Parameter] public string RelationType { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> RelationTypeChanged { get; set; }
+    [Parameter] public string CustomType { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> CustomTypeChanged { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public EventCallback<string?> LabelChanged { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public EventCallback<string?> DescriptionChanged { get; set; }
+    [Parameter] public EventCallback OnSaveClick { get; set; }
+    [Parameter] public EventCallback OnCancelClick { get; set; }
+}

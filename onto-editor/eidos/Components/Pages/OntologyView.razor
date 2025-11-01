@@ -327,51 +327,9 @@ else
                 }
             </div>
 
-            <!-- Desktop Sidebar - Concept/Relationship Editors and Details (visible on md and up) -->
+            <!-- Desktop Sidebar - Details Only (Editors moved to floating panels) (visible on md and up) -->
             <div class="d-none d-md-block col-md-3 ontology-sidebar">
-                @if (showAddConcept || editingConcept != null)
-                {
-                    <ConceptEditor @ref="conceptEditor"
-                                  IsEditing="@(editingConcept != null)"
-                                  ShouldPulse="@shouldPulseSidebar"
-                                  CustomTemplates="@ontology.CustomTemplates"
-                                  ConceptName="@newConcept.Name"
-                                  ConceptNameChanged="@((value) => newConcept.Name = value)"
-                                  ConceptCategory="@newConcept.Category"
-                                  ConceptCategoryChanged="@OnConceptCategoryChanged"
-                                  ConceptExplanation="@newConcept.SimpleExplanation"
-                                  ConceptExplanationChanged="@((value) => newConcept.SimpleExplanation = value)"
-                                  ConceptExamples="@newConcept.Examples"
-                                  ConceptExamplesChanged="@((value) => newConcept.Examples = value)"
-                                  ConceptColor="@newConcept.Color"
-                                  ConceptColorChanged="@((value) => newConcept.Color = value)"
-                                  OnSaveClick="@SaveConcept"
-                                  OnSaveAndAddAnotherClick="@SaveConceptAndAddAnother"
-                                  OnCancelClick="@CancelEditConcept"
-                                  OnTemplateSelected="@ApplyConceptTemplate" />
-                }
-                else if (showAddRelationship)
-                {
-                    <RelationshipEditor IsEditing="@(editingRelationship != null)"
-                                       ShouldPulse="@shouldPulseSidebar"
-                                       Concepts="@ontology.Concepts"
-                                       ExistingRelationshipTypes="@GetExistingRelationshipTypes()"
-                                       SourceConceptId="@newRelationship.SourceConceptId"
-                                       SourceConceptIdChanged="@((value) => newRelationship.SourceConceptId = value)"
-                                       TargetConceptId="@newRelationship.TargetConceptId"
-                                       TargetConceptIdChanged="@((value) => newRelationship.TargetConceptId = value)"
-                                       RelationType="@newRelationship.RelationType"
-                                       RelationTypeChanged="@((value) => newRelationship.RelationType = value)"
-                                       CustomType="@customRelationType"
-                                       CustomTypeChanged="@((value) => customRelationType = value)"
-                                       Label="@newRelationship.Label"
-                                       LabelChanged="@((value) => newRelationship.Label = value)"
-                                       Description="@newRelationship.Description"
-                                       DescriptionChanged="@((value) => newRelationship.Description = value)"
-                                       OnSaveClick="@SaveRelationship"
-                                       OnCancelClick="@CancelEditRelationship" />
-                }
-                else if (showAddIndividual || editingIndividual != null)
+                @if (showAddIndividual || editingIndividual != null)
                 {
                     <IndividualEditor IsEditing="@(editingIndividual != null)"
                                      Concepts="@ontology.Concepts"
@@ -1007,6 +965,53 @@ else
                 </div>
             </div>
         }
+
+        <!-- Floating Panels for Add/Edit Concept and Relationship -->
+        <AddConceptFloatingPanel @ref="addConceptFloatingPanel"
+                                 IsVisible="@(showAddConcept || editingConcept != null)"
+                                 IsVisibleChanged="@((visible) => { if (!visible) CancelEditConcept(); })"
+                                 OnClose="@CancelEditConcept"
+                                 IsEditing="@(editingConcept != null)"
+                                 ShouldPulse="@shouldPulseSidebar"
+                                 PanelSize="@FloatingPanel.PanelSize.Standard"
+                                 CustomTemplates="@ontology.CustomTemplates"
+                                 ConceptName="@newConcept.Name"
+                                 ConceptNameChanged="@((value) => newConcept.Name = value)"
+                                 ConceptCategory="@newConcept.Category"
+                                 ConceptCategoryChanged="@OnConceptCategoryChanged"
+                                 ConceptExplanation="@newConcept.SimpleExplanation"
+                                 ConceptExplanationChanged="@((value) => newConcept.SimpleExplanation = value)"
+                                 ConceptExamples="@newConcept.Examples"
+                                 ConceptExamplesChanged="@((value) => newConcept.Examples = value)"
+                                 ConceptColor="@newConcept.Color"
+                                 ConceptColorChanged="@((value) => newConcept.Color = value)"
+                                 OnSaveClick="@SaveConcept"
+                                 OnSaveAndAddAnotherClick="@SaveConceptAndAddAnother"
+                                 OnCancelClick="@CancelEditConcept"
+                                 OnTemplateSelected="@ApplyConceptTemplate" />
+
+        <AddRelationshipFloatingPanel IsVisible="@(showAddRelationship || editingRelationship != null)"
+                                      IsVisibleChanged="@((visible) => { if (!visible) CancelEditRelationship(); })"
+                                      OnClose="@CancelEditRelationship"
+                                      IsEditing="@(editingRelationship != null)"
+                                      ShouldPulse="@shouldPulseSidebar"
+                                      PanelSize="@FloatingPanel.PanelSize.Standard"
+                                      Concepts="@ontology.Concepts"
+                                      ExistingRelationshipTypes="@GetExistingRelationshipTypes()"
+                                      SourceConceptId="@newRelationship.SourceConceptId"
+                                      SourceConceptIdChanged="@((value) => newRelationship.SourceConceptId = value)"
+                                      TargetConceptId="@newRelationship.TargetConceptId"
+                                      TargetConceptIdChanged="@((value) => newRelationship.TargetConceptId = value)"
+                                      RelationType="@newRelationship.RelationType"
+                                      RelationTypeChanged="@((value) => newRelationship.RelationType = value)"
+                                      CustomType="@customRelationType"
+                                      CustomTypeChanged="@((value) => customRelationType = value)"
+                                      Label="@newRelationship.Label"
+                                      LabelChanged="@((value) => newRelationship.Label = value)"
+                                      Description="@newRelationship.Description"
+                                      DescriptionChanged="@((value) => newRelationship.Description = value)"
+                                      OnSaveClick="@SaveRelationship"
+                                      OnCancelClick="@CancelEditRelationship" />
     </div>
 }
 
@@ -1042,7 +1047,7 @@ else
     private List<IndividualProperty> newIndividualProperties = new();
     private string customRelationType = string.Empty;
     private GraphView? graphView;
-    private ConceptEditor? conceptEditor;
+    private AddConceptFloatingPanel? addConceptFloatingPanel;
 
     private string ttlContent = string.Empty;
     private string selectedRdfFormat = "Turtle";
@@ -1457,9 +1462,9 @@ else
             StateHasChanged();
 
             // Focus the name input field
-            if (conceptEditor != null)
+            if (addConceptFloatingPanel != null)
             {
-                await conceptEditor.FocusNameInput();
+                await addConceptFloatingPanel.FocusNameInput();
             }
         }
         catch (Exception ex)

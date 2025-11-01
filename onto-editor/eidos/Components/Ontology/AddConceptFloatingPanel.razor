@@ -1,0 +1,71 @@
+@using Eidos.Models
+@using Eidos.Components.Shared
+
+<FloatingPanel Title="@(IsEditing ? "Edit Concept" : "Add Concept")"
+               Icon="@(IsEditing ? "pencil" : "plus-circle")"
+               IsVisible="@IsVisible"
+               IsVisibleChanged="@IsVisibleChanged"
+               OnClose="@OnClose"
+               Size="@PanelSize"
+               IsDraggable="true"
+               ShowBackdrop="true"
+               CloseOnBackdropClick="false"
+               ShowFooter="false">
+    <ConceptEditor @ref="conceptEditor"
+                   IsEditing="@IsEditing"
+                   ShouldPulse="@ShouldPulse"
+                   CustomTemplates="@CustomTemplates"
+                   ConceptName="@ConceptName"
+                   ConceptNameChanged="@ConceptNameChanged"
+                   ConceptCategory="@ConceptCategory"
+                   ConceptCategoryChanged="@ConceptCategoryChanged"
+                   ConceptExplanation="@ConceptExplanation"
+                   ConceptExplanationChanged="@ConceptExplanationChanged"
+                   ConceptExamples="@ConceptExamples"
+                   ConceptExamplesChanged="@ConceptExamplesChanged"
+                   ConceptColor="@ConceptColor"
+                   ConceptColorChanged="@ConceptColorChanged"
+                   OnSaveClick="@OnSaveClick"
+                   OnSaveAndAddAnotherClick="@OnSaveAndAddAnotherClick"
+                   OnCancelClick="@OnCancelClick"
+                   OnTemplateSelected="@OnTemplateSelected" />
+</FloatingPanel>
+
+@code {
+    private ConceptEditor? conceptEditor;
+
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public bool IsEditing { get; set; } = false;
+    [Parameter] public bool ShouldPulse { get; set; } = false;
+    [Parameter] public FloatingPanel.PanelSize PanelSize { get; set; } = FloatingPanel.PanelSize.Standard;
+
+    // ConceptEditor parameters
+    [Parameter] public ICollection<CustomConceptTemplate> CustomTemplates { get; set; } = new List<CustomConceptTemplate>();
+    [Parameter] public string ConceptName { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ConceptNameChanged { get; set; }
+    [Parameter] public string? ConceptCategory { get; set; }
+    [Parameter] public EventCallback<string?> ConceptCategoryChanged { get; set; }
+    [Parameter] public string? ConceptExplanation { get; set; }
+    [Parameter] public EventCallback<string?> ConceptExplanationChanged { get; set; }
+    [Parameter] public string? ConceptExamples { get; set; }
+    [Parameter] public EventCallback<string?> ConceptExamplesChanged { get; set; }
+    [Parameter] public string? ConceptColor { get; set; }
+    [Parameter] public EventCallback<string?> ConceptColorChanged { get; set; }
+    [Parameter] public EventCallback OnSaveClick { get; set; }
+    [Parameter] public EventCallback OnSaveAndAddAnotherClick { get; set; }
+    [Parameter] public EventCallback OnCancelClick { get; set; }
+    [Parameter] public EventCallback<string> OnTemplateSelected { get; set; }
+
+    /// <summary>
+    /// Focuses the name input field in the concept editor
+    /// </summary>
+    public async Task FocusNameInput()
+    {
+        if (conceptEditor != null)
+        {
+            await conceptEditor.FocusNameInput();
+        }
+    }
+}
