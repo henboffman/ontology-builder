@@ -1,0 +1,10 @@
+/* Hide qtip dialogs when clicking on graph nodes */
+.qtip,
+.qtip-content,
+.cy-qtip,
+[id^="qtip-"],
+.cytoscape-popper {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}

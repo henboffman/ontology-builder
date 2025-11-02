@@ -3,8 +3,16 @@
 <div class="row mb-3">
     <!-- Desktop Layout -->
     <div class="col-12 d-none d-md-block">
+        <!-- View mode list header -->
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="mb-0 text-muted">Views</h6>
+            <button class="btn btn-sm btn-link text-decoration-none p-0" @onclick="ToggleViewList" title="@(isViewListCollapsed ? "Expand views" : "Collapse views")">
+                <i class="bi bi-chevron-@(isViewListCollapsed ? "down" : "up")"></i>
+            </button>
+        </div>
+
         <!-- View mode list -->
-        <div class="list-group mb-3">
+        <div class="list-group mb-3 @(isViewListCollapsed ? "collapse" : "")" id="viewModeList">
             <button class="list-group-item list-group-item-action view-mode-item @(CurrentViewMode == ViewMode.Graph ? "active" : "")"
                 @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Graph)" title="@GetViewerTooltip(ViewMode.Graph)">
                 <i class="bi bi-diagram-3 me-2"></i>Graph
@@ -154,6 +162,8 @@
     </div>
 </div>
 
+@inject IJSRuntime JSRuntime
+
 @code
 {
     [Parameter, EditorRequired]
@@ -176,6 +186,40 @@
 
     [Parameter]
     public List<PresenceInfo> PresenceUsers { get; set; } = new();
+
+    private bool isViewListCollapsed = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load collapse state from localStorage
+        try
+        {
+            var savedState = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "viewListCollapsed");
+            if (!string.IsNullOrEmpty(savedState) && bool.TryParse(savedState, out bool collapsed))
+            {
+                isViewListCollapsed = collapsed;
+            }
+        }
+        catch
+        {
+            // If localStorage fails, use default (expanded)
+        }
+    }
+
+    private async Task ToggleViewList()
+    {
+        isViewListCollapsed = !isViewListCollapsed;
+
+        // Save to localStorage
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "viewListCollapsed", isViewListCollapsed.ToString());
+        }
+        catch
+        {
+            // If localStorage fails, just continue without saving
+        }
+    }
 
     private string GetViewModeIcon(ViewMode mode) => mode switch
     {

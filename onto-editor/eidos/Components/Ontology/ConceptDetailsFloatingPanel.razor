@@ -1,0 +1,114 @@
+@using Eidos.Models
+@using Eidos.Components.Shared
+
+<FloatingPanel Title="Concept Details"
+               Icon="info-circle"
+               IsVisible="@IsVisible"
+               IsVisibleChanged="@IsVisibleChanged"
+               OnClose="@OnClose"
+               Size="@FloatingPanel.PanelSize.Standard"
+               IsDraggable="true"
+               ShowBackdrop="false"
+               CloseOnBackdropClick="false"
+               ShowFooter="false">
+    @if (Concept != null)
+    {
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <div style="width: 30px; height: 30px; background-color: @Concept.Color; border-radius: 4px;"></div>
+            <h5 class="mb-0">@Concept.Name</h5>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Concept.Category))
+        {
+            <p class="mb-2"><strong>Category:</strong> @Concept.Category</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Concept.SimpleExplanation))
+        {
+            <p class="mb-2"><strong>Explanation:</strong> @Concept.SimpleExplanation</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Concept.Definition))
+        {
+            <p class="mb-2"><strong>Definition:</strong> @Concept.Definition</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Concept.Examples))
+        {
+            <p class="mb-2">
+                <strong>Examples:</strong><br/>
+                <em>@Concept.Examples</em>
+            </p>
+        }
+
+        @* Connected Concepts Section *@
+        @if (ConnectedConcepts != null && ConnectedConcepts.Any())
+        {
+            <hr class="my-3" />
+            <div class="mb-3">
+                <h6 class="fw-bold mb-2">
+                    <i class="bi bi-diagram-3 me-1"></i>
+                    Connected Concepts (@ConnectedConcepts.Count())
+                </h6>
+                <div class="list-group list-group-flush">
+                    @foreach (var connection in ConnectedConcepts)
+                    {
+                        <div class="list-group-item px-0 py-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width: 20px; height: 20px; background-color: @connection.ConceptColor; border-radius: 3px; flex-shrink: 0;"></div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-medium">@connection.ConceptName</div>
+                                    <small class="text-muted">
+                                        @if (connection.IsOutgoing)
+                                        {
+                                            <span>@Concept.Name <i class="bi bi-arrow-right mx-1"></i> @connection.ConceptName</span>
+                                        }
+                                        else
+                                        {
+                                            <span>@connection.ConceptName <i class="bi bi-arrow-right mx-1"></i> @Concept.Name</span>
+                                        }
+                                        <br/>
+                                        <span class="badge bg-secondary">@connection.RelationType</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <hr class="my-3" />
+
+        @* Restrictions Section *@
+        <ConceptRestrictionsEditor Restrictions="@Restrictions"
+                                  OnAddRestrictionClick="@OnAddRestrictionClick"
+                                  OnEditRestrictionClick="@OnEditRestrictionClick"
+                                  OnDeleteRestrictionClick="@OnDeleteRestrictionClick"
+                                  CanEdit="@(!RestrictionsReadOnly)" />
+    }
+</FloatingPanel>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public Concept? Concept { get; set; }
+    [Parameter] public IEnumerable<ConceptConnection>? ConnectedConcepts { get; set; }
+    [Parameter] public IEnumerable<ConceptRestriction>? Restrictions { get; set; }
+    [Parameter] public EventCallback OnAddRestrictionClick { get; set; }
+    [Parameter] public EventCallback<ConceptRestriction> OnEditRestrictionClick { get; set; }
+    [Parameter] public EventCallback<ConceptRestriction> OnDeleteRestrictionClick { get; set; }
+    [Parameter] public bool RestrictionsReadOnly { get; set; } = false;
+
+    /// <summary>
+    /// Represents a connection between the current concept and another concept via a relationship
+    /// </summary>
+    public class ConceptConnection
+    {
+        public string ConceptName { get; set; } = string.Empty;
+        public string ConceptColor { get; set; } = "#4A90E2";
+        public string RelationType { get; set; } = string.Empty;
+        public bool IsOutgoing { get; set; }
+    }
+}

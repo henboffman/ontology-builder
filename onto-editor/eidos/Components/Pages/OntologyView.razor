@@ -440,6 +440,14 @@ else
                                  OnUndoClick="@HandleUndo"
                                  OnRedoClick="@HandleRedo"
                                  PresenceUsers="@presenceUsers" />
+
+                <!-- Selected Node Details Panel -->
+                <div class="mt-3">
+                    <SelectedNodeDetailsPanel SelectedConcept="@selectedConcept"
+                                             SelectedRelationship="@selectedRelationship"
+                                             SelectedIndividual="@selectedIndividual"
+                                             ConnectedConcepts="@GetConnectedConcepts()" />
+                </div>
             </div>
 
             <!-- Validation Panel (Bottom) -->
@@ -1248,6 +1256,41 @@ else
             .Select(c => c.SourceOntology ?? "Original")
             .Distinct()
             .ToList();
+    }
+
+    private List<SelectedNodeDetailsPanel.ConceptConnection> GetConnectedConcepts()
+    {
+        if (selectedConcept == null || ontology == null)
+            return new List<SelectedNodeDetailsPanel.ConceptConnection>();
+
+        var connections = new List<SelectedNodeDetailsPanel.ConceptConnection>();
+
+        // Outgoing relationships (from this concept)
+        var outgoing = ontology.Relationships
+            .Where(r => r.SourceConceptId == selectedConcept.Id)
+            .Select(r => new SelectedNodeDetailsPanel.ConceptConnection
+            {
+                ConceptName = r.TargetConcept?.Name ?? "Unknown",
+                ConceptColor = r.TargetConcept?.Color ?? "#4A90E2",
+                RelationType = r.RelationType,
+                IsOutgoing = true
+            });
+
+        // Incoming relationships (to this concept)
+        var incoming = ontology.Relationships
+            .Where(r => r.TargetConceptId == selectedConcept.Id)
+            .Select(r => new SelectedNodeDetailsPanel.ConceptConnection
+            {
+                ConceptName = r.SourceConcept?.Name ?? "Unknown",
+                ConceptColor = r.SourceConcept?.Color ?? "#4A90E2",
+                RelationType = r.RelationType,
+                IsOutgoing = false
+            });
+
+        connections.AddRange(outgoing);
+        connections.AddRange(incoming);
+
+        return connections;
     }
 
     private async Task SetColorMode(string mode)
