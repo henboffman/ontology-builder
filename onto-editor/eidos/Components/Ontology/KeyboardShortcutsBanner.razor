@@ -1,0 +1,44 @@
+@if (IsVisible)
+{
+    <div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-lightning-charge-fill me-2 text-warning fs-5"></i>
+            <div class="flex-grow-1">
+                <strong>💡 Keyboard Shortcuts & Quick Tips</strong>
+                <div class="row mt-2 small">
+                    <div class="col-12 col-md-6">
+                        <ul class="mb-1">
+                            <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> - Quickly add multiple concepts</li>
+                            <li><kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Ctrl</kbd> + <kbd>Y</kbd> - Undo/Redo</li>
+                            <li><kbd>Ctrl</kbd> + <kbd>Click</kbd> node - Quick-add related concept</li>
+                        </ul>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <ul class="mb-1">
+                            <li>Custom relationship types are saved for reuse</li>
+                            <li>Click concepts to view connections</li>
+                            <li>Templates help create concepts faster</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="OnDismissPermanently">
+                        <i class="bi bi-x-circle me-1"></i> Don't show again
+                    </button>
+                </div>
+            </div>
+            <button type="button" class="btn-close" @onclick="OnDismissTemporarily" aria-label="Close"></button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public EventCallback OnDismissTemporarily { get; set; }
+
+    [Parameter]
+    public EventCallback OnDismissPermanently { get; set; }
+}

@@ -1,0 +1,49 @@
+@using Eidos.Models.Enums
+
+@if (UserPermissionLevel.HasValue && UserPermissionLevel.Value != PermissionLevel.FullAccess)
+{
+    <div class="alert @GetPermissionBannerClass() mb-3" role="alert">
+        <i class="bi bi-shield-lock"></i>
+        <strong>@GetPermissionLevelDisplayName()</strong> - @GetPermissionDescription()
+    </div>
+}
+
+@code {
+    [Parameter]
+    public PermissionLevel? UserPermissionLevel { get; set; }
+
+    private string GetPermissionBannerClass()
+    {
+        return UserPermissionLevel switch
+        {
+            PermissionLevel.View => "alert-info",
+            PermissionLevel.ViewAndAdd => "alert-warning",
+            PermissionLevel.ViewAddEdit => "alert-primary",
+            _ => "alert-secondary"
+        };
+    }
+
+    private string GetPermissionLevelDisplayName()
+    {
+        return UserPermissionLevel switch
+        {
+            PermissionLevel.View => "View-Only Access",
+            PermissionLevel.ViewAndAdd => "View & Add Access",
+            PermissionLevel.ViewAddEdit => "View, Add & Edit Access",
+            PermissionLevel.FullAccess => "Full Access",
+            _ => "Unknown Access"
+        };
+    }
+
+    private string GetPermissionDescription()
+    {
+        return UserPermissionLevel switch
+        {
+            PermissionLevel.View => "You can view this ontology but cannot make changes",
+            PermissionLevel.ViewAndAdd => "You can view and add new concepts and relationships",
+            PermissionLevel.ViewAddEdit => "You can view, add, and edit concepts and relationships",
+            PermissionLevel.FullAccess => "You have full access to this ontology",
+            _ => ""
+        };
+    }
+}

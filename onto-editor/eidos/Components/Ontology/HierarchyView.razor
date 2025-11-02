@@ -1,0 +1,29 @@
+@using Eidos.Models
+@using Eidos.Components.Shared
+
+<div class="card h-100">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-diagram-2 me-2"></i>Concept Hierarchy
+        </h5>
+        <small class="text-muted">
+            Showing subclass-of and is-a relationships
+        </small>
+    </div>
+    <div class="card-body" style="overflow-y: auto;">
+        <ConceptHierarchyTree HierarchyNodes="@HierarchyNodes"
+                            SelectedConceptId="@SelectedConceptId"
+                            OnConceptSelected="@OnConceptSelected" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required IEnumerable<ConceptHierarchyNode> HierarchyNodes { get; set; }
+
+    [Parameter]
+    public int? SelectedConceptId { get; set; }
+
+    [Parameter]
+    public EventCallback<Concept> OnConceptSelected { get; set; }
+}

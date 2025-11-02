@@ -1,0 +1,237 @@
+@using Eidos.Models
+@using Eidos.Models.ViewState
+@using Eidos.Models.Enums
+
+<GraphView @key="@($"graphview-{ViewState?.Ontology?.Id}-{ViewState?.Ontology?.UpdatedAt.Ticks}")"
+          FilteredOntology="@ViewState?.Ontology"
+          ColorMode="@GraphState?.ColorMode"
+          SourceOntologies="@GetSourceOntologies()"
+          OnAddConceptClick="@OnAddConceptClick"
+          OnAddRelationshipClick="@OnAddRelationshipClick"
+          OnColorModeChanged="@HandleColorModeChanged"
+          OnNodeCtrlClicked="@HandleNodeCtrlClick"
+          OnNodeClicked="@HandleNodeClick"
+          OnEdgeClicked="@HandleEdgeClick"
+          OnIndividualClicked="@HandleIndividualClick"
+          CanAdd="@CanAdd"
+          @ref="graphView" />
+
+@code {
+    /// <summary>
+    /// The ontology view state containing the ontology data and selection state.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public OntologyViewState? ViewState { get; set; }
+
+    /// <summary>
+    /// The graph-specific state containing layout, zoom, filter settings.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public GraphViewState? GraphState { get; set; }
+
+    /// <summary>
+    /// Callback invoked when the Add Concept button is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnAddConceptClick { get; set; }
+
+    /// <summary>
+    /// Callback invoked when the Add Relationship button is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnAddRelationshipClick { get; set; }
+
+    /// <summary>
+    /// Callback invoked when a node is clicked in the graph.
+    /// Passes the concept ID.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnNodeClick { get; set; }
+
+    /// <summary>
+    /// Callback invoked when a node is Ctrl+clicked in the graph for quick relationship creation.
+    /// Passes the concept ID.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnNodeCtrlClick { get; set; }
+
+    /// <summary>
+    /// Callback invoked when an edge (relationship) is clicked in the graph.
+    /// Passes the relationship ID.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnEdgeClick { get; set; }
+
+    /// <summary>
+    /// Callback invoked when an individual node is clicked in the graph.
+    /// Passes the individual ID.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnIndividualClick { get; set; }
+
+    /// <summary>
+    /// Indicates whether the user has permission to add concepts/relationships.
+    /// </summary>
+    [Parameter]
+    public bool CanAdd { get; set; }
+
+    /// <summary>
+    /// Reference to the GraphView component for programmatic control.
+    /// </summary>
+    private GraphView? graphView;
+
+    /// <summary>
+    /// Gets the list of source ontologies for the legend.
+    /// </summary>
+    /// <returns>List of source ontology names.</returns>
+    private List<string> GetSourceOntologies()
+    {
+        if (ViewState?.Ontology == null)
+            return new List<string>();
+
+        return ViewState.Ontology.Concepts
+            .Select(c => c.SourceOntology ?? "Original")
+            .Distinct()
+            .ToList();
+    }
+
+    /// <summary>
+    /// Handles color mode changes from the GraphView component.
+    /// Updates the GraphState and invokes the parent callback if needed.
+    /// </summary>
+    /// <param name="mode">The new color mode (e.g., "concept", "source")</param>
+    private async Task HandleColorModeChanged(string mode)
+    {
+        if (GraphState != null)
+        {
+            GraphState.SetColorMode(mode);
+        }
+
+        // Refresh the graph after a short delay to allow state to propagate
+        if (graphView != null)
+        {
+            await Task.Delay(100);
+            await graphView.RefreshGraph();
+        }
+    }
+
+    /// <summary>
+    /// Handles node clicks in the graph.
+    /// Selects the concept in the ViewState and invokes the parent callback.
+    /// </summary>
+    /// <param name="conceptId">The ID of the clicked concept.</param>
+    private async Task HandleNodeClick(int conceptId)
+    {
+        var concept = ViewState?.Ontology?.Concepts.FirstOrDefault(c => c.Id == conceptId);
+        if (concept != null && ViewState != null)
+        {
+            ViewState.SetSelectedConcept(concept);
+        }
+
+        await OnNodeClick.InvokeAsync(conceptId);
+    }
+
+    /// <summary>
+    /// Handles Ctrl+Click on nodes for quick relationship creation.
+    /// Invokes the parent callback to handle the multi-step selection process.
+    /// </summary>
+    /// <param name="conceptId">The ID of the Ctrl+clicked concept.</param>
+    private async Task HandleNodeCtrlClick(int conceptId)
+    {
+        await OnNodeCtrlClick.InvokeAsync(conceptId);
+    }
+
+    /// <summary>
+    /// Handles edge (relationship) clicks in the graph.
+    /// Selects the relationship in the ViewState and invokes the parent callback.
+    /// </summary>
+    /// <param name="relationshipId">The ID of the clicked relationship.</param>
+    private async Task HandleEdgeClick(int relationshipId)
+    {
+        var relationship = ViewState?.Ontology?.Relationships.FirstOrDefault(r => r.Id == relationshipId);
+        if (relationship != null && ViewState != null)
+        {
+            ViewState.SetSelectedRelationship(relationship);
+        }
+
+        await OnEdgeClick.InvokeAsync(relationshipId);
+    }
+
+    /// <summary>
+    /// Handles individual node clicks in the graph.
+    /// Selects the individual in the ViewState and invokes the parent callback.
+    /// </summary>
+    /// <param name="individualId">The ID of the clicked individual.</param>
+    private async Task HandleIndividualClick(int individualId)
+    {
+        var individual = ViewState?.Individuals?.FirstOrDefault(i => i.Id == individualId);
+        if (individual != null && ViewState != null)
+        {
+            ViewState.SetSelectedIndividual(individual);
+        }
+
+        await OnIndividualClick.InvokeAsync(individualId);
+    }
+
+    /// <summary>
+    /// Refreshes the graph visualization.
+    /// Call this method when the underlying ontology data changes.
+    /// </summary>
+    public async Task RefreshGraph()
+    {
+        if (graphView != null)
+        {
+            await graphView.RefreshGraph();
+        }
+    }
+
+    /// <summary>
+    /// Lifecycle hook that subscribes to state change events.
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        if (ViewState != null)
+        {
+            ViewState.OnStateChanged += HandleViewStateChanged;
+        }
+
+        if (GraphState != null)
+        {
+            GraphState.OnGraphStateChanged += HandleGraphStateChanged;
+        }
+    }
+
+    /// <summary>
+    /// Handles view state changes (ontology data, selections, etc.).
+    /// </summary>
+    private void HandleViewStateChanged()
+    {
+        // Trigger re-render when view state changes
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Handles graph state changes (layout, zoom, filters, etc.).
+    /// </summary>
+    private void HandleGraphStateChanged()
+    {
+        // Trigger re-render when graph state changes
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Lifecycle hook that unsubscribes from state change events to prevent memory leaks.
+    /// </summary>
+    public void Dispose()
+    {
+        if (ViewState != null)
+        {
+            ViewState.OnStateChanged -= HandleViewStateChanged;
+        }
+
+        if (GraphState != null)
+        {
+            GraphState.OnGraphStateChanged -= HandleGraphStateChanged;
+        }
+    }
+}

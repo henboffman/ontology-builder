@@ -1,0 +1,231 @@
+@using Eidos.Models
+@using Eidos.Models.Enums
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@using Eidos.Components.Shared
+@inject ILogger<RelationshipManagementPanel> Logger
+@inject ToastService ToastService
+
+<AddRelationshipFloatingPanel IsVisible="@(showAddRelationship || editingRelationship != null)"
+                              IsVisibleChanged="@((visible) => { if (!visible) CancelEditRelationship(); })"
+                              OnClose="@CancelEditRelationship"
+                              IsEditing="@(editingRelationship != null)"
+                              ShouldPulse="@ShouldPulse"
+                              PanelSize="@FloatingPanel.PanelSize.Standard"
+                              Concepts="@Concepts"
+                              ExistingRelationshipTypes="@GetExistingRelationshipTypes()"
+                              SourceConceptId="@newRelationship.SourceConceptId"
+                              SourceConceptIdChanged="@((value) => newRelationship.SourceConceptId = value)"
+                              TargetConceptId="@newRelationship.TargetConceptId"
+                              TargetConceptIdChanged="@((value) => newRelationship.TargetConceptId = value)"
+                              RelationType="@newRelationship.RelationType"
+                              RelationTypeChanged="@((value) => newRelationship.RelationType = value)"
+                              CustomType="@customRelationType"
+                              CustomTypeChanged="@((value) => customRelationType = value)"
+                              Label="@newRelationship.Label"
+                              LabelChanged="@((value) => newRelationship.Label = value)"
+                              Description="@newRelationship.Description"
+                              DescriptionChanged="@((value) => newRelationship.Description = value)"
+                              OnSaveClick="@SaveRelationship"
+                              OnCancelClick="@CancelEditRelationship" />
+
+@code {
+    // Parameters
+    [Parameter, EditorRequired] public int OntologyId { get; set; }
+    [Parameter, EditorRequired] public ICollection<Concept> Concepts { get; set; } = new List<Concept>();
+    [Parameter, EditorRequired] public ICollection<Relationship> Relationships { get; set; } = new List<Relationship>();
+    [Parameter] public bool ShouldPulse { get; set; } = false;
+    [Parameter] public PermissionLevel? UserPermissionLevel { get; set; }
+
+    // EventCallbacks for parent communication
+    [Parameter] public EventCallback<Relationship> OnRelationshipCreated { get; set; }
+    [Parameter] public EventCallback<Relationship> OnRelationshipUpdated { get; set; }
+    [Parameter] public EventCallback<int> OnRelationshipDeleted { get; set; }
+
+    // Internal state
+    private bool showAddRelationship = false;
+    private Relationship? editingRelationship = null;
+    private Relationship newRelationship = new();
+    private string customRelationType = string.Empty;
+
+    /// <summary>
+    /// Shows the add relationship dialog with a new blank relationship.
+    /// </summary>
+    public Task ShowAddRelationshipDialog()
+    {
+        newRelationship = new Relationship { OntologyId = OntologyId };
+        customRelationType = string.Empty;
+        showAddRelationship = true;
+        editingRelationship = null;
+        StateHasChanged();
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Shows the add relationship dialog with pre-filled source and target concepts.
+    /// </summary>
+    /// <param name="sourceConceptId">The source concept ID.</param>
+    /// <param name="targetConceptId">The target concept ID.</param>
+    public Task ShowAddRelationshipDialog(int sourceConceptId, int targetConceptId)
+    {
+        newRelationship = new Relationship
+        {
+            OntologyId = OntologyId,
+            SourceConceptId = sourceConceptId,
+            TargetConceptId = targetConceptId
+        };
+        customRelationType = string.Empty;
+        showAddRelationship = true;
+        editingRelationship = null;
+        StateHasChanged();
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Shows the edit relationship dialog for an existing relationship.
+    /// </summary>
+    /// <param name="relationship">The relationship to edit.</param>
+    public void ShowEditRelationshipDialog(Relationship relationship)
+    {
+        editingRelationship = relationship;
+        newRelationship = new Relationship
+        {
+            Id = relationship.Id,
+            OntologyId = relationship.OntologyId,
+            SourceConceptId = relationship.SourceConceptId,
+            TargetConceptId = relationship.TargetConceptId,
+            RelationType = relationship.RelationType,
+            Label = relationship.Label,
+            Description = relationship.Description
+        };
+        customRelationType = string.Empty;
+        showAddRelationship = true;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Shows the duplicate relationship dialog with a copy of the relationship.
+    /// </summary>
+    /// <param name="relationship">The relationship to duplicate.</param>
+    public Task ShowDuplicateRelationshipDialog(Relationship relationship)
+    {
+        newRelationship = new Relationship
+        {
+            OntologyId = OntologyId,
+            SourceConceptId = relationship.SourceConceptId,
+            TargetConceptId = relationship.TargetConceptId,
+            RelationType = relationship.RelationType,
+            Label = relationship.Label,
+            Description = relationship.Description
+        };
+        customRelationType = string.Empty;
+        editingRelationship = null;
+        showAddRelationship = true;
+        StateHasChanged();
+
+        ToastService.ShowInfo("Ready to create copy of relationship. Click 'Add' to save or 'Cancel' to discard.", 5000);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Hides the relationship dialog.
+    /// </summary>
+    public void HideDialog()
+    {
+        showAddRelationship = false;
+        editingRelationship = null;
+        newRelationship = new Relationship();
+        customRelationType = string.Empty;
+        StateHasChanged();
+    }
+
+    private void CancelEditRelationship()
+    {
+        showAddRelationship = false;
+        editingRelationship = null;
+        newRelationship = new Relationship();
+        customRelationType = string.Empty;
+    }
+
+    private async Task SaveRelationship()
+    {
+        // Check permissions
+        if (editingRelationship != null && !CanEdit())
+        {
+            ToastService.ShowError("You do not have permission to edit relationships");
+            return;
+        }
+        else if (editingRelationship == null && !CanAdd())
+        {
+            ToastService.ShowError("You do not have permission to add relationships");
+            return;
+        }
+
+        var sourceConcept = Concepts.FirstOrDefault(c => c.Id == newRelationship.SourceConceptId);
+        var targetConcept = Concepts.FirstOrDefault(c => c.Id == newRelationship.TargetConceptId);
+
+        if (sourceConcept == null || targetConcept == null)
+        {
+            ToastService.ShowError("Source or target concept not found");
+            return;
+        }
+
+        // Use custom relationship type if specified
+        if (!string.IsNullOrWhiteSpace(customRelationType))
+        {
+            newRelationship.RelationType = customRelationType;
+        }
+
+        if (string.IsNullOrWhiteSpace(newRelationship.RelationType))
+        {
+            ToastService.ShowError("Please select or enter a relationship type");
+            return;
+        }
+
+        try
+        {
+            if (editingRelationship != null)
+            {
+                await OnRelationshipUpdated.InvokeAsync(newRelationship);
+                ToastService.ShowSuccess("Updated relationship");
+                editingRelationship = null;
+            }
+            else
+            {
+                await OnRelationshipCreated.InvokeAsync(newRelationship);
+                ToastService.ShowSuccess($"Created relationship: {sourceConcept.Name} → {targetConcept.Name}");
+            }
+
+            showAddRelationship = false;
+            customRelationType = string.Empty;
+            newRelationship = new Relationship();
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = ex.InnerException != null
+                ? $"{ex.Message} - {ex.InnerException.Message}"
+                : ex.Message;
+            ToastService.ShowError($"Failed to save relationship: {errorMessage}", 8000);
+        }
+    }
+
+    /// <summary>
+    /// Gets all unique relationship types used in the current ontology.
+    /// </summary>
+    private IEnumerable<string> GetExistingRelationshipTypes()
+    {
+        if (Relationships == null)
+            return Enumerable.Empty<string>();
+
+        return Relationships
+            .Select(r => r.RelationType)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct()
+            .OrderBy(t => t);
+    }
+
+    private bool CanAdd() => UserPermissionLevel.HasValue && UserPermissionLevel.Value >= PermissionLevel.ViewAndAdd;
+    private bool CanEdit() => UserPermissionLevel.HasValue && UserPermissionLevel.Value >= PermissionLevel.ViewAddEdit;
+}

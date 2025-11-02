@@ -1,0 +1,129 @@
+@using Eidos.Models
+@using Eidos.Components.Shared
+
+<!-- Ontology Control Bar -->
+<div class="d-flex justify-content-between align-items-center mb-2 gap-3">
+    <!-- Control Buttons -->
+    <div class="d-flex gap-2 align-items-center flex-shrink-0">
+        <button class="btn btn-sm btn-outline-secondary"
+                @onclick="OnLineageClick"
+                title="View ontology lineage and provenance">
+            <i class="bi bi-diagram-3"></i> Lineage
+        </button>
+
+        <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-primary"
+                    @onclick="OnForkClick"
+                    title="Fork this ontology to create a divergent copy">
+                <i class="bi bi-diagram-2"></i> Fork
+            </button>
+            <button class="btn btn-outline-primary"
+                    @onclick="OnCloneClick"
+                    title="Clone this ontology to create an exact copy">
+                <i class="bi bi-files"></i> Clone
+            </button>
+        </div>
+
+        <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-info"
+                    @onclick="OnShareClick"
+                    disabled="@(!CanFullAccess)"
+                    title="Share this ontology with others">
+                <i class="bi bi-share"></i> Share
+            </button>
+            <button class="btn btn-outline-secondary"
+                    @onclick="OnSettingsClick"
+                    disabled="@(!CanFullAccess)"
+                    title="Edit ontology settings and metadata">
+                <i class="bi bi-gear"></i> Settings
+            </button>
+        </div>
+
+        <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-success"
+                    @onclick="OnImportClick"
+                    disabled="@(!CanEdit)"
+                    title="Import concepts from TTL file">
+                <i class="bi bi-upload"></i> Import
+            </button>
+            <button class="btn btn-outline-success"
+                    @onclick="OnExportClick"
+                    title="Export ontology to various formats">
+                <i class="bi bi-download"></i> Export
+            </button>
+        </div>
+
+        <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-success"
+                    @onclick="OnAddConceptClick"
+                    disabled="@(!CanAdd)"
+                    title="Add a new concept">
+                <i class="bi bi-plus-circle"></i> Add Concept
+            </button>
+            <button class="btn btn-info"
+                    @onclick="OnAddRelationshipClick"
+                    disabled="@(!CanAdd)"
+                    title="Add a new relationship">
+                <i class="bi bi-arrow-left-right"></i> Add Relationship
+            </button>
+            <button class="btn btn-warning text-dark"
+                    @onclick="OnBulkCreateClick"
+                    disabled="@(!CanAdd)"
+                    title="Create multiple concepts or relationships at once">
+                <i class="bi bi-table"></i> Bulk Create
+            </button>
+        </div>
+    </div>
+
+    <!-- Presence Indicator (Right Side) -->
+    <div class="ms-auto">
+        <PresenceIndicator Users="@PresenceUsers" OnNavigateToUserView="@OnNavigateToUserView" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required bool CanFullAccess { get; set; }
+
+    [Parameter, EditorRequired]
+    public required bool CanEdit { get; set; }
+
+    [Parameter, EditorRequired]
+    public required bool CanAdd { get; set; }
+
+    [Parameter, EditorRequired]
+    public required List<PresenceInfo> PresenceUsers { get; set; }
+
+    [Parameter]
+    public EventCallback OnLineageClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnForkClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnCloneClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnShareClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnSettingsClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnImportClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnExportClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnAddConceptClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnAddRelationshipClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnBulkCreateClick { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnNavigateToUserView { get; set; }
+}

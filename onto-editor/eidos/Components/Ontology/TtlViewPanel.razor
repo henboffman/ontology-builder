@@ -1,0 +1,220 @@
+@using Eidos.Models
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@using static Eidos.Services.TtlExportService
+@inject IJSRuntime JS
+@inject ToastService ToastService
+@inject ITtlExportService TtlExportService
+
+<div class="card" style="max-width: 100%; overflow: hidden;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0">
+                <i class="bi bi-file-code"></i> RDF Export
+                <button class="btn btn-sm btn-link" title="About RDF formats" @onclick="() => showTtlHelp = !showTtlHelp">
+                    <i class="bi bi-question-circle"></i>
+                </button>
+            </h5>
+            <small class="text-muted">Export your ontology in various RDF formats</small>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <div class="input-group input-group-sm" style="width: 200px;">
+                <label class="input-group-text" for="formatSelect">
+                    <i class="bi bi-filetype-xml"></i>
+                </label>
+                <select class="form-select form-select-sm" id="formatSelect" @bind="selectedFormat" @bind:after="OnFormatChangedAsync">
+                    <option value="Turtle">Turtle (.ttl)</option>
+                    <option value="RdfXml">RDF/XML (.rdf)</option>
+                    <option value="NTriples">N-Triples (.nt)</option>
+                    <option value="JsonLd">JSON-LD (.jsonld)</option>
+                </select>
+            </div>
+            <button class="btn btn-success btn-sm" @onclick="DownloadTtlAsync" title="Download file in selected format">
+                <i class="bi bi-download"></i> Download @GetFileExtension()
+            </button>
+            <div class="badge bg-warning text-dark">
+                <i class="bi bi-exclamation-triangle"></i> Read-Only
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0" style="overflow: hidden;">
+        @if (showTtlHelp)
+        {
+            <div class="alert alert-info m-3">
+                <h6 class="alert-heading"><i class="bi bi-lightbulb"></i> About RDF Export Formats</h6>
+                <p>Choose the format that works best for your needs:</p>
+                <div class="row small">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Turtle (.ttl)</strong></p>
+                        <p class="mb-2">Human-readable, compact. Best for manual editing and version control.</p>
+
+                        <p class="mb-1"><strong>RDF/XML (.rdf)</strong></p>
+                        <p class="mb-2">XML-based, widely supported. Compatible with most legacy tools like Protégé.</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>N-Triples (.nt)</strong></p>
+                        <p class="mb-2">Simple line-based format. Easy to parse, great for large datasets.</p>
+
+                        <p class="mb-1"><strong>JSON-LD (.jsonld)</strong></p>
+                        <p class="mb-0">JSON format for linked data. Perfect for web APIs and JavaScript applications.</p>
+                    </div>
+                </div>
+                <hr class="my-2" />
+                <p class="mb-0 small">All formats are standards-compliant and can be used with semantic web tools like Protégé, Apache Jena, and GraphDB.</p>
+            </div>
+        }
+        @if (isGenerating || string.IsNullOrWhiteSpace(ttlContent))
+        {
+            <div class="text-center p-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Generating @selectedFormat representation...</span>
+                </div>
+                <p class="mt-2">Generating @selectedFormat representation...</p>
+            </div>
+        }
+        else
+        {
+            <div style="position: relative; width: 100%; overflow: hidden;">
+                <pre style="margin: 0; padding: 1rem; background-color: var(--code-bg-block); color: var(--code-text); max-height: 700px; overflow-y: auto; overflow-x: auto; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; max-width: 100%; box-sizing: border-box;"><code style="word-break: break-word; overflow-wrap: break-word;">@ttlContent</code></pre>
+                <button class="btn btn-sm btn-outline-secondary"
+                        style="position: absolute; top: 0.5rem; right: 0.5rem;"
+                        @onclick="CopyTtlToClipboardAsync">
+                    <i class="bi bi-clipboard"></i> Copy
+                </button>
+            </div>
+        }
+    </div>
+    <div class="card-footer bg-light">
+        <div class="alert alert-info mb-0 py-2">
+            <i class="bi bi-info-circle"></i>
+            <strong>Note:</strong> This is a read-only view. To edit the ontology structure, use the Graph or List view.
+            Manual TTL editing could break the ontology structure and is not recommended.
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The ontology to display in TTL/RDF format.
+    /// </summary>
+    [Parameter]
+    public Ontology? Ontology { get; set; }
+
+    private string ttlContent = string.Empty;
+    private string selectedFormat = "Turtle";
+    private bool showTtlHelp = false;
+    private bool isGenerating = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        // Generate TTL content when ontology changes
+        if (Ontology != null)
+        {
+            await GenerateRdfContentAsync();
+        }
+    }
+
+    /// <summary>
+    /// Generates the RDF content in the selected format.
+    /// </summary>
+    private async Task GenerateRdfContentAsync()
+    {
+        if (Ontology == null)
+            return;
+
+        try
+        {
+            isGenerating = true;
+            ttlContent = string.Empty;
+            StateHasChanged();
+
+            // Run in background thread to avoid blocking UI
+            await Task.Run(() =>
+            {
+                var format = Enum.Parse<RdfFormat>(selectedFormat);
+                ttlContent = TtlExportService.ExportToFormat(Ontology, format);
+            });
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to generate {selectedFormat} content: {ex.Message}");
+            ttlContent = $"Error generating {selectedFormat} content: {ex.Message}";
+        }
+        finally
+        {
+            isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles format change and regenerates content.
+    /// </summary>
+    private async Task OnFormatChangedAsync()
+    {
+        await GenerateRdfContentAsync();
+    }
+
+    /// <summary>
+    /// Copies the TTL content to clipboard.
+    /// </summary>
+    private async Task CopyTtlToClipboardAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ttlContent))
+            return;
+
+        try
+        {
+            var success = await JS.InvokeAsync<bool>("copyToClipboard", ttlContent);
+            if (success)
+            {
+                ToastService.ShowSuccess("Copied to clipboard");
+            }
+            else
+            {
+                ToastService.ShowError("Failed to copy to clipboard");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to copy to clipboard: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Downloads the TTL content as a file.
+    /// </summary>
+    private async Task DownloadTtlAsync()
+    {
+        if (Ontology == null || string.IsNullOrWhiteSpace(ttlContent))
+            return;
+
+        try
+        {
+            var fileExtension = GetFileExtension();
+            var fileName = $"{Ontology.Name.Replace(" ", "_").ToLower()}{fileExtension}";
+            await JS.InvokeVoidAsync("downloadTextFile", fileName, ttlContent);
+            ToastService.ShowSuccess($"Downloaded {fileName}");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to download RDF file: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Gets the file extension for the currently selected format.
+    /// </summary>
+    private string GetFileExtension()
+    {
+        return selectedFormat switch
+        {
+            "RdfXml" => ".rdf",
+            "NTriples" => ".nt",
+            "JsonLd" => ".jsonld",
+            _ => ".ttl"
+        };
+    }
+}
