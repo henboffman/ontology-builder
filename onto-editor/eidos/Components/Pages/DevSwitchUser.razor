@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @inject IWebHostEnvironment Environment
+@inject NavigationManager Navigation
 
 <PageTitle>Switch User - Dev Only</PageTitle>
 
@@ -23,23 +24,23 @@
                         </p>
 
                         <div class="d-grid gap-2">
-                            <a href="/dev/api/switch-user/dev@localhost.local" class="btn btn-lg btn-primary">
+                            <button type="button" @onclick='() => SwitchToUser("dev@localhost.local")' class="btn btn-lg btn-primary">
                                 <i class="bi bi-person-fill"></i> Switch to Dev User
                                 <br />
                                 <small class="opacity-75">dev@localhost.local</small>
-                            </a>
+                            </button>
 
-                            <a href="/dev/api/switch-user/test@test.com" class="btn btn-lg btn-success">
+                            <button type="button" @onclick='() => SwitchToUser("test@test.com")' class="btn btn-lg btn-success">
                                 <i class="bi bi-person-badge"></i> Switch to Test User
                                 <br />
                                 <small class="opacity-75">test@test.com</small>
-                            </a>
+                            </button>
 
-                            <a href="/dev/api/switch-user/collab@test.com" class="btn btn-lg btn-info">
+                            <button type="button" @onclick='() => SwitchToUser("collab@test.com")' class="btn btn-lg btn-info">
                                 <i class="bi bi-people-fill"></i> Switch to Collaborator User
                                 <br />
                                 <small class="opacity-75">collab@test.com</small>
-                            </a>
+                            </button>
 
                             <hr />
 
@@ -86,5 +87,10 @@ else
                     ?? "Unknown";
             }
         }
+    }
+
+    private void SwitchToUser(string email)
+    {
+        Navigation.NavigateTo($"/dev/api/switch-user/{email}", forceLoad: true);
     }
 }

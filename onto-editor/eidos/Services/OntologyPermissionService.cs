@@ -6,14 +6,15 @@ namespace Eidos.Services;
 
 /// <summary>
 /// Service for managing and checking ontology permissions
+/// Uses DbContextFactory to support concurrent operations in SignalR hubs
 /// </summary>
 public class OntologyPermissionService
 {
-    private readonly OntologyDbContext _context;
+    private readonly IDbContextFactory<OntologyDbContext> _contextFactory;
 
-    public OntologyPermissionService(OntologyDbContext context)
+    public OntologyPermissionService(IDbContextFactory<OntologyDbContext> contextFactory)
     {
-        _context = context;
+        _contextFactory = contextFactory;
     }
 
     #region Permission Checks
@@ -24,8 +25,10 @@ public class OntologyPermissionService
     /// </summary>
     public async Task<bool> CanViewAsync(int ontologyId, string? userId)
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
         // Query only the fields needed for permission check (no navigation properties loaded)
-        var ontologyInfo = await _context.Ontologies
+        var ontologyInfo = await context.Ontologies
             .Where(o => o.Id == ontologyId)
             .Select(o => new
             {
@@ -50,7 +53,7 @@ public class OntologyPermissionService
         if (ontologyInfo.Visibility == OntologyVisibility.Group && !string.IsNullOrEmpty(userId))
         {
             // Efficient query: Check if user is in any group that has access to this ontology
-            var hasGroupAccess = await _context.OntologyGroupPermissions
+            var hasGroupAccess = await context.OntologyGroupPermissions
                 .Where(gp => gp.OntologyId == ontologyId)
                 .AnyAsync(gp => gp.UserGroup.Members.Any(m => m.UserId == userId));
 
@@ -67,11 +70,13 @@ public class OntologyPermissionService
     /// </summary>
     public async Task<bool> CanEditAsync(int ontologyId, string? userId)
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
         if (string.IsNullOrEmpty(userId))
             return false;
 
         // Query only the fields needed for permission check (no navigation properties loaded)
-        var ontologyInfo = await _context.Ontologies
+        var ontologyInfo = await context.Ontologies
             .Where(o => o.Id == ontologyId)
             .Select(o => new
             {
@@ -98,7 +103,7 @@ public class OntologyPermissionService
         if (ontologyInfo.Visibility == OntologyVisibility.Group)
         {
             // Efficient query: Check if user is in any group with Edit or Admin permission for this ontology
-            var hasEditAccess = await _context.OntologyGroupPermissions
+            var hasEditAccess = await context.OntologyGroupPermissions
                 .Where(gp => gp.OntologyId == ontologyId)
                 .Where(gp => gp.PermissionLevel == PermissionLevels.Edit ||
                              gp.PermissionLevel == PermissionLevels.Admin)
@@ -116,11 +121,13 @@ public class OntologyPermissionService
     /// </summary>
     public async Task<bool> CanManageAsync(int ontologyId, string? userId)
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
         if (string.IsNullOrEmpty(userId))
             return false;
 
         // Query only the fields needed for permission check (no navigation properties loaded)
-        var ontologyInfo = await _context.Ontologies
+        var ontologyInfo = await context.Ontologies
             .Where(o => o.Id == ontologyId)
             .Select(o => new
             {
@@ -142,7 +149,7 @@ public class OntologyPermissionService
         if (ontologyInfo.Visibility == OntologyVisibility.Group)
         {
             // Efficient query: Check if user is in any group with Admin permission for this ontology
-            var hasAdminAccess = await _context.OntologyGroupPermissions
+            var hasAdminAccess = await context.OntologyGroupPermissions
                 .Where(gp => gp.OntologyId == ontologyId)
                 .Where(gp => gp.PermissionLevel == PermissionLevels.Admin)
                 .AnyAsync(gp => gp.UserGroup.Members.Any(m => m.UserId == userId));
@@ -158,8 +165,10 @@ public class OntologyPermissionService
     /// </summary>
     public async Task<List<Ontology>> GetAccessibleOntologiesAsync(string? userId)
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
         // Load ontologies with OntologyTags for folder/tag functionality
-        var ontologies = await _context.Ontologies
+        var ontologies = await context.Ontologies
             .Include(o => o.OntologyTags)
             .AsNoTracking()
             .ToListAsync();
@@ -168,7 +177,7 @@ public class OntologyPermissionService
         if (ontologies.Any(o => o.Visibility == OntologyVisibility.Group))
         {
             var ontologyIds = ontologies.Select(o => o.Id).ToList();
-            var groupPerms = await _context.OntologyGroupPermissions
+            var groupPerms = await context.OntologyGroupPermissions
                 .Include(gp => gp.UserGroup)
                 .ThenInclude(g => g.Members)
                 .Where(gp => ontologyIds.Contains(gp.OntologyId))
@@ -212,11 +221,13 @@ public class OntologyPermissionService
     /// </summary>
     public async Task<string> GetPermissionLevelAsync(int ontologyId, string? userId)
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
         if (string.IsNullOrEmpty(userId))
             return "none";
 
         // Query only the fields needed for permission check (no navigation properties loaded)
-        var ontologyInfo = await _context.Ontologies
+        var ontologyInfo = await context.Ontologies
             .Where(o => o.Id == ontologyId)
             .Select(o => new
             {
@@ -245,7 +256,7 @@ public class OntologyPermissionService
         if (ontologyInfo.Visibility == OntologyVisibility.Group)
         {
             // Efficient query: Get the user's permission level through group membership
-            var permissionLevel = await _context.OntologyGroupPermissions
+            var permissionLevel = await context.OntologyGroupPermissions
                 .Where(gp => gp.OntologyId == ontologyId)
                 .Where(gp => gp.UserGroup.Members.Any(m => m.UserId == userId))
                 .Select(gp => gp.PermissionLevel)
@@ -269,8 +280,10 @@ public class OntologyPermissionService
     /// </summary>
     public async Task GrantGroupAccessAsync(int ontologyId, int groupId, string permissionLevel, string grantedByUserId)
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
         // Check if permission already exists
-        var existingPermission = await _context.OntologyGroupPermissions
+        var existingPermission = await context.OntologyGroupPermissions
             .FirstOrDefaultAsync(p => p.OntologyId == ontologyId && p.UserGroupId == groupId);
 
         if (existingPermission != null)
@@ -292,10 +305,10 @@ public class OntologyPermissionService
                 GrantedByUserId = grantedByUserId
             };
 
-            _context.OntologyGroupPermissions.Add(permission);
+            context.OntologyGroupPermissions.Add(permission);
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     /// <summary>
@@ -303,13 +316,15 @@ public class OntologyPermissionService
     /// </summary>
     public async Task RevokeGroupAccessAsync(int ontologyId, int groupId)
     {
-        var permission = await _context.OntologyGroupPermissions
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        var permission = await context.OntologyGroupPermissions
             .FirstOrDefaultAsync(p => p.OntologyId == ontologyId && p.UserGroupId == groupId);
 
         if (permission != null)
         {
-            _context.OntologyGroupPermissions.Remove(permission);
-            await _context.SaveChangesAsync();
+            context.OntologyGroupPermissions.Remove(permission);
+            await context.SaveChangesAsync();
         }
     }
 
@@ -318,7 +333,9 @@ public class OntologyPermissionService
     /// </summary>
     public async Task<List<OntologyGroupPermission>> GetGroupPermissionsAsync(int ontologyId)
     {
-        return await _context.OntologyGroupPermissions
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        return await context.OntologyGroupPermissions
             .Include(p => p.UserGroup)
             .ThenInclude(g => g.Members)
             .Where(p => p.OntologyId == ontologyId)
@@ -335,7 +352,9 @@ public class OntologyPermissionService
     /// </summary>
     public async Task UpdateVisibilityAsync(int ontologyId, string visibility, bool allowPublicEdit)
     {
-        var ontology = await _context.Ontologies.FindAsync(ontologyId);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        var ontology = await context.Ontologies.FindAsync(ontologyId);
         if (ontology == null)
         {
             throw new InvalidOperationException($"Ontology with ID {ontologyId} not found.");
@@ -353,7 +372,7 @@ public class OntologyPermissionService
         ontology.AllowPublicEdit = allowPublicEdit;
         ontology.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     #endregion
@@ -365,7 +384,9 @@ public class OntologyPermissionService
     /// </summary>
     public async Task<List<UserGroup>> GetUserGroupsAsync(string userId)
     {
-        return await _context.UserGroupMembers
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        return await context.UserGroupMembers
             .Where(m => m.UserId == userId)
             .Include(m => m.UserGroup)
             .Select(m => m.UserGroup)
@@ -377,7 +398,9 @@ public class OntologyPermissionService
     /// </summary>
     public async Task<bool> IsUserInGroupAsync(string userId, int groupId)
     {
-        return await _context.UserGroupMembers
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        return await context.UserGroupMembers
             .AnyAsync(m => m.UserId == userId && m.UserGroupId == groupId);
     }
 

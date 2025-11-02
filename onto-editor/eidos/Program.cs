@@ -6,6 +6,7 @@ using Eidos.Components.Account;
 using Eidos.Constants;
 using Eidos.Data;
 using Eidos.Data.Repositories;
+using Eidos.Endpoints;
 using Eidos.Models;
 using Eidos.Services;
 using Eidos.Services.Export;
@@ -19,8 +20,11 @@ using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Optional: Azure Key Vault Configuration (for Azure deployments)
-// If not using Azure, configure secrets via User Secrets or appsettings
+// Azure Key Vault Configuration
+// Always attempt to load from Key Vault if URI is configured
+// DefaultAzureCredential handles authentication in both dev and prod:
+// - Development: Uses Azure CLI credentials (requires 'az login')
+// - Production: Uses Managed Identity
 var keyVaultUri = builder.Configuration["KeyVault:Uri"];
 
 if (!string.IsNullOrEmpty(keyVaultUri))
@@ -28,21 +32,37 @@ if (!string.IsNullOrEmpty(keyVaultUri))
     try
     {
         var keyVaultEndpoint = new Uri(keyVaultUri);
+
+        // Use DefaultAzureCredential which supports:
+        // - Managed Identity (in Azure)
+        // - Azure CLI (for local development - run 'az login')
+        // - Visual Studio credentials
+        // - Environment variables
         var credential = new DefaultAzureCredential();
+
         builder.Configuration.AddAzureKeyVault(keyVaultEndpoint, credential);
+
         Console.WriteLine($"✓ Azure Key Vault configured at {keyVaultUri}");
+
+        // In development, override the connection string to use Docker SQL Server
+        // Key Vault provides OAuth secrets, but we use local database
+        if (builder.Environment.IsDevelopment())
+        {
+            var dockerConnectionString = "Server=localhost,1433;Database=EidosDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;";
+            builder.Configuration["ConnectionStrings:DefaultConnection"] = dockerConnectionString;
+            Console.WriteLine("ℹ️  Development mode: Using Docker SQL Server (localhost:1433)");
+            Console.WriteLine("   OAuth secrets loaded from Key Vault");
+        }
     }
     catch (Exception ex)
     {
         Console.WriteLine($"⚠️  Warning: Could not connect to Azure Key Vault: {ex.Message}");
-        Console.WriteLine("   Falling back to User Secrets and appsettings.");
+        Console.WriteLine("   Falling back to User Secrets and appsettings. Run 'az login' to authenticate.");
     }
 }
 else
 {
-    Console.WriteLine("ℹ️  Using local configuration (User Secrets / appsettings)");
-    Console.WriteLine("   For OAuth: Configure secrets via User Secrets or appsettings.json");
-    Console.WriteLine("   Connection strings: Use appsettings.Development.json or User Secrets");
+    Console.WriteLine("ℹ️  Azure Key Vault not configured. Using User Secrets and appsettings.");
 }
 
 // Configure Kestrel for faster shutdown in development
@@ -61,39 +81,37 @@ if (builder.Environment.IsDevelopment())
     });
 }
 
-// Optional: Application Insights telemetry (for Azure deployments)
-// For IIS deployments, use IIS logging or other monitoring tools
-var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
-
-if (!string.IsNullOrEmpty(appInsightsConnectionString) && !builder.Environment.IsDevelopment())
+// Configure Application Insights (production only)
+if (!builder.Environment.IsDevelopment())
 {
-    try
+    builder.Services.AddApplicationInsightsTelemetry(options =>
     {
-        builder.Services.AddApplicationInsightsTelemetry(options =>
+        options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+
+        // Disable adaptive sampling to capture all telemetry details
+        options.EnableAdaptiveSampling = false; // Capture 100% of telemetry for debugging
+        options.EnablePerformanceCounterCollectionModule = true;
+        options.EnableDependencyTrackingTelemetryModule = true;
+        options.EnableRequestTrackingTelemetryModule = true;
+        options.EnableEventCounterCollectionModule = true;
+        options.EnableQuickPulseMetricStream = true; // Live Metrics
+
+        // Enable detailed dependency tracking (SQL queries, HTTP calls, etc.)
+        options.DependencyCollectionOptions.EnableLegacyCorrelationHeadersInjection = true;
+    });
+
+    // Configure detailed SQL tracking
+    builder.Services.ConfigureTelemetryModule<Microsoft.ApplicationInsights.DependencyCollector.DependencyTrackingTelemetryModule>(
+        (module, o) =>
         {
-            options.ConnectionString = appInsightsConnectionString;
-            options.EnableAdaptiveSampling = false;
-            options.EnablePerformanceCounterCollectionModule = true;
-            options.EnableDependencyTrackingTelemetryModule = true;
-            options.EnableRequestTrackingTelemetryModule = true;
-        });
+            module.EnableSqlCommandTextInstrumentation = true; // Track actual SQL queries
+        }
+    );
 
-        // SECURITY: Disable SQL command text logging to prevent sensitive data exposure
-        builder.Services.ConfigureTelemetryModule<Microsoft.ApplicationInsights.DependencyCollector.DependencyTrackingTelemetryModule>(
-            (module, o) => { module.EnableSqlCommandTextInstrumentation = false; }
-        );
+    // Add telemetry processor for enriching data
+    builder.Services.AddApplicationInsightsTelemetryProcessor<EnrichmentTelemetryProcessor>();
 
-        builder.Services.AddApplicationInsightsTelemetryProcessor<EnrichmentTelemetryProcessor>();
-        Console.WriteLine("✓ Application Insights configured");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"⚠️  Warning: Could not configure Application Insights: {ex.Message}");
-    }
-}
-else
-{
-    Console.WriteLine("ℹ️  Application Insights not configured (using local/IIS logging)");
+    Console.WriteLine("✓ Application Insights configured with detailed tracking and optimized sampling");
 }
 
 // Add services to the container.
@@ -102,78 +120,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 // Add SignalR for real-time collaborative editing
-var signalRBuilder = builder.Services.AddSignalR(options =>
-{
-    // Configure SignalR options
-    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
-    options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB max message size
-    options.HandshakeTimeout = TimeSpan.FromSeconds(15);
-    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
-    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
-});
-
-// Optional: Configure SignalR backplane for horizontal scaling (requires Redis)
-// For single-server deployment (Mac/IIS), this is not needed
-var redisConnectionString = builder.Configuration["Redis:ConnectionString"];
-
-if (!string.IsNullOrEmpty(redisConnectionString))
-{
-    try
-    {
-        // Use Redis backplane for scaling across multiple servers
-        signalRBuilder.AddStackExchangeRedis(redisConnectionString, options =>
-        {
-            options.Configuration.ChannelPrefix = "Eidos.SignalR";
-            options.Configuration.AbortOnConnectFail = false;
-        });
-
-        Console.WriteLine("✓ SignalR configured with Redis backplane (multi-server support)");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"⚠️  Warning: Could not connect to Redis: {ex.Message}");
-        Console.WriteLine("   SignalR running in single-server mode");
-    }
-}
-else
-{
-    Console.WriteLine("ℹ️  SignalR running in single-server mode (suitable for Mac/IIS deployment)");
-    Console.WriteLine("   Redis backplane not configured - this is fine for single-server setups");
-}
-
-// Configure caching and presence tracking
-// For single-server deployments (Mac/IIS), in-memory is sufficient and more performant
-if (!string.IsNullOrEmpty(redisConnectionString))
-{
-    try
-    {
-        // Optional: Use Redis for distributed caching (multi-server only)
-        builder.Services.AddStackExchangeRedisCache(options =>
-        {
-            options.Configuration = redisConnectionString;
-            options.InstanceName = "Eidos:";
-        });
-
-        builder.Services.AddSingleton<IPresenceService, RedisPresenceService>();
-        Console.WriteLine("✓ Using Redis for caching and presence tracking (multi-server mode)");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"⚠️  Warning: Could not configure Redis cache: {ex.Message}");
-        Console.WriteLine("   Falling back to in-memory caching");
-        builder.Services.AddDistributedMemoryCache();
-        builder.Services.AddSingleton<IPresenceService, InMemoryPresenceService>();
-    }
-}
-else
-{
-    // Use in-memory caching and presence tracking (recommended for single-server)
-    builder.Services.AddDistributedMemoryCache();
-    builder.Services.AddSingleton<IPresenceService, InMemoryPresenceService>();
-
-    Console.WriteLine("ℹ️  Using in-memory caching and presence tracking");
-    Console.WriteLine("   This is optimal for single-server deployments (Mac/IIS)");
-}
+builder.Services.AddSignalR();
 
 // Add HTTP context accessor for authentication
 builder.Services.AddHttpContextAccessor();
@@ -231,26 +178,9 @@ builder.Services.AddDbContextFactory<OntologyDbContext>(options =>
     }
     else
     {
-        // SQL Server for Docker/Azure with optimized connection pooling
-        options.UseSqlServer(connectionString, sqlOptions =>
-        {
-            // Enable connection resiliency for transient failures
-            sqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorNumbersToAdd: null);
-
-            // Command timeout for long-running queries (default is 30 seconds)
-            sqlOptions.CommandTimeout(60);
-
-            // Batch multiple queries together for better performance
-            sqlOptions.MaxBatchSize(100);
-        });
-
-        Console.WriteLine($"ℹ️  Using SQL Server database with optimized connection pooling");
-        Console.WriteLine("   - Connection resiliency: Enabled (5 retries, 30s max delay)");
-        Console.WriteLine("   - Command timeout: 60 seconds");
-        Console.WriteLine("   - Max batch size: 100 queries");
+        // SQL Server for Docker/Azure
+        options.UseSqlServer(connectionString);
+        Console.WriteLine($"ℹ️  Using SQL Server database");
     }
 
     if (builder.Environment.IsDevelopment())
@@ -259,10 +189,6 @@ builder.Services.AddDbContextFactory<OntologyDbContext>(options =>
         options.EnableDetailedErrors();
     }
 });
-
-// Note: DbContext pooling is automatically managed by DbContextFactory
-// The factory creates and pools DbContext instances for optimal performance
-Console.WriteLine("✓ DbContext factory configured with automatic pooling");
 
 // Add authentication services (required by Identity)
 var authBuilder = builder.Services.AddAuthentication(options =>
@@ -407,8 +333,8 @@ builder.Services.AddScoped<UserManagementService>();
 // Register Ontology Permission service
 builder.Services.AddScoped<OntologyPermissionService>();
 
-// Register User Group service
-builder.Services.AddScoped<UserGroupService>();
+// Register Presence service for real-time collaboration
+builder.Services.AddSingleton<IPresenceService, InMemoryPresenceService>();
 
 // Configure cookie settings for secure authentication
 builder.Services.ConfigureApplicationCookie(options =>
@@ -482,9 +408,11 @@ builder.Services.AddScoped<IOntologyActivityService, OntologyActivityService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<IIndividualService, IndividualService>();
 builder.Services.AddScoped<ICollaborationBoardService, CollaborationBoardService>();
-builder.Services.AddScoped<IOntologyValidationService, OntologyValidationService>();
+builder.Services.AddScoped<UserGroupService>();
+builder.Services.AddScoped<HolidayThemeService>();
 builder.Services.AddScoped<IRestrictionService, RestrictionService>();
 builder.Services.AddScoped<IRelationshipSuggestionService, RelationshipSuggestionService>();
+builder.Services.AddScoped<IOntologyValidationService, OntologyValidationService>();
 
 // Register Import Services (Single Responsibility Principle)
 builder.Services.AddScoped<IRdfParser, RdfParser>();
@@ -504,7 +432,6 @@ builder.Services.AddScoped<SecurityEventLogger>();
 // Register UI Services (scoped per circuit to prevent cross-client issues)
 builder.Services.AddScoped<ConfirmService>();
 builder.Services.AddScoped<ToastService>();
-builder.Services.AddScoped<HolidayThemeService>();
 
 // Keep legacy services for backward compatibility (will be removed in Phase 2)
 builder.Services.AddScoped<JsonExportService>();
@@ -533,75 +460,24 @@ using (var scope = app.Services.CreateScope())
     var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<OntologyDbContext>>();
     using var db = dbFactory.CreateDbContext();
 
+    // For SQLite in development, use EnsureCreated to avoid migration compatibility issues
+    // For SQL Server (production/docker), use Migrate for proper versioning
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    var isSqlite = connectionString?.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase) == true
-        && !connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase);
-
-    // SECURITY: Only run automatic migrations in development
-    // Production should use manual migration process for safety
-    if (app.Environment.IsDevelopment())
+    if (connectionString?.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase) == true
+        && !connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase))
     {
-        if (isSqlite)
-        {
-            // SQLite: Create schema from current model
-            db.Database.EnsureCreated();
-            Console.WriteLine("ℹ️  Development: SQLite database schema ensured");
-        }
-        else
-        {
-            // SQL Server in development: Use migrations
-            db.Database.Migrate();
-            Console.WriteLine("ℹ️  Development: SQL Server migrations applied");
-        }
+        // SQLite: Create schema from current model
+        db.Database.EnsureCreated();
+        Console.WriteLine("ℹ️  SQLite database schema ensured");
     }
     else
     {
-        // Production: Verify database is accessible but don't run migrations
-        Console.WriteLine("ℹ️  Production mode: Verifying database connectivity...");
-
-        if (await db.Database.CanConnectAsync())
-        {
-            var pendingMigrations = await db.Database.GetPendingMigrationsAsync();
-            var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-
-            Console.WriteLine($"✓ Database connection successful");
-            Console.WriteLine($"  Applied migrations: {appliedMigrations.Count()}");
-            Console.WriteLine($"  Pending migrations: {pendingMigrations.Count()}");
-
-            if (pendingMigrations.Any())
-            {
-                Console.WriteLine("⚠️  WARNING: Pending migrations detected!");
-                Console.WriteLine("   Production migrations must be applied manually before deployment.");
-                Console.WriteLine("   Run: dotnet ef database update --project Eidos.csproj");
-                Console.WriteLine("   Pending migrations:");
-                foreach (var migration in pendingMigrations)
-                {
-                    Console.WriteLine($"   - {migration}");
-                }
-
-                // Allow override with environment variable for automated deployments
-                var allowPendingMigrations = builder.Configuration.GetValue<bool>("Database:AllowPendingMigrations");
-                if (!allowPendingMigrations)
-                {
-                    throw new InvalidOperationException(
-                        "Production deployment blocked: Pending database migrations detected. " +
-                        "Apply migrations manually before deploying. " +
-                        "To override (NOT RECOMMENDED), set Database:AllowPendingMigrations=true");
-                }
-            }
-            else
-            {
-                Console.WriteLine("✓ Database schema is up to date");
-            }
-        }
-        else
-        {
-            Console.WriteLine("❌ ERROR: Cannot connect to database");
-            throw new InvalidOperationException("Database connection failed in production");
-        }
+        // SQL Server: Use migrations for proper schema management
+        db.Database.Migrate();
+        Console.WriteLine("ℹ️  SQL Server migrations applied");
     }
 
-    // Seed roles and admin users (safe in both dev and prod)
+    // Seed roles and admin users
     var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
     await seeder.SeedAsync();
 }
@@ -656,12 +532,6 @@ if (!app.Environment.IsDevelopment())
     app.UseIpRateLimiting();
 }
 
-// Development auto-login (only in Development mode)
-if (app.Environment.IsDevelopment())
-{
-    app.UseMiddleware<Eidos.Middleware.DevelopmentAuthMiddleware>();
-}
-
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -683,10 +553,10 @@ app.MapHub<Eidos.Hubs.OntologyHub>("/ontologyhub");
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/ready");
 
-// Map dev user switching endpoint (development only)
+// Development-only endpoints
 if (app.Environment.IsDevelopment())
 {
-    Eidos.Endpoints.DevSwitchUserEndpoint.MapDevSwitchUserEndpoint(app);
+    app.MapDevSwitchUserEndpoint();
 }
 
 app.Run();

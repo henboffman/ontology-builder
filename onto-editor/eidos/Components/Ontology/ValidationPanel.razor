@@ -4,51 +4,69 @@
 @inject IOntologyValidationService ValidationService
 @inject IJSRuntime JSRuntime
 
-@if (ValidationResult != null)
-{
-    <div class="validation-panel @(isCollapsed ? "collapsed" : "expanded") mb-3">
-        <div class="validation-header" @onclick="TogglePanel">
-            <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-chevron-@(isCollapsed ? "down" : "up") text-muted"></i>
-                <i class="bi bi-exclamation-triangle-fill text-@GetHeaderColor()"></i>
-                <strong>Problems</strong>
+<div class="validation-panel @(isCollapsed ? "collapsed" : "expanded") mb-3">
+    <div class="validation-header" @onclick="TogglePanel">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-chevron-@(isCollapsed ? "down" : "up") text-muted"></i>
+            <i class="bi bi-exclamation-triangle-fill text-@GetHeaderColor()"></i>
+            <strong>Problems</strong>
 
-                @if (ValidationResult.ErrorCount > 0)
-                {
-                    <span class="badge bg-danger">@ValidationResult.ErrorCount @Pluralize("error", ValidationResult.ErrorCount)</span>
-                }
-                @if (ValidationResult.WarningCount > 0)
-                {
-                    <span class="badge bg-warning text-dark">@ValidationResult.WarningCount @Pluralize("warning", ValidationResult.WarningCount)</span>
-                }
-                @if (ValidationResult.InfoCount > 0)
-                {
-                    <span class="badge bg-info text-dark">@ValidationResult.InfoCount @Pluralize("info", ValidationResult.InfoCount)</span>
-                }
-                @if (ValidationResult.TotalIssues == 0)
-                {
-                    <span class="badge bg-success">
-                        <i class="bi bi-check-circle"></i> No issues
-                    </span>
-                }
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-sm btn-outline-primary"
-                        @onclick="RefreshValidation"
-                        @onclick:stopPropagation="true"
-                        title="Refresh validation">
-                    <i class="bi bi-arrow-clockwise"></i>
-                </button>
-                <small class="text-muted">@GetTimeSinceValidation()</small>
-            </div>
+            @if (ValidationResult != null && ValidationResult.ErrorCount > 0)
+            {
+                <span class="badge bg-danger">@ValidationResult.ErrorCount @Pluralize("error", ValidationResult.ErrorCount)</span>
+            }
+            @if (ValidationResult != null && ValidationResult.WarningCount > 0)
+            {
+                <span class="badge bg-warning text-dark">@ValidationResult.WarningCount @Pluralize("warning", ValidationResult.WarningCount)</span>
+            }
+            @if (ValidationResult != null && ValidationResult.InfoCount > 0)
+            {
+                <span class="badge bg-info text-dark">@ValidationResult.InfoCount @Pluralize("info", ValidationResult.InfoCount)</span>
+            }
+            @if (ValidationResult != null && ValidationResult.TotalIssues == 0)
+            {
+                <span class="badge bg-success">
+                    <i class="bi bi-check-circle"></i> No issues
+                </span>
+            }
+            @if (ValidationResult == null)
+            {
+                <span class="badge bg-secondary">
+                    <i class="bi bi-hourglass-split"></i> Loading...
+                </span>
+            }
         </div>
+        <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-1" @onclick:stopPropagation="true">
+                <label for="textSizeSlider" class="text-muted small mb-0" style="font-size: 0.75rem;">Text Size:</label>
+                <input type="range"
+                       id="textSizeSlider"
+                       class="form-range"
+                       min="10"
+                       max="18"
+                       step="1"
+                       value="@textSize"
+                       @oninput="OnTextSizeChanged"
+                       style="width: 80px; cursor: pointer;"
+                       title="Adjust text size" />
+                <span class="text-muted small" style="font-size: 0.75rem; min-width: 30px;">@(textSize)px</span>
+            </div>
+            <button class="btn btn-sm btn-outline-primary"
+                    @onclick="RefreshValidation"
+                    @onclick:stopPropagation="true"
+                    title="Refresh validation">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <small class="text-muted">@GetTimeSinceValidation()</small>
+        </div>
+    </div>
 
-        @if (!isCollapsed && ValidationResult.TotalIssues > 0)
-        {
-            <div class="validation-body">
-                @foreach (var issue in GetGroupedIssues())
-                {
-                    <div class="validation-issue severity-@issue.Severity.ToString().ToLower()"
+    @if (!isCollapsed && ValidationResult != null && ValidationResult.TotalIssues > 0)
+    {
+        <div class="validation-body">
+            @foreach (var issue in GetGroupedIssues())
+            {
+                <div class="validation-issue severity-@issue.Severity.ToString().ToLower()"
                          @onclick="() => OnIssueClick.InvokeAsync(issue)"
                          role="button"
                          tabindex="0">
@@ -56,8 +74,8 @@
                             <i class="bi bi-@GetIconForSeverity(issue.Severity) text-@GetColorForSeverity(issue.Severity)"></i>
                         </div>
                         <div class="issue-content flex-grow-1">
-                            <div class="issue-message">@issue.Message</div>
-                            <div class="issue-details text-muted small">
+                            <div class="issue-message" style="font-size: @(textSize)px;">@issue.Message</div>
+                            <div class="issue-details text-muted small" style="font-size: @(textSize - 2)px;">
                                 @issue.EntityType · @issue.Details
                             </div>
                         </div>
@@ -68,8 +86,7 @@
                 }
             </div>
         }
-    </div>
-}
+</div>
 
 @code {
     [Parameter] public int OntologyId { get; set; }
@@ -79,6 +96,24 @@
 
     private bool isCollapsed = false;
     private bool isLoading = false;
+    private int textSize = 14; // Default text size in pixels
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load text size preference from localStorage
+        try
+        {
+            var savedSize = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "validationPanelTextSize");
+            if (!string.IsNullOrEmpty(savedSize) && int.TryParse(savedSize, out int size))
+            {
+                textSize = size;
+            }
+        }
+        catch
+        {
+            // If localStorage fails, use default
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -90,6 +125,24 @@
         else if (ValidationResult != null && ValidationResult.TotalIssues == 0)
         {
             isCollapsed = true;
+        }
+    }
+
+    private async Task OnTextSizeChanged(ChangeEventArgs e)
+    {
+        if (e.Value != null && int.TryParse(e.Value.ToString(), out int newSize))
+        {
+            textSize = newSize;
+            // Save to localStorage
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "validationPanelTextSize", textSize.ToString());
+            }
+            catch
+            {
+                // If localStorage fails, just continue without saving
+            }
+            StateHasChanged();
         }
     }
 

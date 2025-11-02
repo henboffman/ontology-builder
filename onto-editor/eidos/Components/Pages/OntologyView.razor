@@ -444,84 +444,16 @@ else
 
             <!-- Validation Panel (Bottom) -->
             <div class="ontology-validation-section">
-                <div class="d-flex align-items-center justify-content-between px-2 py-1 bg-light border-top">
-                    <div class="d-flex align-items-center gap-2" style="cursor: pointer;" @onclick="ToggleValidationPanel">
-                        <i class="bi @(isValidationPanelCollapsed ? "bi-chevron-up" : "bi-chevron-down")"></i>
-                        <strong style="font-size: 0.85rem;">Validation Issues</strong>
-                        @if (validationResult != null && validationResult.Issues.Any())
-                        {
-                            <span class="badge bg-secondary" style="font-size: 0.7rem;">@validationResult.Issues.Count</span>
-                        }
-                    </div>
-                    @if (!isValidationPanelCollapsed)
-                    {
-                        <div class="d-flex align-items-center gap-2" @onclick:stopPropagation="true">
-                            <small class="text-muted" style="font-size: 0.7rem; white-space: nowrap;">Font Size:</small>
-                            <input type="range"
-                                   class="form-range"
-                                   style="width: 80px; height: 4px;"
-                                   min="0.6"
-                                   max="1.2"
-                                   step="0.1"
-                                   value="@validationFontSize"
-                                   @oninput="@((ChangeEventArgs e) => validationFontSize = double.Parse(e.Value!.ToString()!))"
-                                   title="Adjust font size" />
-                            <small class="text-muted" style="font-size: 0.7rem; min-width: 35px;">@((int)(validationFontSize * 100))%</small>
-                        </div>
-                    }
-                </div>
-                @if (!isValidationPanelCollapsed)
-                {
-                    <div class="px-2 py-1" style="flex: 1; min-height: 0; overflow-y: auto; max-height: 10vh;">
-                        @if (validationResult != null && validationResult.Issues.Any())
-                        {
-                            <div class="d-flex flex-column" style="gap: 3px;">
-                                @foreach (var issue in validationResult.Issues)
-                                {
-                                    <div class="d-flex align-items-start gap-2 validation-issue-item"
-                                         style="cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;"
-                                         @onclick="() => HandleValidationIssueClick(issue)"
-                                         @onmouseover="@((MouseEventArgs e) => hoveredIssueId = issue.EntityId)"
-                                         @onmouseout="@((MouseEventArgs e) => hoveredIssueId = null)">
-                                        <span class="badge @(issue.Severity == ValidationSeverity.Error ? "bg-danger" : issue.Severity == ValidationSeverity.Warning ? "bg-warning text-dark" : "bg-info") flex-shrink-0" style="font-size: @((validationFontSize * 0.65).ToString("F2"))rem; padding: 2px 5px;">@issue.Severity</span>
-                                        <small class="text-muted" style="line-height: 1.4; font-size: @((validationFontSize * 0.8).ToString("F2"))rem;">@issue.Message</small>
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="text-muted text-center">
-                                <small style="font-size: @((validationFontSize * 0.8).ToString("F2"))rem;"><i class="bi bi-check-circle me-1"></i>No validation issues</small>
-                            </div>
-                        }
-                    </div>
-                }
+                <ValidationPanel OntologyId="@Id"
+                                ValidationResult="@validationResult"
+                                OnIssueClick="@HandleIssueClick"
+                                OnRefresh="@RefreshValidation" />
             </div>
         </div>
 
         <!-- Desktop Sidebar - Details Only (Editors moved to floating panels) (visible on md and up) -->
         <div class="d-none d-md-block col-md-3 ontology-sidebar">
-                @if (showAddIndividual || editingIndividual != null)
-                {
-                    <IndividualEditor IsEditing="@(editingIndividual != null)"
-                                     Concepts="@ontology.Concepts"
-                                     ConceptId="@newIndividual.ConceptId"
-                                     ConceptIdChanged="@((value) => newIndividual.ConceptId = value)"
-                                     IndividualName="@newIndividual.Name"
-                                     IndividualNameChanged="@((value) => newIndividual.Name = value)"
-                                     IndividualDescription="@newIndividual.Description"
-                                     IndividualDescriptionChanged="@((value) => newIndividual.Description = value)"
-                                     IndividualLabel="@newIndividual.Label"
-                                     IndividualLabelChanged="@((value) => newIndividual.Label = value)"
-                                     IndividualUri="@newIndividual.Uri"
-                                     IndividualUriChanged="@((value) => newIndividual.Uri = value)"
-                                     Properties="@newIndividualProperties"
-                                     PropertiesChanged="@((value) => newIndividualProperties = value)"
-                                     OnSaveClick="@SaveIndividual"
-                                     OnCancelClick="@CancelEditIndividual" />
-                }
-                else if (selectedIndividual != null)
+                @if (selectedIndividual != null)
                 {
                     var individualConcept = selectedIndividual.Concept ?? ontology?.Concepts.FirstOrDefault(c => c.Id == selectedIndividual.ConceptId);
 
@@ -809,19 +741,15 @@ else
             </div>
         </div>
 
-        <!-- Mobile Modal - Editors (visible on sm and below) -->
-        @if ((showAddConcept || editingConcept != null || showAddRelationship || editingRelationship != null || showAddIndividual || editingIndividual != null || selectedConcept != null || selectedRelationship != null || selectedIndividual != null))
+        <!-- Floating Modal - Editors (visible on all screen sizes) -->
+        @if ((showAddIndividual || editingIndividual != null || selectedConcept != null || selectedRelationship != null || selectedIndividual != null))
         {
-            <div class="ontology-mobile-modal d-md-none">
-                <div class="ontology-mobile-modal-backdrop" @onclick="CloseMobileEditor"></div>
-                <div class="ontology-mobile-modal-content">
-                    <div class="ontology-mobile-modal-header">
+            <div class="ontology-floating-modal">
+                <div class="ontology-floating-modal-backdrop" @onclick="CloseMobileEditor"></div>
+                <div class="ontology-floating-modal-content">
+                    <div class="ontology-floating-modal-header">
                         <h6 class="mb-0">
-                            @if (showAddConcept && editingConcept == null) { <span><i class="bi bi-plus-circle me-2"></i>Add Concept</span> }
-                            else if (editingConcept != null) { <span><i class="bi bi-pencil me-2"></i>Edit Concept</span> }
-                            else if (showAddRelationship && editingRelationship == null) { <span><i class="bi bi-arrow-left-right me-2"></i>Add Relationship</span> }
-                            else if (editingRelationship != null) { <span><i class="bi bi-pencil me-2"></i>Edit Relationship</span> }
-                            else if (showAddIndividual && editingIndividual == null) { <span><i class="bi bi-person-plus me-2"></i>Add Individual</span> }
+                            @if (showAddIndividual && editingIndividual == null) { <span><i class="bi bi-person-plus me-2"></i>Add Individual</span> }
                             else if (editingIndividual != null) { <span><i class="bi bi-pencil me-2"></i>Edit Individual</span> }
                             else if (selectedIndividual != null) { <span><i class="bi bi-person-fill me-2"></i>Individual Details</span> }
                             else if (selectedConcept != null) { <span><i class="bi bi-info-circle me-2"></i>Concept Details</span> }
@@ -829,49 +757,8 @@ else
                         </h6>
                         <button type="button" class="btn-close" aria-label="Close" @onclick="CloseMobileEditor"></button>
                     </div>
-                    <div class="ontology-mobile-modal-body">
-                        @if (showAddConcept || editingConcept != null)
-                        {
-                            <ConceptEditor IsEditing="@(editingConcept != null)"
-                                          ShouldPulse="@shouldPulseSidebar"
-                                          CustomTemplates="@ontology.CustomTemplates"
-                                          ConceptName="@newConcept.Name"
-                                          ConceptNameChanged="@((value) => newConcept.Name = value)"
-                                          ConceptCategory="@newConcept.Category"
-                                          ConceptCategoryChanged="@OnConceptCategoryChanged"
-                                          ConceptExplanation="@newConcept.SimpleExplanation"
-                                          ConceptExplanationChanged="@((value) => newConcept.SimpleExplanation = value)"
-                                          ConceptExamples="@newConcept.Examples"
-                                          ConceptExamplesChanged="@((value) => newConcept.Examples = value)"
-                                          ConceptColor="@newConcept.Color"
-                                          ConceptColorChanged="@((value) => newConcept.Color = value)"
-                                          OnSaveClick="@SaveConcept"
-                                          OnSaveAndAddAnotherClick="@SaveConceptAndAddAnother"
-                                          OnCancelClick="@CancelEditConcept"
-                                          OnTemplateSelected="@ApplyConceptTemplate" />
-                        }
-                        else if (showAddRelationship || editingRelationship != null)
-                        {
-                            <RelationshipEditor IsEditing="@(editingRelationship != null)"
-                                               ShouldPulse="@shouldPulseSidebar"
-                                               Concepts="@ontology.Concepts"
-                                               ExistingRelationshipTypes="@GetExistingRelationshipTypes()"
-                                               SourceConceptId="@newRelationship.SourceConceptId"
-                                               SourceConceptIdChanged="@((value) => newRelationship.SourceConceptId = value)"
-                                               TargetConceptId="@newRelationship.TargetConceptId"
-                                               TargetConceptIdChanged="@((value) => newRelationship.TargetConceptId = value)"
-                                               RelationType="@newRelationship.RelationType"
-                                               RelationTypeChanged="@((value) => newRelationship.RelationType = value)"
-                                               CustomType="@customRelationType"
-                                               CustomTypeChanged="@((value) => customRelationType = value)"
-                                               Label="@newRelationship.Label"
-                                               LabelChanged="@((value) => newRelationship.Label = value)"
-                                               Description="@newRelationship.Description"
-                                               DescriptionChanged="@((value) => newRelationship.Description = value)"
-                                               OnSaveClick="@SaveRelationship"
-                                               OnCancelClick="@CancelEditRelationship" />
-                        }
-                        else if (showAddIndividual || editingIndividual != null)
+                    <div class="ontology-floating-modal-body">
+                        @if (showAddIndividual || editingIndividual != null)
                         {
                             <IndividualEditor IsEditing="@(editingIndividual != null)"
                                              Concepts="@ontology.Concepts"
@@ -1159,7 +1046,6 @@ else
     private bool showAddRelationship = false;
     private bool showAddIndividual = false;
     private bool showBulkCreate = false;
-    private bool isValidationPanelCollapsed = false;
     private Concept? selectedConcept = null;
     private Relationship? selectedRelationship = null;
     private Concept? editingConcept = null;
@@ -1327,37 +1213,11 @@ else
             await Task.Delay(100);
             await graphView.RefreshGraph();
         }
-
-        // Refresh validation after loading ontology
-        await LoadValidation();
     }
 
     private void GoBack()
     {
         Navigation.NavigateTo("");
-    }
-
-    private void ToggleValidationPanel()
-    {
-        isValidationPanelCollapsed = !isValidationPanelCollapsed;
-    }
-
-    private int? hoveredIssueId = null;
-    private double validationFontSize = 1.0; // Font size multiplier for validation issues (0.6 to 1.2)
-
-    private async Task HandleValidationIssueClick(ValidationIssue issue)
-    {
-        // Scroll to validation issue (works in List view)
-        if (issue.EntityId > 0)
-        {
-            // Determine the element ID based on entity type
-            string elementId = issue.EntityType == "Concept"
-                ? $"concept-{issue.EntityId}"
-                : $"relationship-{issue.EntityId}";
-
-            // Use JavaScript to scroll to the element
-            await JS.InvokeVoidAsync("scrollToElement", elementId);
-        }
     }
 
     private async Task HandleUndo()

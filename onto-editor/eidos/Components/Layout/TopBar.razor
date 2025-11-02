@@ -6,6 +6,7 @@
 @inject IOntologyService OntologyService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IWebHostEnvironment Environment
 
 <nav class="topbar">
     <div class="topbar-container">
@@ -171,6 +172,15 @@
                                 <i class="bi bi-box-arrow-right"></i> Logout
                             </a>
                         </li>
+                        @if (Environment.IsDevelopment())
+                        {
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item text-warning" href="/dev/switch-user">
+                                    <i class="bi bi-bug-fill"></i> Switch User (Dev)
+                                </a>
+                            </li>
+                        }
                     </ul>
                 </div>
             }

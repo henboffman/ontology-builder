@@ -122,14 +122,15 @@ public class HolidayThemeService
                 Emojis = new[] { "🎃", "👻", "🦇", "🕸️" }
             },
 
-            // Diwali (approximate - varies by year, using October/November)
+            // Diwali (5-day festival - dates vary by year based on lunar calendar)
+            // 2025: October 18-22
             new Holiday
             {
                 Name = "Diwali",
                 StartMonth = 10,
-                StartDay = 20,
-                EndMonth = 11,
-                EndDay = 15,
+                StartDay = 18,
+                EndMonth = 10,
+                EndDay = 22,
                 Emojis = new[] { "🪔", "✨", "🎆", "🌟" }
             },
 

@@ -232,3 +232,74 @@
         opacity: 0.7;
     }
 }
+
+/* Floating Modal for Editors */
+.ontology-floating-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.ontology-floating-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+}
+
+.ontology-floating-modal-content {
+    position: relative;
+    z-index: 2;
+    background-color: var(--bs-body-bg);
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.ontology-floating-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.ontology-floating-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+    .ontology-floating-modal {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .ontology-floating-modal-content {
+        max-width: 100%;
+        border-radius: 0.5rem 0.5rem 0 0;
+        max-height: 85vh;
+    }
+}
+
+/* Dark mode adjustments */
+[data-bs-theme="dark"] .ontology-floating-modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.75);
+}
