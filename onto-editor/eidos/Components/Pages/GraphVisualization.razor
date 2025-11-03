@@ -68,6 +68,9 @@
     [Parameter]
     public EventCallback<int> OnIndividualClicked { get; set; }
 
+    [Parameter]
+    public EventCallback OnBackgroundCmdShiftClicked { get; set; }
+
     private string GraphId = $"graph-{Guid.NewGuid():N}";
     private bool hasRendered = false;
     private int lastConceptCount = 0;
@@ -335,7 +338,9 @@
     [JSInvokable]
     public async Task OnNodeClick(int conceptId)
     {
+        Console.WriteLine($"[GraphVisualization] OnNodeClick called with conceptId: {conceptId}");
         await OnNodeClicked.InvokeAsync(conceptId);
+        Console.WriteLine($"[GraphVisualization] OnNodeClicked callback invoked");
     }
 
     [JSInvokable]
@@ -349,6 +354,14 @@
     {
         Console.WriteLine($"OnIndividualClick called with ID: {individualId}");
         await OnIndividualClicked.InvokeAsync(individualId);
+    }
+
+    [JSInvokable]
+    public async Task OnBackgroundCmdShiftClick()
+    {
+        Console.WriteLine("[GraphVisualization] OnBackgroundCmdShiftClick called");
+        await OnBackgroundCmdShiftClicked.InvokeAsync();
+        Console.WriteLine("[GraphVisualization] OnBackgroundCmdShiftClicked callback invoked");
     }
 
     public async Task RefreshGraph()

@@ -178,7 +178,9 @@ else
                            OnBulkCreateClick="@ShowBulkCreateDialog"
                            OnNavigateToUserView="@NavigateToUserView" />
 
-        <div class="ontology-tabs-container">
+        <!-- Main Content Layout Wrapper (Desktop: side-by-side, Mobile: stacked) -->
+        <div class="ontology-main-layout">
+            <div class="ontology-tabs-container">
             <!-- Tab Content Area -->
             <div class="ontology-tab-content">
                 @if (viewMode == ViewMode.Graph)
@@ -279,8 +281,8 @@ else
                                  OnRedoClick="@HandleRedo"
                                  PresenceUsers="@presenceUsers" />
 
-                <!-- Selected Node Details Panel -->
-                <div class="mt-3">
+                <!-- Selected Node Details Panel (Mobile/Tablet only - hidden on desktop) -->
+                <div class="mt-3 d-md-none">
                     <SelectedNodeDetailsPanel SelectedConcept="@selectedConcept"
                                              SelectedRelationship="@selectedRelationship"
                                              SelectedIndividual="@selectedIndividual"
@@ -295,299 +297,20 @@ else
                                 OnIssueClick="@HandleIssueClick"
                                 OnRefresh="@RefreshValidation" />
             </div>
-        </div>
-
-        <!-- Desktop Sidebar - Details Only (Editors moved to floating panels) (visible on md and up) -->
-        <div class="d-none d-md-block col-md-3 ontology-sidebar">
-                @if (selectedIndividual != null)
-                {
-                    var individualConcept = selectedIndividual.Concept ?? ontology?.Concepts.FirstOrDefault(c => c.Id == selectedIndividual.ConceptId);
-
-                    <div class="card">
-                        <div class="card-header">
-                            <h6 class="mb-0">Individual Details</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-flex align-items-center gap-2 mb-2">
-                                <i class="bi bi-person-fill fs-4" style="color: @(individualConcept?.Color ?? "#4A90E2");"></i>
-                                <h5 class="mb-0">@selectedIndividual.Name</h5>
-                            </div>
-
-                            @if (individualConcept != null)
-                            {
-                                <p class="mb-2">
-                                    <strong>Instance of:</strong>
-                                    <span class="badge" style="background-color: @(individualConcept.Color ?? "#4A90E2");">
-                                        @individualConcept.Name
-                                    </span>
-                                </p>
-                            }
-
-                            @if (!string.IsNullOrWhiteSpace(selectedIndividual.Label))
-                            {
-                                <p class="mb-2"><strong>Label:</strong> @selectedIndividual.Label</p>
-                            }
-
-                            @if (!string.IsNullOrWhiteSpace(selectedIndividual.Description))
-                            {
-                                <p class="mb-2"><strong>Description:</strong> @selectedIndividual.Description</p>
-                            }
-
-                            @if (!string.IsNullOrWhiteSpace(selectedIndividual.Uri))
-                            {
-                                <p class="mb-2">
-                                    <strong>URI:</strong><br/>
-                                    <code class="small">@selectedIndividual.Uri</code>
-                                </p>
-                            }
-
-                            @if (selectedIndividual.Properties?.Any() == true)
-                            {
-                                <hr class="my-3" />
-                                <div class="mb-3">
-                                    <h6 class="mb-2"><i class="bi bi-tags me-1"></i>Properties</h6>
-                                    <div class="list-group list-group-flush">
-                                        @foreach (var prop in selectedIndividual.Properties)
-                                        {
-                                            <div class="list-group-item px-0 py-2">
-                                                <strong>@prop.Name:</strong> @prop.Value
-                                                @if (!string.IsNullOrWhiteSpace(prop.DataType))
-                                                {
-                                                    <br/><small class="text-muted">Type: @prop.DataType</small>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            }
-
-                            <hr class="my-3" />
-
-                            @if (CanEdit())
-                            {
-                                <div class="d-grid gap-2">
-                                    <button class="btn btn-outline-primary btn-sm" @onclick="() => EditIndividual(selectedIndividual)">
-                                        <i class="bi bi-pencil me-2"></i>Edit Individual
-                                    </button>
-                                    <button class="btn btn-outline-danger btn-sm" @onclick="async () => await DeleteIndividual(selectedIndividual)">
-                                        <i class="bi bi-trash me-2"></i>Delete Individual
-                                    </button>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
-                else if (selectedConcept != null)
-                {
-                    <div class="card">
-                        <div class="card-header">
-                            <h6 class="mb-0">Concept Details</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-flex align-items-center gap-2 mb-2">
-                                <div style="width: 30px; height: 30px; background-color: @selectedConcept.Color; border-radius: 4px;"></div>
-                                <h5 class="mb-0">@selectedConcept.Name</h5>
-                            </div>
-                            @if (!string.IsNullOrWhiteSpace(selectedConcept.Category))
-                            {
-                                <p class="mb-2"><strong>Category:</strong> @selectedConcept.Category</p>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(selectedConcept.SimpleExplanation))
-                            {
-                                <p class="mb-2"><strong>Explanation:</strong> @selectedConcept.SimpleExplanation</p>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(selectedConcept.Definition))
-                            {
-                                <p class="mb-2"><strong>Definition:</strong> @selectedConcept.Definition</p>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(selectedConcept.Examples))
-                            {
-                                <p class="mb-2">
-                                    <strong>Examples:</strong><br/>
-                                    <em>@selectedConcept.Examples</em>
-                                </p>
-                            }
-
-                            @* Connected Concepts Section *@
-                            @{
-                                var connectedConcepts = GetConnectedConcepts(selectedConcept.Id);
-                                if (connectedConcepts.Any())
-                                {
-                                    <hr class="my-3" />
-                                    <div class="mb-3">
-                                        <h6 class="mb-2"><i class="bi bi-diagram-3 me-1"></i>Connected Concepts</h6>
-                                        <div class="list-group list-group-flush">
-                                            @foreach (var connection in connectedConcepts)
-                                            {
-                                                <div class="list-group-item px-0 py-2">
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <div style="width: 20px; height: 20px; background-color: @connection.ConceptColor; border-radius: 3px;"></div>
-                                                        <div class="flex-grow-1">
-                                                            <strong>@connection.ConceptName</strong>
-                                                            <br/>
-                                                            <small class="text-muted">
-                                                                @if (connection.IsOutgoing)
-                                                                {
-                                                                    <span>@selectedConcept.Name <i class="bi bi-arrow-right mx-1"></i> @connection.ConceptName</span>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <span>@connection.ConceptName <i class="bi bi-arrow-right mx-1"></i> @selectedConcept.Name</span>
-                                                                }
-                                                                <br/>
-                                                                <span class="badge bg-secondary">@connection.RelationType</span>
-                                                            </small>
-                                                        </div>
-                                                        <button class="btn btn-sm btn-outline-primary"
-                                                                @onclick="() => SelectConcept(ontology!.Concepts.First(c => c.Id == connection.ConceptId))"
-                                                                title="View this concept">
-                                                            <i class="bi bi-eye"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                }
-                            }
-
-                            <hr class="my-3" />
-
-                            <ConceptRestrictionsEditor Restrictions="@selectedConceptRestrictions"
-                                                      OnAddRestrictionClick="@(() => ShowAddRestrictionDialog())"
-                                                      OnEditRestrictionClick="@((r) => EditRestriction(r))"
-                                                      OnDeleteRestrictionClick="@((r) => DeleteRestriction(r))"
-                                                      CanEdit="@CanEdit()" />
-
-                            <hr class="my-3" />
-
-                            <button class="btn btn-sm btn-outline-secondary w-100" @onclick="() => selectedConcept = null">
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                }
-                else if (selectedRelationship != null)
-                {
-                    <div class="card">
-                        <div class="card-header">
-                            <h6 class="mb-0">Relationship Details</h6>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="mb-3">@selectedRelationship.RelationType</h5>
-
-                            @{
-                                var sourceConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == selectedRelationship.SourceConceptId);
-                                var targetConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == selectedRelationship.TargetConceptId);
-                            }
-
-                            <div class="mb-3">
-                                <p class="mb-2"><strong>Source Concept:</strong></p>
-                                @if (sourceConcept != null)
-                                {
-                                    <div class="d-flex align-items-center gap-2 ms-3">
-                                        <div style="width: 20px; height: 20px; background-color: @sourceConcept.Color; border-radius: 3px;"></div>
-                                        <span>@sourceConcept.Name</span>
-                                    </div>
-                                }
-                            </div>
-
-                            <div class="mb-3">
-                                <p class="mb-2"><strong>Target Concept:</strong></p>
-                                @if (targetConcept != null)
-                                {
-                                    <div class="d-flex align-items-center gap-2 ms-3">
-                                        <div style="width: 20px; height: 20px; background-color: @targetConcept.Color; border-radius: 3px;"></div>
-                                        <span>@targetConcept.Name</span>
-                                    </div>
-                                }
-                            </div>
-
-                            @if (!string.IsNullOrWhiteSpace(selectedRelationship.Label))
-                            {
-                                <p class="mb-2"><strong>Label:</strong> @selectedRelationship.Label</p>
-                            }
-
-                            @if (!string.IsNullOrWhiteSpace(selectedRelationship.Description))
-                            {
-                                <p class="mb-2">
-                                    <strong>Description:</strong><br/>
-                                    @selectedRelationship.Description
-                                </p>
-                            }
-
-                            <hr class="my-3" />
-
-                            <button class="btn btn-sm btn-outline-secondary w-100" @onclick="() => selectedRelationship = null">
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    @if (ontology.Concepts.Count == 0)
-                    {
-                        <!-- Example Cards for Empty Ontologies -->
-                        <div class="card border-secondary mb-3">
-                            <div class="card-header bg-white border-bottom">
-                                <h6 class="mb-0">Example Concept</h6>
-                            </div>
-                            <div class="card-body small">
-                                <div class="mb-2">
-                                    <div class="d-flex align-items-center gap-2 mb-1">
-                                        <div style="width: 20px; height: 20px; background-color: var(--concept-default); border-radius: 3px;"></div>
-                                        <strong>Animal</strong>
-                                        <span class="badge bg-secondary">Root</span>
-                                    </div>
-                                    <p class="mb-1 text-muted">
-                                        <strong>Explanation:</strong> Any living creature that needs to eat food to survive
-                                    </p>
-                                    <p class="mb-0">
-                                        <i class="bi bi-lightbulb text-warning"></i>
-                                        <em>Examples: Dogs, cats, birds, fish</em>
-                                    </p>
-                                </div>
-                                <hr />
-                                <p class="mb-0 text-muted"><strong>Try creating concepts like:</strong></p>
-                                <ul class="mb-0">
-                                    <li>Broad categories first (e.g., "Vehicle", "Food")</li>
-                                    <li>Then more specific types (e.g., "Car", "Fruit")</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="card border-secondary">
-                            <div class="card-header bg-white border-bottom">
-                                <h6 class="mb-0">Example Relationship</h6>
-                            </div>
-                            <div class="card-body small">
-                                <div class="mb-2">
-                                    <div class="d-flex align-items-center gap-2 mb-2">
-                                        <span class="badge bg-primary">Dog</span>
-                                        <span class="badge bg-dark">is-a</span>
-                                        <i class="bi bi-arrow-right"></i>
-                                        <span class="badge bg-primary">Animal</span>
-                                    </div>
-                                    <p class="mb-0 text-muted">
-                                        <strong>Meaning:</strong> Dogs are a type of animal
-                                    </p>
-                                </div>
-                                <hr />
-                                <p class="mb-0 text-muted"><strong>Common patterns:</strong></p>
-                                <ul class="mb-0">
-                                    <li><strong>is-a:</strong> Type/subtype (Car is-a Vehicle)</li>
-                                    <li><strong>part-of:</strong> Components (Wheel part-of Car)</li>
-                                    <li><strong>has-a:</strong> Attributes (Person has-a Name)</li>
-                                </ul>
-                            </div>
-                        </div>
-                    }
-                }
             </div>
-        </div>
 
-        <!-- Floating Modal - Editors (visible on all screen sizes) -->
+            <!-- Desktop Sidebar - Details Only (Editors moved to floating panels) (visible on md and up) -->
+            <!-- TEMPORARILY HIDDEN - Testing floating modal only -->
+            @* <div class="d-none d-md-block ontology-details-sidebar">
+                <SelectedNodeDetailsPanel SelectedConcept="@selectedConcept"
+                                         SelectedRelationship="@selectedRelationship"
+                                         SelectedIndividual="@selectedIndividual"
+                                         ConnectedConcepts="@GetConnectedConcepts()" />
+            </div> *@
+        </div> <!-- Close ontology-main-layout -->
+    </div> <!-- Close container-fluid -->
+
+    <!-- Floating Modal - Editors (visible on all screen sizes) -->
         @if ((individualManagementPanel?.IsDialogVisible() == true || selectedConcept != null || selectedRelationship != null || selectedIndividual != null))
         {
             <div class="ontology-floating-modal">
@@ -922,7 +645,11 @@ else
     private Concept? selectedConcept
     {
         get => viewState.SelectedConcept;
-        set => viewState.SetSelectedConcept(value);
+        set
+        {
+            Console.WriteLine($"[OntologyView] selectedConcept setter called with: {value?.Name ?? "null"}, Stack: {Environment.StackTrace.Split('\n')[1]}");
+            viewState.SetSelectedConcept(value);
+        }
     }
 
     private Relationship? selectedRelationship
@@ -1122,39 +849,65 @@ else
         }
     }
 
+    /// <summary>
+    /// Gets all concepts connected to the selected concept via relationships.
+    /// Overload that uses the currently selected concept from state.
+    /// </summary>
     private List<SelectedNodeDetailsPanel.ConceptConnection> GetConnectedConcepts()
     {
-        if (selectedConcept == null || ontology == null)
+        if (selectedConcept == null)
+            return new List<SelectedNodeDetailsPanel.ConceptConnection>();
+
+        return GetConnectedConcepts(selectedConcept.Id);
+    }
+
+    /// <summary>
+    /// Gets all concepts connected to a specific concept via relationships.
+    /// Returns connections ordered by concept name.
+    /// </summary>
+    /// <param name="conceptId">The ID of the concept to find connections for</param>
+    private List<SelectedNodeDetailsPanel.ConceptConnection> GetConnectedConcepts(int conceptId)
+    {
+        if (ontology == null)
             return new List<SelectedNodeDetailsPanel.ConceptConnection>();
 
         var connections = new List<SelectedNodeDetailsPanel.ConceptConnection>();
 
-        // Outgoing relationships (from this concept)
-        var outgoing = ontology.Relationships
-            .Where(r => r.SourceConceptId == selectedConcept.Id)
-            .Select(r => new SelectedNodeDetailsPanel.ConceptConnection
+        // Find all relationships where this concept is either source or target
+        foreach (var relationship in ontology.Relationships)
+        {
+            int? connectedConceptId = null;
+            bool isOutgoing = false;
+
+            if (relationship.SourceConceptId == conceptId)
             {
-                ConceptName = r.TargetConcept?.Name ?? "Unknown",
-                ConceptColor = r.TargetConcept?.Color ?? "#4A90E2",
-                RelationType = r.RelationType,
-                IsOutgoing = true
-            });
-
-        // Incoming relationships (to this concept)
-        var incoming = ontology.Relationships
-            .Where(r => r.TargetConceptId == selectedConcept.Id)
-            .Select(r => new SelectedNodeDetailsPanel.ConceptConnection
+                connectedConceptId = relationship.TargetConceptId;
+                isOutgoing = true;
+            }
+            else if (relationship.TargetConceptId == conceptId)
             {
-                ConceptName = r.SourceConcept?.Name ?? "Unknown",
-                ConceptColor = r.SourceConcept?.Color ?? "#4A90E2",
-                RelationType = r.RelationType,
-                IsOutgoing = false
-            });
+                connectedConceptId = relationship.SourceConceptId;
+                isOutgoing = false;
+            }
 
-        connections.AddRange(outgoing);
-        connections.AddRange(incoming);
+            if (connectedConceptId.HasValue)
+            {
+                var connectedConcept = ontology.Concepts.FirstOrDefault(c => c.Id == connectedConceptId.Value);
+                if (connectedConcept != null)
+                {
+                    connections.Add(new SelectedNodeDetailsPanel.ConceptConnection
+                    {
+                        ConceptId = connectedConcept.Id,
+                        ConceptName = connectedConcept.Name,
+                        ConceptColor = connectedConcept.Color ?? "#4A90E2",
+                        RelationType = relationship.RelationType,
+                        IsOutgoing = isOutgoing
+                    });
+                }
+            }
+        }
 
-        return connections;
+        return connections.OrderBy(c => c.ConceptName).ToList();
     }
 
     private async Task SwitchViewMode(ViewMode mode)
@@ -1454,28 +1207,17 @@ else
 
     private async Task SelectConcept(Concept concept)
     {
-        selectedConcept = concept;
-        selectedRelationship = null;
-        if (conceptManagementPanel != null)
-        {
-            conceptManagementPanel.HideDialog();
-        }
-        if (relationshipManagementPanel != null)
-        {
-            relationshipManagementPanel.HideDialog();
-        }
+        Console.WriteLine($"[OntologyView] SelectConcept called with: {concept?.Name ?? "null"}");
 
-        // Load restrictions for the selected concept
+        // Load restrictions FIRST (before setting state)
         if (concept != null)
         {
             selectedConceptRestrictions = await RestrictionService.GetByConceptIdAsync(concept.Id);
         }
-    }
 
-    private void SelectRelationship(Relationship relationship)
-    {
-        selectedRelationship = relationship;
-        selectedConcept = null;
+        // Set selected concept - ViewState.SetSelectedConcept will automatically clear relationship and individual
+        selectedConcept = concept;
+
         if (conceptManagementPanel != null)
         {
             conceptManagementPanel.HideDialog();
@@ -1484,14 +1226,45 @@ else
         {
             relationshipManagementPanel.HideDialog();
         }
+
+        // Force UI update for the details sidebar
+        Console.WriteLine($"[OntologyView] Selected concept set to: {selectedConcept?.Name ?? "null"}");
+        StateHasChanged();
+    }
+
+    private void SelectRelationship(Relationship relationship)
+    {
+        Console.WriteLine($"[OntologyView] SelectRelationship called with: {relationship?.RelationType ?? "null"}");
+
+        // Set selected relationship - ViewState.SetSelectedRelationship will automatically clear concept and individual
+        selectedRelationship = relationship;
+
+        if (conceptManagementPanel != null)
+        {
+            conceptManagementPanel.HideDialog();
+        }
+        if (relationshipManagementPanel != null)
+        {
+            relationshipManagementPanel.HideDialog();
+        }
+
+        // Force UI update for the details sidebar
+        Console.WriteLine($"[OntologyView] Selected relationship set to: {selectedRelationship?.RelationType ?? "null"}");
+        StateHasChanged();
     }
 
     private async Task HandleNodeClick(int conceptId)
     {
+        Console.WriteLine($"[OntologyView] HandleNodeClick called with conceptId: {conceptId}");
         var concept = ontology?.Concepts.FirstOrDefault(c => c.Id == conceptId);
+        Console.WriteLine($"[OntologyView] Found concept: {concept?.Name ?? "NULL"}, Total concepts in ontology: {ontology?.Concepts?.Count ?? 0}");
         if (concept != null)
         {
             await SelectConcept(concept);
+        }
+        else
+        {
+            Console.WriteLine($"[OntologyView] WARNING: Concept with ID {conceptId} not found!");
         }
     }
 
@@ -2375,60 +2148,6 @@ else
         selectedRelationship = null;
     }
 
-    // Helper class for connected concept information
-    private class ConnectedConceptInfo
-    {
-        public int ConceptId { get; set; }
-        public string ConceptName { get; set; } = string.Empty;
-        public string ConceptColor { get; set; } = "#6c757d";
-        public string RelationType { get; set; } = string.Empty;
-        public bool IsOutgoing { get; set; }
-    }
-
-    // Get all concepts connected to the given concept via relationships
-    private List<ConnectedConceptInfo> GetConnectedConcepts(int conceptId)
-    {
-        if (ontology == null)
-            return new List<ConnectedConceptInfo>();
-
-        var connections = new List<ConnectedConceptInfo>();
-
-        // Find all relationships where this concept is either source or target
-        foreach (var relationship in ontology.Relationships)
-        {
-            int? connectedConceptId = null;
-            bool isOutgoing = false;
-
-            if (relationship.SourceConceptId == conceptId)
-            {
-                connectedConceptId = relationship.TargetConceptId;
-                isOutgoing = true;
-            }
-            else if (relationship.TargetConceptId == conceptId)
-            {
-                connectedConceptId = relationship.SourceConceptId;
-                isOutgoing = false;
-            }
-
-            if (connectedConceptId.HasValue)
-            {
-                var connectedConcept = ontology.Concepts.FirstOrDefault(c => c.Id == connectedConceptId.Value);
-                if (connectedConcept != null)
-                {
-                    connections.Add(new ConnectedConceptInfo
-                    {
-                        ConceptId = connectedConcept.Id,
-                        ConceptName = connectedConcept.Name,
-                        ConceptColor = connectedConcept.Color ?? "#6c757d",
-                        RelationType = relationship.RelationType,
-                        IsOutgoing = isOutgoing
-                    });
-                }
-            }
-        }
-
-        return connections.OrderBy(c => c.ConceptName).ToList();
-    }
 
 
     // Keyboard shortcuts banner dismiss methods

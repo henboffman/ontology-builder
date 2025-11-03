@@ -11,7 +11,7 @@
                 </button>
             </h5>
             <small class="text-muted">
-                Drag nodes to rearrange • Scroll to zoom • Click to select • Ctrl+Click to add relationship
+                Drag nodes to rearrange • Scroll to zoom • Click to select • Ctrl+Click to add relationship • Cmd+Shift+Click to add concept
             </small>
         </div>
         <div class="d-flex gap-2">
@@ -53,6 +53,7 @@
                     <li><strong>Scroll</strong> to zoom in/out</li>
                     <li><strong>Click a node</strong> to view concept details in the sidebar</li>
                     <li><strong>Ctrl+Click a node</strong> to quickly add a relationship from that concept</li>
+                    <li><strong>Cmd+Shift+Click background</strong> (or Ctrl+Shift+Click on Windows) to add a new concept</li>
                     <li><strong>Color modes</strong> help distinguish between concepts or source ontologies</li>
                 </ul>
                 <button type="button" class="btn-close" @onclick="() => showGraphHelp = false"></button>
@@ -89,6 +90,7 @@
                                       OnNodeClicked="@OnNodeClicked"
                                       OnEdgeClicked="@OnEdgeClicked"
                                       OnIndividualClicked="@OnIndividualClicked"
+                                      OnBackgroundCmdShiftClicked="@OnAddConceptClick"
                                       @ref="graphVisualization" />
                 </div>
                 @if (ColorMode == "source" && SourceOntologies.Any())

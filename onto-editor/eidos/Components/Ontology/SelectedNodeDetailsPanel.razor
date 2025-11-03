@@ -150,11 +150,18 @@
     [Parameter] public Individual? SelectedIndividual { get; set; }
     [Parameter] public IEnumerable<ConceptConnection>? ConnectedConcepts { get; set; }
 
+    protected override void OnParametersSet()
+    {
+        Console.WriteLine($"[SelectedNodeDetailsPanel] OnParametersSet - Concept: {SelectedConcept?.Name ?? "null"}, Relationship: {SelectedRelationship?.RelationType ?? "null"}, Individual: {SelectedIndividual?.Name ?? "null"}");
+        base.OnParametersSet();
+    }
+
     /// <summary>
     /// Represents a connection between the current concept and another concept via a relationship
     /// </summary>
     public class ConceptConnection
     {
+        public int ConceptId { get; set; }
         public string ConceptName { get; set; } = string.Empty;
         public string ConceptColor { get; set; } = "#4A90E2";
         public string RelationType { get; set; } = string.Empty;

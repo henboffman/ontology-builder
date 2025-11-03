@@ -117,18 +117,16 @@
 
     /// <summary>
     /// Handles node clicks in the graph.
-    /// Selects the concept in the ViewState and invokes the parent callback.
+    /// Invokes the parent callback to handle concept selection.
     /// </summary>
     /// <param name="conceptId">The ID of the clicked concept.</param>
     private async Task HandleNodeClick(int conceptId)
     {
-        var concept = ViewState?.Ontology?.Concepts.FirstOrDefault(c => c.Id == conceptId);
-        if (concept != null && ViewState != null)
-        {
-            ViewState.SetSelectedConcept(concept);
-        }
-
+        Console.WriteLine($"[GraphViewContainer] HandleNodeClick called with conceptId: {conceptId}");
+        Console.WriteLine($"[GraphViewContainer] OnNodeClick.HasDelegate: {OnNodeClick.HasDelegate}");
+        // Let the parent handle the selection to avoid double-setting state
         await OnNodeClick.InvokeAsync(conceptId);
+        Console.WriteLine($"[GraphViewContainer] OnNodeClick.InvokeAsync completed");
     }
 
     /// <summary>

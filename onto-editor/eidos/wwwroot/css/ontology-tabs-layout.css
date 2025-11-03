@@ -5,9 +5,18 @@
  * - Main content area (70% height)
  * - Bottom validation panel (30% height)
  * - Right sidebar for view navigation
+ * - Desktop details sidebar (fixed right side)
  */
 
+/* Main Layout Wrapper - contains tabs container and details sidebar */
+.ontology-main-layout {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
 .ontology-tabs-container {
+    flex: 1;
     display: grid;
     grid-template-columns: 1fr 250px;
     grid-template-rows: auto 1fr auto;
@@ -119,35 +128,60 @@
     max-height: fit-content;
 }
 
+/* Desktop Details Sidebar (alongside tabs container) */
+.ontology-details-sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    height: calc(100vh - 220px);
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    position: sticky;
+    top: 20px;
+}
+
 /* Scrollbar styling */
 .ontology-tab-content::-webkit-scrollbar,
 .ontology-view-nav::-webkit-scrollbar,
-.ontology-validation-section::-webkit-scrollbar {
+.ontology-validation-section::-webkit-scrollbar,
+.ontology-details-sidebar::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
 
 .ontology-tab-content::-webkit-scrollbar-track,
 .ontology-view-nav::-webkit-scrollbar-track,
-.ontology-validation-section::-webkit-scrollbar-track {
+.ontology-validation-section::-webkit-scrollbar-track,
+.ontology-details-sidebar::-webkit-scrollbar-track {
     background: transparent;
 }
 
 .ontology-tab-content::-webkit-scrollbar-thumb,
 .ontology-view-nav::-webkit-scrollbar-thumb,
-.ontology-validation-section::-webkit-scrollbar-thumb {
+.ontology-validation-section::-webkit-scrollbar-thumb,
+.ontology-details-sidebar::-webkit-scrollbar-thumb {
     background: var(--bs-border-color);
     border-radius: 4px;
 }
 
 .ontology-tab-content::-webkit-scrollbar-thumb:hover,
 .ontology-view-nav::-webkit-scrollbar-thumb:hover,
-.ontology-validation-section::-webkit-scrollbar-thumb:hover {
+.ontology-validation-section::-webkit-scrollbar-thumb:hover,
+.ontology-details-sidebar::-webkit-scrollbar-thumb:hover {
     background: var(--bs-secondary);
 }
 
 /* Responsive behavior for tablets */
 @media (max-width: 991px) {
+    .ontology-main-layout {
+        flex-direction: column;
+    }
+
     .ontology-tabs-container {
         grid-template-columns: 1fr;
         grid-template-rows: auto 1fr auto auto;
@@ -202,6 +236,12 @@
 
 [data-bs-theme="dark"] .ontology-validation-section {
     border-top-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .ontology-details-sidebar {
+    background: var(--bs-dark);
+    border-color: var(--bs-gray-700);
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3);
 }
 
 [data-bs-theme="dark"] .ontology-tab:hover {

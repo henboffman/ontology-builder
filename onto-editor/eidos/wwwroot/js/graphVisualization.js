@@ -338,6 +338,20 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
                 // Call back to Blazor to show relationship details
                 dotNetHelper.invokeMethodAsync('OnEdgeClick', relationshipId);
             });
+
+            // Add click handler for background (Cmd+Shift+Click to add concept)
+            cy.on('click', function (event) {
+                // Check if the click was on the background (not on a node or edge)
+                if (event.target === cy) {
+                    // Check if Cmd+Shift (Mac) or Ctrl+Shift (Windows/Linux) was pressed
+                    if ((event.originalEvent.metaKey || event.originalEvent.ctrlKey) && event.originalEvent.shiftKey) {
+                        // Call back to Blazor to show add concept dialog
+                        dotNetHelper.invokeMethodAsync('OnBackgroundCmdShiftClick')
+                            .then(() => console.log('OnBackgroundCmdShiftClick succeeded'))
+                            .catch(err => console.error('OnBackgroundCmdShiftClick failed:', err));
+                    }
+                }
+            });
         }
 
         // Handle window resize to keep graph responsive
