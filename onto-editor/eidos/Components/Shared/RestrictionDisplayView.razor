@@ -1,0 +1,164 @@
+@using Eidos.Models
+
+<!-- Restriction Display/Edit View -->
+<div class="restriction-item @(IsEditing ? "editing" : "")" @key="Restriction.Id">
+    @if (IsEditing)
+    {
+        <!-- Inline Edit Form -->
+        <RestrictionEditForm
+            Restriction="@EditingRestriction"
+            IsNew="false"
+            OnSave="OnSave"
+            OnCancel="OnCancel"
+            IsSaving="@IsSaving" />
+    }
+    else
+    {
+        <!-- Display Mode -->
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="restriction-type-badge restriction-type-@Restriction.RestrictionType.ToLower()">
+                        @GetRestrictionTypeIcon() @Restriction.RestrictionType
+                    </span>
+                    <strong class="text-primary">@Restriction.PropertyName</strong>
+                    @if (Restriction.IsMandatory)
+                    {
+                        <span class="badge bg-danger" title="This is a mandatory (hard) constraint">Required</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning text-dark" title="This is an optional (soft) constraint">Optional</span>
+                    }
+                </div>
+                <div class="text-muted small">
+                    @GetRestrictionDescription()
+                </div>
+            </div>
+            <div class="entity-actions">
+                <button class="btn btn-sm btn-outline-primary"
+                        @onclick="OnEdit"
+                        title="Edit restriction">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger"
+                        @onclick="OnDelete"
+                        title="Delete restriction">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ConceptRestriction Restriction { get; set; } = null!;
+
+    [Parameter]
+    public bool IsEditing { get; set; }
+
+    [Parameter]
+    public ConceptRestriction? EditingRestriction { get; set; }
+
+    [Parameter]
+    public EventCallback OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public EventCallback OnDelete { get; set; }
+
+    [Parameter]
+    public bool IsSaving { get; set; }
+
+    private string GetRestrictionTypeIcon()
+    {
+        return Restriction.RestrictionType switch
+        {
+            RestrictionTypes.Required => "⚠️",
+            RestrictionTypes.ValueType => "🔤",
+            RestrictionTypes.Cardinality => "🔢",
+            RestrictionTypes.Range => "↔️",
+            RestrictionTypes.Enumeration => "📋",
+            RestrictionTypes.Pattern => "🔍",
+            RestrictionTypes.ConceptType => "🔗",
+            _ => "📌"
+        };
+    }
+
+    private string GetRestrictionDescription()
+    {
+        return Restriction.RestrictionType switch
+        {
+            RestrictionTypes.Required => "This property must have a value",
+
+            RestrictionTypes.ValueType => Restriction.ValueType != null
+                ? $"Value must be of type: {Restriction.ValueType}"
+                : "Value type constraint",
+
+            RestrictionTypes.Cardinality => GetCardinalityDescription(),
+
+            RestrictionTypes.Range => GetRangeDescription(),
+
+            RestrictionTypes.Enumeration => !string.IsNullOrWhiteSpace(Restriction.AllowedValues)
+                ? $"Value must be one of: {Restriction.AllowedValues}"
+                : "Value must be from allowed list",
+
+            RestrictionTypes.Pattern => !string.IsNullOrWhiteSpace(Restriction.Pattern)
+                ? $"Value must match pattern: {Restriction.Pattern}"
+                : "Value must match a pattern",
+
+            RestrictionTypes.ConceptType => Restriction.AllowedConceptId.HasValue
+                ? $"Value must reference concept ID: {Restriction.AllowedConceptId}"
+                : "Value must be of a specific concept type",
+
+            _ => Restriction.Description ?? "No description available"
+        };
+    }
+
+    private string GetCardinalityDescription()
+    {
+        var min = Restriction.MinCardinality;
+        var max = Restriction.MaxCardinality;
+
+        if (min.HasValue && max.HasValue)
+        {
+            if (min.Value == max.Value)
+                return $"Must have exactly {min.Value} value(s)";
+            else
+                return $"Must have between {min.Value} and {max.Value} value(s)";
+        }
+        else if (min.HasValue)
+        {
+            return $"Must have at least {min.Value} value(s)";
+        }
+        else if (max.HasValue)
+        {
+            return $"Must have at most {max.Value} value(s)";
+        }
+        else
+        {
+            return "Cardinality constraint defined";
+        }
+    }
+
+    private string GetRangeDescription()
+    {
+        var hasMin = !string.IsNullOrWhiteSpace(Restriction.MinValue);
+        var hasMax = !string.IsNullOrWhiteSpace(Restriction.MaxValue);
+
+        if (hasMin && hasMax)
+            return $"Value must be between {Restriction.MinValue} and {Restriction.MaxValue}";
+        else if (hasMin)
+            return $"Value must be at least {Restriction.MinValue}";
+        else if (hasMax)
+            return $"Value must be at most {Restriction.MaxValue}";
+        else
+            return "Range constraint defined";
+    }
+}

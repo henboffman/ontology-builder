@@ -1,0 +1,158 @@
+@using Eidos.Models
+
+<!-- Restriction Edit Form - Phase 1: Simple Types Only -->
+<div class="restriction-edit-form">
+    <!-- Property Name -->
+    <div class="mb-2">
+        <label class="form-label small fw-bold">
+            Property Name
+            <span class="text-danger">*</span>
+        </label>
+        <input type="text"
+               class="form-control form-control-sm"
+               @bind="Restriction.PropertyName"
+               placeholder="e.g., age, hasParent, email"
+               disabled="@IsSaving" />
+        <small class="form-text text-muted">
+            The name of the property this restriction applies to
+        </small>
+    </div>
+
+    <!-- Restriction Type -->
+    <div class="mb-2">
+        <label class="form-label small fw-bold">
+            Restriction Type
+            <span class="text-danger">*</span>
+        </label>
+        <select class="form-select form-select-sm"
+                @bind="Restriction.RestrictionType"
+                disabled="@IsSaving">
+            <option value="@RestrictionTypes.Required">Required - Property must have a value</option>
+            <option value="@RestrictionTypes.ValueType">Value Type - Specify data type (string, integer, etc.)</option>
+            <option value="@RestrictionTypes.Cardinality">Cardinality - Control how many values are allowed</option>
+        </select>
+        <small class="form-text text-muted">
+            Choose the type of constraint you want to apply
+        </small>
+    </div>
+
+    <!-- Type-Specific Fields -->
+    @if (Restriction.RestrictionType == RestrictionTypes.ValueType)
+    {
+        <div class="mb-2">
+            <label class="form-label small fw-bold">Value Type</label>
+            <select class="form-select form-select-sm"
+                    @bind="Restriction.ValueType"
+                    disabled="@IsSaving">
+                <option value="">Select type...</option>
+                <option value="string">String (text)</option>
+                <option value="integer">Integer (whole number)</option>
+                <option value="decimal">Decimal (number with decimals)</option>
+                <option value="boolean">Boolean (true/false)</option>
+                <option value="date">Date</option>
+                <option value="uri">URI (web address)</option>
+                <option value="concept">Concept (reference to another concept)</option>
+            </select>
+            <small class="form-text text-muted">
+                Example: Specify that "age" must be an integer, not text
+            </small>
+        </div>
+    }
+    else if (Restriction.RestrictionType == RestrictionTypes.Cardinality)
+    {
+        <div class="row">
+            <div class="col-6">
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Minimum Count</label>
+                    <input type="number"
+                           class="form-control form-control-sm"
+                           @bind="Restriction.MinCardinality"
+                           placeholder="e.g., 1"
+                           min="0"
+                           disabled="@IsSaving" />
+                    <small class="form-text text-muted">Minimum occurrences (leave blank for none)</small>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Maximum Count</label>
+                    <input type="number"
+                           class="form-control form-control-sm"
+                           @bind="Restriction.MaxCardinality"
+                           placeholder="e.g., 2"
+                           min="0"
+                           disabled="@IsSaving" />
+                    <small class="form-text text-muted">Maximum occurrences (leave blank for unbounded)</small>
+                </div>
+            </div>
+        </div>
+        <div class="restriction-example">
+            <strong>Example:</strong> A Person must have exactly 2 biological parents (min=2, max=2)
+        </div>
+    }
+
+    <!-- Mandatory Toggle -->
+    <div class="mb-3">
+        <div class="form-check">
+            <input class="form-check-input"
+                   type="checkbox"
+                   id="mandatoryCheck-@(IsNew ? "new" : Restriction.Id)"
+                   @bind="Restriction.IsMandatory"
+                   disabled="@IsSaving" />
+            <label class="form-check-label small" for="mandatoryCheck-@(IsNew ? "new" : Restriction.Id)">
+                <strong>Mandatory (Hard Constraint)</strong>
+                <br />
+                <span class="text-muted">If unchecked, this is a soft constraint (recommendation only)</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Description (Optional) -->
+    <div class="mb-3">
+        <label class="form-label small fw-bold">Description (Optional)</label>
+        <textarea class="form-control form-control-sm"
+                  rows="2"
+                  @bind="Restriction.Description"
+                  placeholder="Additional notes about this restriction..."
+                  disabled="@IsSaving"></textarea>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-sm btn-secondary"
+                @onclick="OnCancel"
+                disabled="@IsSaving">
+            <i class="bi bi-x-circle"></i> Cancel
+        </button>
+        <button type="button" class="btn btn-sm btn-success"
+                @onclick="OnSave"
+                disabled="@IsSaving">
+            @if (IsSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            else
+            {
+                <i class="bi bi-check-circle me-1"></i>
+            }
+            @(IsNew ? "Add" : "Save")
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ConceptRestriction Restriction { get; set; } = null!;
+
+    [Parameter]
+    public bool IsNew { get; set; }
+
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public bool IsSaving { get; set; }
+}

@@ -73,6 +73,13 @@
                 <i class="bi bi-table"></i> Bulk Create
             </button>
         </div>
+
+        <button class="btn btn-sm btn-outline-secondary"
+                @onclick="OnManageConceptsClick"
+                disabled="@(!CanFullAccess)"
+                title="Manage all concepts (Admin only)">
+            <i class="bi bi-list-ul"></i> Manage Concepts
+        </button>
     </div>
 
     <!-- Presence Indicator (Right Side) -->
@@ -123,6 +130,9 @@
 
     [Parameter]
     public EventCallback OnBulkCreateClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnManageConceptsClick { get; set; }
 
     [Parameter]
     public EventCallback<string> OnNavigateToUserView { get; set; }

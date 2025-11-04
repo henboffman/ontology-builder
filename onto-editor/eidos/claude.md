@@ -186,6 +186,15 @@ eidos/
 - Mobile-optimized controls
 - Gesture support (pinch-zoom, pan)
 
+### 11. Thorough documentation
+
+- Technical documentation (/documentation)
+- User-facing documentation (/user-guide)
+- Feature documentation (/features)
+- Release notes (/release-notes)
+
+With each feature or modification, update these documentation locations with the relevant information, matching the tone used throughout the existing document.
+
 ## Key Services
 
 ### Business Logic Services

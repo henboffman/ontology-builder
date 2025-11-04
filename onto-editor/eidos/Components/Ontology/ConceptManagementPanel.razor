@@ -276,6 +276,7 @@
         editingConcept = null;
         newConcept = new Concept();
         await OnCancelRequested.InvokeAsync();
+        StateHasChanged();
     }
 
     private void ApplyConceptTemplate(string templateValue)

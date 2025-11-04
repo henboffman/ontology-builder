@@ -26,7 +26,7 @@
                 Concept Type <span class="text-danger">*</span>
                 <i class="bi bi-info-circle" title="What type of thing is this individual?"></i>
             </label>
-            <select class="form-select form-select-sm" @bind="conceptId" disabled="@IsEditing">
+            <select class="form-select form-select-sm" value="@ConceptId" @onchange="OnConceptChanged" disabled="@IsEditing">
                 <option value="0">-- Select a concept --</option>
                 @if (Concepts != null && Concepts.Any())
                 {
@@ -48,8 +48,8 @@
 
         <div class="mb-2">
             <label class="form-label small">Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control form-control-sm" @bind="individualName"
-                   placeholder="e.g., Fido" />
+            <input type="text" class="form-control form-control-sm" value="@IndividualName"
+                   @oninput="OnNameChanged" placeholder="e.g., Fido" />
         </div>
 
         <div class="mb-2">
@@ -57,8 +57,8 @@
                 Description
                 <i class="bi bi-info-circle" title="A brief description of this specific individual"></i>
             </label>
-            <textarea class="form-control form-control-sm" rows="2" @bind="individualDescription"
-                      placeholder="Describe this individual"></textarea>
+            <textarea class="form-control form-control-sm" rows="2" value="@IndividualDescription"
+                      @oninput="OnDescriptionChanged" placeholder="Describe this individual"></textarea>
         </div>
 
         <div class="mb-2">
@@ -66,8 +66,8 @@
                 Label
                 <i class="bi bi-info-circle" title="A human-readable label (optional)"></i>
             </label>
-            <input type="text" class="form-control form-control-sm" @bind="individualLabel"
-                   placeholder="e.g., Friendly Golden Retriever" />
+            <input type="text" class="form-control form-control-sm" value="@IndividualLabel"
+                   @oninput="OnLabelChanged" placeholder="e.g., Friendly Golden Retriever" />
         </div>
 
         <div class="mb-2">
@@ -75,8 +75,8 @@
                 URI
                 <i class="bi bi-info-circle" title="Unique identifier URI (optional)"></i>
             </label>
-            <input type="text" class="form-control form-control-sm" @bind="individualUri"
-                   placeholder="e.g., http://example.org/individuals/fido" />
+            <input type="text" class="form-control form-control-sm" value="@IndividualUri"
+                   @oninput="OnUriChanged" placeholder="e.g., http://example.org/individuals/fido" />
         </div>
 
         <div class="mb-3">
@@ -85,10 +85,10 @@
                 <i class="bi bi-info-circle" title="Specific attributes of this individual"></i>
             </label>
 
-            @if (properties.Any())
+            @if (Properties != null && Properties.Any())
             {
                 <div class="list-group mb-2">
-                    @foreach (var prop in properties)
+                    @foreach (var prop in Properties)
                     {
                         <div class="list-group-item p-2">
                             <div class="d-flex justify-content-between align-items-center">
@@ -100,7 +100,7 @@
                                         <span class="badge bg-secondary ms-1">@prop.DataType</span>
                                     }
                                 </div>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveProperty(prop)">
+                                <button class="btn btn-sm btn-outline-danger" @onclick="async () => await RemoveProperty(prop)">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </div>
@@ -140,11 +140,11 @@
         </div>
 
         <div class="d-grid gap-2">
-            <button class="btn btn-sm btn-primary" @onclick="OnSaveClick"
+            <button class="btn btn-sm btn-primary" @onclick="async () => await OnSaveClick.InvokeAsync()"
                     disabled="@(ConceptId == 0 || string.IsNullOrWhiteSpace(IndividualName))">
                 <i class="bi bi-check-circle"></i> @(IsEditing ? "Save" : "Add")
             </button>
-            <button class="btn btn-sm btn-outline-secondary" @onclick="OnCancelClick">
+            <button class="btn btn-sm btn-outline-secondary" @onclick="async () => await OnCancelClick.InvokeAsync()">
                 Cancel
             </button>
         </div>
@@ -202,79 +202,32 @@
 
     private bool showHelp = false;
 
-    private int conceptId
+    private async Task OnConceptChanged(ChangeEventArgs e)
     {
-        get => ConceptId;
-        set
+        if (e.Value != null && int.TryParse(e.Value.ToString(), out int value))
         {
-            if (ConceptId != value)
-            {
-                ConceptId = value;
-                ConceptIdChanged.InvokeAsync(value);
-            }
+            await ConceptIdChanged.InvokeAsync(value);
         }
     }
 
-    private string individualName
+    private async Task OnNameChanged(ChangeEventArgs e)
     {
-        get => IndividualName;
-        set
-        {
-            if (IndividualName != value)
-            {
-                IndividualName = value;
-                IndividualNameChanged.InvokeAsync(value);
-            }
-        }
+        await IndividualNameChanged.InvokeAsync(e.Value?.ToString() ?? string.Empty);
     }
 
-    private string? individualDescription
+    private async Task OnDescriptionChanged(ChangeEventArgs e)
     {
-        get => IndividualDescription;
-        set
-        {
-            if (IndividualDescription != value)
-            {
-                IndividualDescription = value;
-                IndividualDescriptionChanged.InvokeAsync(value);
-            }
-        }
+        await IndividualDescriptionChanged.InvokeAsync(e.Value?.ToString());
     }
 
-    private string? individualLabel
+    private async Task OnLabelChanged(ChangeEventArgs e)
     {
-        get => IndividualLabel;
-        set
-        {
-            if (IndividualLabel != value)
-            {
-                IndividualLabel = value;
-                IndividualLabelChanged.InvokeAsync(value);
-            }
-        }
+        await IndividualLabelChanged.InvokeAsync(e.Value?.ToString());
     }
 
-    private string? individualUri
+    private async Task OnUriChanged(ChangeEventArgs e)
     {
-        get => IndividualUri;
-        set
-        {
-            if (IndividualUri != value)
-            {
-                IndividualUri = value;
-                IndividualUriChanged.InvokeAsync(value);
-            }
-        }
-    }
-
-    private List<IndividualProperty> properties
-    {
-        get => Properties;
-        set
-        {
-            Properties = value;
-            PropertiesChanged.InvokeAsync(value);
-        }
+        await IndividualUriChanged.InvokeAsync(e.Value?.ToString());
     }
 
     // New property state
@@ -282,7 +235,7 @@
     private string newPropertyValue = string.Empty;
     private string newPropertyDataType = "string";
 
-    private void AddProperty()
+    private async Task AddProperty()
     {
         if (!string.IsNullOrWhiteSpace(newPropertyName) && !string.IsNullOrWhiteSpace(newPropertyValue))
         {
@@ -293,19 +246,23 @@
                 DataType = string.IsNullOrWhiteSpace(newPropertyDataType) ? "string" : newPropertyDataType
             };
 
-            properties.Add(prop);
-            PropertiesChanged.InvokeAsync(properties);
+            var updatedProperties = new List<IndividualProperty>(Properties ?? new List<IndividualProperty>()) { prop };
+            await PropertiesChanged.InvokeAsync(updatedProperties);
 
             // Reset input fields
             newPropertyName = string.Empty;
             newPropertyValue = string.Empty;
             newPropertyDataType = "string";
+
+            // Force re-render to update disabled state
+            StateHasChanged();
         }
     }
 
-    private void RemoveProperty(IndividualProperty property)
+    private async Task RemoveProperty(IndividualProperty property)
     {
-        properties.Remove(property);
-        PropertiesChanged.InvokeAsync(properties);
+        var updatedProperties = new List<IndividualProperty>(Properties);
+        updatedProperties.Remove(property);
+        await PropertiesChanged.InvokeAsync(updatedProperties);
     }
 }

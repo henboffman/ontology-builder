@@ -1,0 +1,764 @@
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@using Eidos.Models
+@using Eidos.Models.Enums
+@using Eidos.Components.Shared
+@inject IConceptService ConceptService
+@inject IRestrictionService RestrictionService
+@inject OntologyPermissionService PermissionService
+@inject ToastService ToastService
+@inject ConfirmService ConfirmService
+@inject ILogger<AdminConceptDialog> Logger
+
+<FloatingPanel @ref="dialogPanel"
+               Title="Manage Concepts"
+               Size="FloatingPanel.PanelSize.Expanded"
+               IsVisible="@isVisible"
+               IsVisibleChanged="@((v) => isVisible = v)"
+               OnClose="Hide">
+    <div class="admin-dialog-content">
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading concepts...</p>
+            </div>
+        }
+        else if (concepts.Any())
+        {
+            <!-- Search and Filter Controls -->
+            <div class="admin-dialog-filters">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="search"
+                           class="form-control"
+                           placeholder="Search concepts..."
+                           @bind-value="searchTerm"
+                           @bind-value:event="oninput"
+                           aria-label="Search concepts" />
+                    @if (!string.IsNullOrWhiteSpace(searchTerm))
+                    {
+                        <button class="btn btn-outline-secondary"
+                                @onclick="ClearSearch"
+                                type="button"
+                                title="Clear search">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    }
+                </div>
+
+                <select class="form-select" @bind="filterCategory" style="max-width: 200px;" aria-label="Filter by category">
+                    <option value="all">All Categories</option>
+                    @foreach (var category in Categories)
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </select>
+
+                <select class="form-select" @bind="sortBy" style="max-width: 180px;" aria-label="Sort concepts">
+                    <option value="name">Sort: Name (A-Z)</option>
+                    <option value="created">Sort: Created (New)</option>
+                    <option value="modified">Sort: Modified (Recent)</option>
+                </select>
+            </div>
+
+            <!-- Entity List -->
+            <div class="entity-list">
+                @foreach (var concept in FilteredAndSortedConcepts)
+                {
+                    <div class="entity-list-item @(editingConceptId == concept.Id ? "editing" : "")" @key="concept.Id">
+                        @if (editingConceptId == concept.Id)
+                        {
+                            <!-- Edit Mode -->
+                            <div class="entity-edit-form">
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold">Name</label>
+                                    <input type="text"
+                                           class="form-control form-control-sm"
+                                           @bind="editingConcept.Name"
+                                           placeholder="Enter concept name"
+                                           disabled="@isSaving" />
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold">Simple Explanation</label>
+                                    <textarea class="form-control form-control-sm"
+                                              rows="2"
+                                              @bind="editingConcept.SimpleExplanation"
+                                              placeholder="Enter a simple explanation"
+                                              disabled="@isSaving"></textarea>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold">Definition</label>
+                                    <textarea class="form-control form-control-sm"
+                                              rows="2"
+                                              @bind="editingConcept.Definition"
+                                              placeholder="Enter a formal definition"
+                                              disabled="@isSaving"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Category</label>
+                                    <input type="text"
+                                           class="form-control form-control-sm"
+                                           @bind="editingConcept.Category"
+                                           placeholder="Enter category"
+                                           disabled="@isSaving" />
+                                </div>
+
+                                <!-- Restrictions Section -->
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-shield-check"></i> Restrictions
+                                            <span class="badge bg-secondary ms-2">@conceptRestrictions.Count</span>
+                                        </h6>
+                                        <button type="button" class="btn btn-link btn-sm p-0" @onclick="ToggleRestrictionsSection">
+                                            <i class="bi bi-chevron-@(restrictionsSectionExpanded ? "up" : "down")"></i>
+                                        </button>
+                                    </div>
+
+                                    @if (restrictionsSectionExpanded)
+                                    {
+                                        <!-- Restrictions List -->
+                                        <div class="restrictions-list">
+                                            @if (conceptRestrictions.Any())
+                                            {
+                                                @foreach (var restriction in conceptRestrictions)
+                                                {
+                                                    <RestrictionDisplayView
+                                                        Restriction="@restriction"
+                                                        IsEditing="@(editingRestrictionId == restriction.Id)"
+                                                        EditingRestriction="@editingRestriction"
+                                                        OnEdit="() => EditRestriction(restriction)"
+                                                        OnSave="SaveRestriction"
+                                                        OnCancel="CancelRestrictionEdit"
+                                                        OnDelete="() => DeleteRestriction(restriction)"
+                                                        IsSaving="@isSavingRestriction" />
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <div class="text-muted small text-center py-2">
+                                                    No restrictions defined. Click "Add Restriction" below to create one.
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Add Restriction Button & Form -->
+                                        <div class="mt-2">
+                                            @if (!isAddingRestriction)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-outline-success w-100"
+                                                        @onclick="StartAddRestriction"
+                                                        disabled="@isSaving">
+                                                    <i class="bi bi-plus-circle"></i> Add Restriction
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <div class="add-restriction-form">
+                                                    <RestrictionEditForm
+                                                        Restriction="@newRestriction"
+                                                        IsNew="true"
+                                                        OnSave="AddRestriction"
+                                                        OnCancel="CancelAddRestriction"
+                                                        IsSaving="@isSavingRestriction" />
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button class="btn btn-sm btn-secondary"
+                                            @onclick="CancelEdit"
+                                            disabled="@isSaving">
+                                        <i class="bi bi-x-circle"></i> Cancel
+                                    </button>
+                                    <button class="btn btn-sm btn-success"
+                                            @onclick="SaveEdit"
+                                            disabled="@isSaving">
+                                        @if (isSaving)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-check-circle me-1"></i>
+                                        }
+                                        Save
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Display Mode -->
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-success">✓</span>
+                                        <strong>@concept.Name</strong>
+                                    </div>
+                                    <div class="text-muted small mt-1">
+                                        @(string.IsNullOrWhiteSpace(concept.SimpleExplanation) ? (string.IsNullOrWhiteSpace(concept.Definition) ? "No description" : concept.Definition) : concept.SimpleExplanation)
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(concept.Category))
+                                    {
+                                        <div class="mt-1">
+                                            <span class="badge bg-light text-dark">@concept.Category</span>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="entity-actions">
+                                    <button class="btn btn-sm btn-outline-primary"
+                                            @onclick="() => ToggleEdit(concept)"
+                                            title="Edit @concept.Name">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => DeleteConcept(concept)"
+                                            title="Delete @concept.Name"
+                                            disabled="@isDeleting">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Result Count Footer -->
+            <div class="admin-dialog-footer">
+                <span class="text-muted small">
+                    Showing @FilteredAndSortedConcepts.Count() of @concepts.Count concepts
+                </span>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                <p class="mt-3">No concepts found</p>
+                <p class="small">Add concepts to get started</p>
+            </div>
+        }
+    </div>
+</FloatingPanel>
+
+@code {
+    /// <summary>
+    /// The ontology ID to load concepts for.
+    /// </summary>
+    [Parameter]
+    public int OntologyId { get; set; }
+
+    /// <summary>
+    /// Callback invoked when concepts are changed (added, edited, deleted).
+    /// </summary>
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    /// <summary>
+    /// The current user's ID for permission checks.
+    /// </summary>
+    [Parameter]
+    public string? CurrentUserId { get; set; }
+
+    private FloatingPanel? dialogPanel;
+    private List<Concept> concepts = new();
+    private bool isLoading = false;
+    private bool isVisible = false;
+    private string searchTerm = "";
+    private string filterCategory = "all";
+    private string sortBy = "name";
+
+    // Inline editing state
+    private int? editingConceptId = null;
+    private Concept editingConcept = new();
+    private bool isSaving = false;
+
+    // Delete state
+    private bool isDeleting = false;
+
+    // Restrictions state
+    private List<ConceptRestriction> conceptRestrictions = new();
+    private bool restrictionsSectionExpanded = true; // Default expanded
+    private bool isAddingRestriction = false;
+    private ConceptRestriction newRestriction = new();
+    private int? editingRestrictionId = null;
+    private ConceptRestriction editingRestriction = new();
+    private bool isSavingRestriction = false;
+
+    /// <summary>
+    /// Shows the admin dialog and loads concepts.
+    /// </summary>
+    public async Task Show()
+    {
+        // Check permissions before opening
+        if (!string.IsNullOrEmpty(CurrentUserId))
+        {
+            var canManage = await PermissionService.CanManageAsync(OntologyId, CurrentUserId);
+            if (!canManage)
+            {
+                ToastService.ShowError("Admin access required to manage concepts");
+                return;
+            }
+        }
+
+        isVisible = true;
+        await LoadConcepts();
+    }
+
+    /// <summary>
+    /// Hides the admin dialog.
+    /// </summary>
+    public void Hide()
+    {
+        isVisible = false;
+    }
+
+    /// <summary>
+    /// Loads all concepts for the current ontology.
+    /// </summary>
+    private async Task LoadConcepts()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            var allConcepts = await ConceptService.GetByOntologyIdAsync(OntologyId);
+            concepts = allConcepts.ToList();
+
+            Logger.LogInformation("Loaded {Count} concepts for ontology {OntologyId}", concepts.Count, OntologyId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load concepts for ontology {OntologyId}", OntologyId);
+            ToastService.ShowError("Failed to load concepts");
+            concepts = new List<Concept>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Gets the list of unique categories from all concepts.
+    /// </summary>
+    private IEnumerable<string> Categories =>
+        concepts
+            .Select(c => c.Category)
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct()
+            .OrderBy(c => c);
+
+    /// <summary>
+    /// Filters concepts based on search term and category filter.
+    /// </summary>
+    private IEnumerable<Concept> FilteredConcepts =>
+        concepts.Where(c =>
+            (string.IsNullOrWhiteSpace(searchTerm) ||
+             c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+             (c.SimpleExplanation?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+             (c.Definition?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+            (filterCategory == "all" || c.Category == filterCategory)
+        );
+
+    /// <summary>
+    /// Filters and sorts concepts based on current settings.
+    /// </summary>
+    private IEnumerable<Concept> FilteredAndSortedConcepts
+    {
+        get
+        {
+            var filtered = FilteredConcepts;
+
+            return sortBy switch
+            {
+                "name" => filtered.OrderBy(c => c.Name),
+                "created" => filtered.OrderByDescending(c => c.CreatedAt),
+                "modified" => filtered.OrderByDescending(c => c.CreatedAt), // Concept doesn't have UpdatedAt, use CreatedAt
+                _ => filtered.OrderBy(c => c.Name)
+            };
+        }
+    }
+
+    /// <summary>
+    /// Clears the search term.
+    /// </summary>
+    private void ClearSearch()
+    {
+        searchTerm = "";
+    }
+
+    /// <summary>
+    /// Toggles edit mode for a concept.
+    /// </summary>
+    private async Task ToggleEdit(Concept concept)
+    {
+        if (editingConceptId == concept.Id)
+        {
+            // Already editing this concept, cancel edit
+            CancelEdit();
+        }
+        else
+        {
+            // Start editing this concept
+            editingConceptId = concept.Id;
+            editingConcept = new Concept
+            {
+                Id = concept.Id,
+                OntologyId = concept.OntologyId,
+                Name = concept.Name,
+                SimpleExplanation = concept.SimpleExplanation,
+                Definition = concept.Definition,
+                Category = concept.Category,
+                Color = concept.Color,
+                SourceOntology = concept.SourceOntology
+            };
+
+            // Load restrictions for this concept
+            await LoadRestrictionsForConcept(concept.Id);
+        }
+    }
+
+    /// <summary>
+    /// Cancels the current edit operation.
+    /// </summary>
+    private void CancelEdit()
+    {
+        editingConceptId = null;
+        editingConcept = new Concept();
+
+        // Clear restrictions state
+        conceptRestrictions = new List<ConceptRestriction>();
+        isAddingRestriction = false;
+        editingRestrictionId = null;
+        newRestriction = new ConceptRestriction();
+        editingRestriction = new ConceptRestriction();
+    }
+
+    /// <summary>
+    /// Saves the edited concept.
+    /// </summary>
+    private async Task SaveEdit()
+    {
+        if (editingConceptId == null)
+            return;
+
+        // Validate
+        if (string.IsNullOrWhiteSpace(editingConcept.Name))
+        {
+            ToastService.ShowError("Concept name is required");
+            return;
+        }
+
+        try
+        {
+            isSaving = true;
+            StateHasChanged();
+
+            // Update the concept via service
+            await ConceptService.UpdateAsync(editingConcept);
+
+            ToastService.ShowSuccess($"Updated '{editingConcept.Name}'");
+
+            // Reload concepts to get the latest data
+            await LoadConcepts();
+
+            // Clear edit state
+            editingConceptId = null;
+            editingConcept = new Concept();
+
+            // Notify parent that data changed
+            await OnChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to update concept {ConceptId}", editingConceptId);
+            ToastService.ShowError($"Failed to save changes: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Deletes a concept after user confirmation.
+    /// Handles concepts with relationships gracefully.
+    /// </summary>
+    private async Task DeleteConcept(Concept concept)
+    {
+        // Show confirmation dialog
+        var confirmed = await ConfirmService.ShowAsync(
+            title: "Delete Concept",
+            message: $"Are you sure you want to delete '{concept.Name}'? This action cannot be undone.",
+            confirmText: "Delete",
+            type: ConfirmType.Danger
+        );
+
+        if (!confirmed)
+            return;
+
+        try
+        {
+            isDeleting = true;
+            StateHasChanged();
+
+            // Delete the concept via service
+            await ConceptService.DeleteAsync(concept.Id);
+
+            ToastService.ShowSuccess($"Deleted '{concept.Name}'");
+
+            // Reload concepts to get the latest data
+            await LoadConcepts();
+
+            // If we were editing this concept, clear edit state
+            if (editingConceptId == concept.Id)
+            {
+                editingConceptId = null;
+                editingConcept = new Concept();
+            }
+
+            // Notify parent that data changed
+            await OnChanged.InvokeAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Concept has relationships or other dependencies
+            Logger.LogWarning(ex, "Cannot delete concept {ConceptId} due to dependencies", concept.Id);
+            ToastService.ShowError($"Cannot delete '{concept.Name}': {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to delete concept {ConceptId}", concept.Id);
+            ToastService.ShowError($"Failed to delete concept: {ex.Message}");
+        }
+        finally
+        {
+            isDeleting = false;
+            StateHasChanged();
+        }
+    }
+
+    // ============================================
+    // Restriction Management Methods
+    // ============================================
+
+    /// <summary>
+    /// Loads restrictions for a specific concept.
+    /// </summary>
+    private async Task LoadRestrictionsForConcept(int conceptId)
+    {
+        try
+        {
+            var restrictions = await RestrictionService.GetByConceptIdAsync(conceptId);
+            conceptRestrictions = restrictions.ToList();
+            Logger.LogInformation("Loaded {Count} restrictions for concept {ConceptId}", conceptRestrictions.Count, conceptId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load restrictions for concept {ConceptId}", conceptId);
+            ToastService.ShowError("Failed to load restrictions");
+            conceptRestrictions = new List<ConceptRestriction>();
+        }
+    }
+
+    /// <summary>
+    /// Toggles the restrictions section expanded/collapsed state.
+    /// </summary>
+    private void ToggleRestrictionsSection()
+    {
+        restrictionsSectionExpanded = !restrictionsSectionExpanded;
+    }
+
+    /// <summary>
+    /// Starts adding a new restriction.
+    /// </summary>
+    private void StartAddRestriction()
+    {
+        isAddingRestriction = true;
+        newRestriction = new ConceptRestriction
+        {
+            IsMandatory = true,
+            RestrictionType = RestrictionTypes.Required
+        };
+    }
+
+    /// <summary>
+    /// Cancels adding a new restriction.
+    /// </summary>
+    private void CancelAddRestriction()
+    {
+        isAddingRestriction = false;
+        newRestriction = new ConceptRestriction();
+    }
+
+    /// <summary>
+    /// Adds a new restriction to the concept.
+    /// </summary>
+    private async Task AddRestriction()
+    {
+        if (editingConceptId == null)
+            return;
+
+        // Validate
+        if (string.IsNullOrWhiteSpace(newRestriction.PropertyName))
+        {
+            ToastService.ShowError("Property name is required");
+            return;
+        }
+
+        try
+        {
+            isSavingRestriction = true;
+            StateHasChanged();
+
+            // Set ConceptId
+            newRestriction.ConceptId = editingConceptId.Value;
+
+            // Create via service
+            await RestrictionService.CreateAsync(newRestriction);
+
+            ToastService.ShowSuccess($"Restriction on '{newRestriction.PropertyName}' added");
+
+            // Reload restrictions
+            await LoadRestrictionsForConcept(editingConceptId.Value);
+
+            // Reset state
+            isAddingRestriction = false;
+            newRestriction = new ConceptRestriction();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to create restriction for concept {ConceptId}", editingConceptId);
+            ToastService.ShowError($"Failed to add restriction: {ex.Message}");
+        }
+        finally
+        {
+            isSavingRestriction = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Starts editing an existing restriction.
+    /// </summary>
+    private void EditRestriction(ConceptRestriction restriction)
+    {
+        editingRestrictionId = restriction.Id;
+        editingRestriction = new ConceptRestriction
+        {
+            Id = restriction.Id,
+            ConceptId = restriction.ConceptId,
+            PropertyName = restriction.PropertyName,
+            RestrictionType = restriction.RestrictionType,
+            MinCardinality = restriction.MinCardinality,
+            MaxCardinality = restriction.MaxCardinality,
+            ValueType = restriction.ValueType,
+            MinValue = restriction.MinValue,
+            MaxValue = restriction.MaxValue,
+            AllowedConceptId = restriction.AllowedConceptId,
+            AllowedValues = restriction.AllowedValues,
+            Pattern = restriction.Pattern,
+            Description = restriction.Description,
+            IsMandatory = restriction.IsMandatory
+        };
+    }
+
+    /// <summary>
+    /// Cancels editing a restriction.
+    /// </summary>
+    private void CancelRestrictionEdit()
+    {
+        editingRestrictionId = null;
+        editingRestriction = new ConceptRestriction();
+    }
+
+    /// <summary>
+    /// Saves changes to an existing restriction.
+    /// </summary>
+    private async Task SaveRestriction()
+    {
+        if (editingRestrictionId == null || editingConceptId == null)
+            return;
+
+        // Validate
+        if (string.IsNullOrWhiteSpace(editingRestriction.PropertyName))
+        {
+            ToastService.ShowError("Property name is required");
+            return;
+        }
+
+        try
+        {
+            isSavingRestriction = true;
+            StateHasChanged();
+
+            await RestrictionService.UpdateAsync(editingRestriction);
+
+            ToastService.ShowSuccess($"Restriction on '{editingRestriction.PropertyName}' updated");
+
+            // Reload restrictions
+            await LoadRestrictionsForConcept(editingConceptId.Value);
+
+            // Clear edit state
+            editingRestrictionId = null;
+            editingRestriction = new ConceptRestriction();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to update restriction {RestrictionId}", editingRestrictionId);
+            ToastService.ShowError($"Failed to save restriction: {ex.Message}");
+        }
+        finally
+        {
+            isSavingRestriction = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Deletes a restriction after user confirmation.
+    /// </summary>
+    private async Task DeleteRestriction(ConceptRestriction restriction)
+    {
+        var confirmed = await ConfirmService.ShowAsync(
+            title: "Delete Restriction",
+            message: $"Are you sure you want to delete the restriction on property \"{restriction.PropertyName}\"?",
+            confirmText: "Delete",
+            type: ConfirmType.Danger
+        );
+
+        if (!confirmed)
+            return;
+
+        try
+        {
+            await RestrictionService.DeleteAsync(restriction.Id);
+
+            ToastService.ShowSuccess($"Restriction on \"{restriction.PropertyName}\" deleted");
+
+            // Reload restrictions
+            if (editingConceptId != null)
+            {
+                await LoadRestrictionsForConcept(editingConceptId.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to delete restriction {RestrictionId}", restriction.Id);
+            ToastService.ShowError($"Failed to delete restriction: {ex.Message}");
+        }
+    }
+}

@@ -24,6 +24,9 @@
                     <button class="nav-link @(activeSection == "concepts" ? "active" : "")" @onclick='async () => await ScrollToSection("concepts")'>
                         <i class="bi bi-box"></i> Working with Concepts
                     </button>
+                    <button class="nav-link @(activeSection == "restrictions" ? "active" : "")" @onclick='async () => await ScrollToSection("restrictions")'>
+                        <i class="bi bi-shield-check"></i> Restrictions
+                    </button>
                     <button class="nav-link @(activeSection == "relationships" ? "active" : "")" @onclick='async () => await ScrollToSection("relationships")'>
                         <i class="bi bi-arrow-left-right"></i> Relationships
                     </button>
@@ -151,6 +154,167 @@
 
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i> <strong>Warning:</strong> Deleting a concept also removes all its relationships. This action can be undone with <kbd>Ctrl</kbd> + <kbd>Z</kbd>.
+                    </div>
+                </section>
+
+                <!-- Restrictions -->
+                <section id="restrictions" class="doc-section">
+                    <h2><i class="bi bi-shield-check text-primary"></i> Restrictions</h2>
+
+                    <h3>What are Restrictions?</h3>
+                    <p>Restrictions are rules that help you define what values or properties concepts can have. Think of them as quality checks that make sure your ontology stays organized and accurate.</p>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> <strong>Simple Example:</strong> If you have a "Person" concept, you might add a restriction that says every person must have a name, or that someone's age must be a number.
+                    </div>
+
+                    <h3>Why Use Restrictions?</h3>
+                    <ul>
+                        <li><strong>Consistency</strong> - Ensure all similar concepts follow the same rules</li>
+                        <li><strong>Data Quality</strong> - Catch mistakes early by defining what's allowed</li>
+                        <li><strong>Clear Structure</strong> - Make your ontology easier for others to understand and use</li>
+                        <li><strong>Validation</strong> - Automatically check that everything is filled in correctly</li>
+                    </ul>
+
+                    <h3>Types of Restrictions</h3>
+
+                    <h4><span class="badge bg-danger">⚠️ Required</span></h4>
+                    <p>Makes a property mandatory - it must have a value.</p>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Example Use Case:</strong></p>
+                            <p class="text-muted mb-0">In a library ontology, you could mark "title" as required on a "Book" concept. This ensures every book must have a title before it can be saved.</p>
+                        </div>
+                    </div>
+
+                    <h4><span class="badge bg-info">🔤 Value Type</span></h4>
+                    <p>Specifies what kind of data a property should hold.</p>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Available Types:</strong></p>
+                            <ul>
+                                <li><strong>String</strong> - Text (like names, descriptions)</li>
+                                <li><strong>Integer</strong> - Whole numbers (like age, quantity)</li>
+                                <li><strong>Decimal</strong> - Numbers with decimals (like price, temperature)</li>
+                                <li><strong>Boolean</strong> - True/False values (like "is available")</li>
+                                <li><strong>Date</strong> - Calendar dates (like birth date, publication date)</li>
+                                <li><strong>URI</strong> - Web addresses (like website URLs)</li>
+                                <li><strong>Concept</strong> - Link to another concept in your ontology</li>
+                            </ul>
+                            <p class="mb-2 mt-3"><strong>Example Use Case:</strong></p>
+                            <p class="text-muted mb-0">For a "Product" concept, you could specify that "price" must be a decimal number, ensuring nobody accidentally enters text where a price should be.</p>
+                        </div>
+                    </div>
+
+                    <h4><span class="badge bg-primary">🔢 Cardinality</span></h4>
+                    <p>Controls how many values a property can have (minimum and/or maximum).</p>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Common Patterns:</strong></p>
+                            <ul>
+                                <li><strong>Exactly 1</strong> - Set both min and max to 1</li>
+                                <li><strong>At least 1</strong> - Set min to 1, leave max empty</li>
+                                <li><strong>Up to 5</strong> - Leave min empty, set max to 5</li>
+                                <li><strong>Between 2 and 4</strong> - Set min to 2, max to 4</li>
+                            </ul>
+                            <p class="mb-2 mt-3"><strong>Example Use Cases:</strong></p>
+                            <ul class="mb-0">
+                                <li class="text-muted">A "Person" must have exactly 2 biological parents (min: 2, max: 2)</li>
+                                <li class="text-muted">A "Book" can have multiple authors but needs at least 1 (min: 1, max: empty)</li>
+                                <li class="text-muted">A "Course" can have up to 30 students (min: empty, max: 30)</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h3>How to Add Restrictions</h3>
+
+                    <h4>Step 1: Access the Manage Concepts Dialog</h4>
+                    <ol>
+                        <li>Open your ontology</li>
+                        <li>Click the <span class="badge bg-secondary"><i class="bi bi-gear"></i> Settings</span> button</li>
+                        <li>Select the <strong>Manage Concepts</strong> tab</li>
+                    </ol>
+
+                    <h4>Step 2: Edit a Concept</h4>
+                    <ol>
+                        <li>Find the concept you want to add restrictions to</li>
+                        <li>Click the <span class="badge bg-warning"><i class="bi bi-pencil"></i> Edit</span> button</li>
+                        <li>Scroll down to the <strong>Restrictions</strong> section</li>
+                    </ol>
+
+                    <h4>Step 3: Add a Restriction</h4>
+                    <ol>
+                        <li>Click <span class="badge bg-success"><i class="bi bi-plus"></i> Add Restriction</span></li>
+                        <li>Enter the <strong>Property Name</strong> (e.g., "age", "email", "title")</li>
+                        <li>Choose the <strong>Restriction Type</strong> from the dropdown</li>
+                        <li>Fill in the type-specific fields that appear:
+                            <ul>
+                                <li><strong>Required:</strong> Just enable the checkbox</li>
+                                <li><strong>Value Type:</strong> Select the data type from the dropdown</li>
+                                <li><strong>Cardinality:</strong> Enter minimum and/or maximum counts</li>
+                            </ul>
+                        </li>
+                        <li>Optionally add a description to explain why this restriction exists</li>
+                        <li>Click <span class="badge bg-primary">Save Restriction</span></li>
+                    </ol>
+
+                    <div class="alert alert-success">
+                        <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> You can add multiple restrictions to the same property! For example, you could mark "age" as both required AND specify it must be an integer number.
+                    </div>
+
+                    <h3>Editing and Deleting Restrictions</h3>
+                    <ul>
+                        <li><strong>Edit:</strong> Click the <i class="bi bi-pencil"></i> icon next to a restriction, make changes, then click <strong>Save</strong></li>
+                        <li><strong>Delete:</strong> Click the <i class="bi bi-trash"></i> icon and confirm the deletion</li>
+                        <li><strong>Cancel:</strong> Click the <i class="bi bi-x"></i> icon to discard changes without saving</li>
+                    </ul>
+
+                    <h3>Real-World Example: Building a Recipe Ontology</h3>
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Concept: Recipe</h5>
+                            <p class="mb-2">Here's how you might use restrictions for a Recipe concept:</p>
+                            <ul>
+                                <li><strong>Property: "title"</strong>
+                                    <ul>
+                                        <li>Required ✓</li>
+                                        <li>Value Type: String</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Property: "servings"</strong>
+                                    <ul>
+                                        <li>Value Type: Integer</li>
+                                        <li>Cardinality: Min 1, Max 1 (exactly one serving size)</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Property: "ingredients"</strong>
+                                    <ul>
+                                        <li>Required ✓</li>
+                                        <li>Cardinality: Min 2 (at least 2 ingredients)</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Property: "prepTime"</strong>
+                                    <ul>
+                                        <li>Value Type: Integer</li>
+                                        <li>Description: "Preparation time in minutes"</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                            <p class="text-muted mb-0 mt-2"><small>With these restrictions, anyone adding a recipe to your ontology will know exactly what information is needed and in what format.</small></p>
+                        </div>
+                    </div>
+
+                    <h3>Tips for Using Restrictions Effectively</h3>
+                    <ul>
+                        <li><strong>Start Simple</strong> - Add the most important restrictions first (like required fields)</li>
+                        <li><strong>Use Clear Property Names</strong> - Make it obvious what the restriction applies to</li>
+                        <li><strong>Add Descriptions</strong> - Explain why the restriction exists, especially for cardinality limits</li>
+                        <li><strong>Test Your Restrictions</strong> - Try creating test data to see if the restrictions make sense</li>
+                        <li><strong>Don't Over-Restrict</strong> - Too many strict rules can make your ontology hard to use</li>
+                    </ul>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> <strong>Note:</strong> Restrictions help guide and validate your data, but they won't automatically change existing concepts. They apply to new data and edits going forward.
                     </div>
                 </section>
 

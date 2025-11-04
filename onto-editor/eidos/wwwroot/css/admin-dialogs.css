@@ -1,0 +1,369 @@
+/* ============================================
+   Admin Dialogs - Entity Management Interface
+   ============================================ */
+
+/* Admin Dialog Container */
+.admin-dialog-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+/* ============================================
+   Entity List Styles
+   ============================================ */
+
+.entity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.entity-list-item {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    background-color: var(--bs-body-bg);
+    transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.entity-list-item:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+    border-color: var(--bs-primary);
+}
+
+/* Dark mode hover */
+[data-bs-theme="dark"] .entity-list-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Entity list item states */
+.entity-list-item.editing {
+    border-color: var(--bs-primary);
+    background-color: rgba(var(--bs-primary-rgb), 0.05);
+}
+
+/* ============================================
+   Entity Actions
+   ============================================ */
+
+.entity-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.entity-actions .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* ============================================
+   Entity Edit Form (Inline)
+   ============================================ */
+
+.entity-edit-form {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--bs-border-color);
+}
+
+.entity-edit-form .form-label {
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.entity-edit-form .form-control,
+.entity-edit-form .form-select {
+    font-size: 0.875rem;
+}
+
+/* ============================================
+   Admin Dialog Filters (Search, Sort, Filter)
+   ============================================ */
+
+.admin-dialog-filters {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: var(--bs-light);
+    border-radius: 0.375rem;
+    border: 1px solid var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .admin-dialog-filters {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.admin-dialog-filters .input-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.admin-dialog-filters .form-select {
+    flex-shrink: 0;
+}
+
+/* ============================================
+   Admin Dialog Footer
+   ============================================ */
+
+.admin-dialog-footer {
+    padding: 0.75rem;
+    text-align: center;
+    border-top: 1px solid var(--bs-border-color);
+    background-color: var(--bs-light);
+    border-radius: 0 0 0.375rem 0.375rem;
+}
+
+[data-bs-theme="dark"] .admin-dialog-footer {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* ============================================
+   Status Badges
+   ============================================ */
+
+.entity-list-item .badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* ============================================
+   Responsive Adjustments
+   ============================================ */
+
+/* Tablet */
+@media (max-width: 991px) {
+    .admin-dialog-filters {
+        flex-wrap: wrap;
+    }
+
+    .admin-dialog-filters .form-select {
+        min-width: 150px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+    .admin-dialog-content {
+        padding: 0.25rem;
+    }
+
+    .admin-dialog-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-dialog-filters .input-group,
+    .admin-dialog-filters .form-select {
+        width: 100%;
+        max-width: 100% !important;
+    }
+
+    .entity-list-item {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .entity-actions {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .entity-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ============================================
+   Loading and Empty States
+   ============================================ */
+
+.admin-dialog-content .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+.admin-dialog-content .bi-inbox {
+    opacity: 0.3;
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+
+.entity-edit-form {
+    animation: slideDown 200ms ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   Accessibility
+   ============================================ */
+
+.entity-list-item:focus-within {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+
+/* High contrast mode adjustments */
+@media (prefers-contrast: high) {
+    .entity-list-item {
+        border-width: 2px;
+    }
+
+    .entity-list-item:hover {
+        border-width: 2px;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .entity-list-item,
+    .entity-edit-form {
+        transition: none;
+        animation: none;
+    }
+}
+
+/* ============================================
+   Restrictions Section
+   ============================================ */
+
+.restrictions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.restriction-item {
+    padding: 0.75rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    background-color: var(--bs-body-bg);
+    transition: all 150ms ease;
+}
+
+.restriction-item:hover {
+    border-color: var(--bs-primary);
+    background-color: rgba(var(--bs-primary-rgb), 0.02);
+}
+
+.restriction-item.editing {
+    border-color: var(--bs-primary);
+    background-color: rgba(var(--bs-primary-rgb), 0.05);
+}
+
+.restriction-type-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: 600;
+}
+
+/* Restriction Type Colors */
+.restriction-type-required {
+    background-color: #dc3545;
+    color: white;
+}
+
+.restriction-type-valuetype {
+    background-color: #0dcaf0;
+    color: white;
+}
+
+.restriction-type-cardinality {
+    background-color: #6610f2;
+    color: white;
+}
+
+.restriction-type-range {
+    background-color: #fd7e14;
+    color: white;
+}
+
+.restriction-type-enumeration {
+    background-color: #20c997;
+    color: white;
+}
+
+.restriction-type-pattern {
+    background-color: #6f42c1;
+    color: white;
+}
+
+.restriction-type-concepttype {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.restriction-help-text {
+    font-size: 0.875rem;
+    color: var(--bs-secondary);
+    margin-top: 0.25rem;
+}
+
+.restriction-example {
+    font-size: 0.875rem;
+    padding: 0.5rem;
+    background-color: var(--bs-light);
+    border-left: 3px solid var(--bs-info);
+    border-radius: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+[data-bs-theme="dark"] .restriction-example {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.add-restriction-form {
+    padding: 1rem;
+    border: 2px dashed var(--bs-border-color);
+    border-radius: 0.375rem;
+    background-color: rgba(var(--bs-success-rgb), 0.05);
+}
+
+.restriction-edit-form {
+    padding: 0.75rem;
+    background-color: var(--bs-light);
+    border-radius: 0.375rem;
+}
+
+[data-bs-theme="dark"] .restriction-edit-form {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* ============================================
+   Restrictions Mobile Responsive
+   ============================================ */
+
+@media (max-width: 767px) {
+    .restriction-item {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .restriction-type-badge {
+        font-size: 0.7rem;
+    }
+
+    .add-restriction-form,
+    .restriction-edit-form {
+        padding: 0.75rem;
+    }
+}

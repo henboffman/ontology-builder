@@ -904,6 +904,7 @@ main:has(.documentation-page) {
         background-color: var(--bs-warning-bg-subtle);
         box-shadow: 0 0 0 4px rgba(var(--bs-warning-rgb), 0.3);
     }
+
     100% {
         background-color: transparent;
         box-shadow: none;
@@ -913,4 +914,3 @@ main:has(.documentation-page) {
 .validation-highlight {
     animation: validationHighlight 2s ease-out;
 }
-

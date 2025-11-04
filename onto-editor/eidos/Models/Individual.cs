@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Eidos.Models
 {
@@ -65,6 +66,8 @@ namespace Eidos.Models
         public int Id { get; set; }
 
         public int IndividualId { get; set; }
+
+        [JsonIgnore]
         public Individual Individual { get; set; } = null!;
 
         /// <summary>
@@ -112,12 +115,16 @@ namespace Eidos.Models
         /// Source individual (subject)
         /// </summary>
         public int SourceIndividualId { get; set; }
+
+        [JsonIgnore]
         public Individual SourceIndividual { get; set; } = null!;
 
         /// <summary>
         /// Target individual (object)
         /// </summary>
         public int TargetIndividualId { get; set; }
+
+        [JsonIgnore]
         public Individual TargetIndividual { get; set; } = null!;
 
         /// <summary>

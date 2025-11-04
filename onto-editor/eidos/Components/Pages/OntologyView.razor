@@ -7,6 +7,7 @@
 @using Eidos.Services.Interfaces
 @using Eidos.Components.Shared
 @using Eidos.Components.Ontology
+@using Eidos.Components.Ontology.Admin
 @using VDS.RDF
 @using Microsoft.JSInterop
 @using static Eidos.Services.TtlExportService
@@ -161,6 +162,12 @@ else
                              OnItemsCreated="@OnBulkCreateComplete" />
         }
 
+        <!-- Admin Concept Dialog -->
+        <AdminConceptDialog @ref="adminConceptDialog"
+                           OntologyId="@Id"
+                           CurrentUserId="@currentUserId"
+                           OnChanged="@HandleAdminDialogChanged" />
+
         <!-- Ontology Control Bar -->
         <OntologyControlBar CanFullAccess="@CanFullAccess()"
                            CanEdit="@CanEdit()"
@@ -176,6 +183,7 @@ else
                            OnAddConceptClick="@ShowAddConceptDialog"
                            OnAddRelationshipClick="@ShowAddRelationshipDialog"
                            OnBulkCreateClick="@ShowBulkCreateDialog"
+                           OnManageConceptsClick="@ShowAdminConceptDialog"
                            OnNavigateToUserView="@NavigateToUserView" />
 
         <!-- Main Content Layout Wrapper (Desktop: side-by-side, Mobile: stacked) -->
@@ -311,16 +319,16 @@ else
     </div> <!-- Close container-fluid -->
 
     <!-- Floating Modal - Editors (visible on all screen sizes) -->
-        @if ((individualManagementPanel?.IsDialogVisible() == true || selectedConcept != null || selectedRelationship != null || selectedIndividual != null))
+        @if ((showAddIndividual || selectedConcept != null || selectedRelationship != null || selectedIndividual != null))
         {
             <div class="ontology-floating-modal">
                 <div class="ontology-floating-modal-backdrop" @onclick="CloseMobileEditor"></div>
                 <div class="ontology-floating-modal-content">
                     <div class="ontology-floating-modal-header">
                         <h6 class="mb-0">
-                            @if (individualManagementPanel?.IsDialogVisible() == true)
+                            @if (showAddIndividual)
                             {
-                                <span><i class="bi bi-person-plus me-2"></i>Individual</span>
+                                <span><i class="bi bi-person-plus me-2"></i>@(editingIndividual != null ? "Edit Individual" : "Add Individual")</span>
                             }
                             else if (selectedIndividual != null) { <span><i class="bi bi-person-fill me-2"></i>Individual Details</span> }
                             else if (selectedConcept != null) { <span><i class="bi bi-info-circle me-2"></i>Concept Details</span> }
@@ -329,24 +337,18 @@ else
                         <button type="button" class="btn-close" aria-label="Close" @onclick="CloseMobileEditor"></button>
                     </div>
                     <div class="ontology-floating-modal-body">
-                        @if (individualManagementPanel != null && individualManagementPanel.IsDialogVisible())
+                        @if (showAddIndividual)
                         {
-                            <IndividualEditor IsEditing="@(individualManagementPanel != null && individualManagementPanel.IsDialogVisible())"
+                            <IndividualEditor IsEditing="@(editingIndividual != null)"
                                              Concepts="@ontology.Concepts"
-                                             ConceptId="@individualManagementPanel.ConceptId"
-                                             ConceptIdChanged="@individualManagementPanel.OnConceptIdChanged"
-                                             IndividualName="@individualManagementPanel.IndividualName"
-                                             IndividualNameChanged="@individualManagementPanel.OnIndividualNameChanged"
-                                             IndividualDescription="@individualManagementPanel.IndividualDescription"
-                                             IndividualDescriptionChanged="@individualManagementPanel.OnIndividualDescriptionChanged"
-                                             IndividualLabel="@individualManagementPanel.IndividualLabel"
-                                             IndividualLabelChanged="@individualManagementPanel.OnIndividualLabelChanged"
-                                             IndividualUri="@individualManagementPanel.IndividualUri"
-                                             IndividualUriChanged="@individualManagementPanel.OnIndividualUriChanged"
-                                             Properties="@individualManagementPanel.Properties"
-                                             PropertiesChanged="@individualManagementPanel.OnPropertiesChanged"
-                                             OnSaveClick="@individualManagementPanel.OnSaveClick"
-                                             OnCancelClick="@individualManagementPanel.OnCancelClick" />
+                                             @bind-ConceptId="@newIndividual.ConceptId"
+                                             @bind-IndividualName="@newIndividual.Name"
+                                             @bind-IndividualDescription="@newIndividual.Description"
+                                             @bind-IndividualLabel="@newIndividual.Label"
+                                             @bind-IndividualUri="@newIndividual.Uri"
+                                             @bind-Properties="@newIndividualProperties"
+                                             OnSaveClick="@SaveIndividual"
+                                             OnCancelClick="@CancelIndividualDialog" />
                         }
                         else if (selectedIndividual != null)
                         {
@@ -576,13 +578,6 @@ else
                                      OnRelationshipCreated="@HandleRelationshipCreated"
                                      OnRelationshipUpdated="@HandleRelationshipUpdated" />
 
-        <IndividualManagementPanel @ref="individualManagementPanel"
-                                   OntologyId="@Id"
-                                   Concepts="@ontology.Concepts"
-                                   UserPermissionLevel="@userPermissionLevel"
-                                   OnIndividualCreated="@HandleIndividualCreated"
-                                   OnIndividualUpdated="@HandleIndividualUpdated"
-                                   OnIndividualDeleted="@HandleIndividualDeleted" />
 }
 
 @code {
@@ -616,7 +611,13 @@ else
     private GraphViewContainer? graphViewContainer;
     private ConceptManagementPanel? conceptManagementPanel;
     private RelationshipManagementPanel? relationshipManagementPanel;
-    private IndividualManagementPanel? individualManagementPanel;
+    private AdminConceptDialog? adminConceptDialog;
+
+    // Individual dialog state (moved from IndividualManagementPanel)
+    private bool showAddIndividual = false;
+    private Individual? editingIndividual = null;
+    private Individual newIndividual = new();
+    private List<IndividualProperty> newIndividualProperties = new();
 
     private string editingNotes = string.Empty;
     private string sortOption = "category";
@@ -647,7 +648,6 @@ else
         get => viewState.SelectedConcept;
         set
         {
-            Console.WriteLine($"[OntologyView] selectedConcept setter called with: {value?.Name ?? "null"}, Stack: {Environment.StackTrace.Split('\n')[1]}");
             viewState.SetSelectedConcept(value);
         }
     }
@@ -984,10 +984,24 @@ else
         {
             relationshipManagementPanel.HideDialog();
         }
-        if (individualManagementPanel != null)
+
+        // Close individual dialog
+        CancelIndividualDialog();
+    }
+
+    private async Task ShowAdminConceptDialog()
+    {
+        if (adminConceptDialog != null)
         {
-            individualManagementPanel.HideDialog();
+            await adminConceptDialog.Show();
         }
+    }
+
+    private async Task HandleAdminDialogChanged()
+    {
+        // Reload ontology data after admin dialog makes changes
+        await LoadOntology();
+        StateHasChanged();
     }
 
     private async Task OnBulkCreateComplete()
@@ -1207,8 +1221,6 @@ else
 
     private async Task SelectConcept(Concept concept)
     {
-        Console.WriteLine($"[OntologyView] SelectConcept called with: {concept?.Name ?? "null"}");
-
         // Load restrictions FIRST (before setting state)
         if (concept != null)
         {
@@ -1228,14 +1240,11 @@ else
         }
 
         // Force UI update for the details sidebar
-        Console.WriteLine($"[OntologyView] Selected concept set to: {selectedConcept?.Name ?? "null"}");
         StateHasChanged();
     }
 
     private void SelectRelationship(Relationship relationship)
     {
-        Console.WriteLine($"[OntologyView] SelectRelationship called with: {relationship?.RelationType ?? "null"}");
-
         // Set selected relationship - ViewState.SetSelectedRelationship will automatically clear concept and individual
         selectedRelationship = relationship;
 
@@ -1249,22 +1258,15 @@ else
         }
 
         // Force UI update for the details sidebar
-        Console.WriteLine($"[OntologyView] Selected relationship set to: {selectedRelationship?.RelationType ?? "null"}");
         StateHasChanged();
     }
 
     private async Task HandleNodeClick(int conceptId)
     {
-        Console.WriteLine($"[OntologyView] HandleNodeClick called with conceptId: {conceptId}");
         var concept = ontology?.Concepts.FirstOrDefault(c => c.Id == conceptId);
-        Console.WriteLine($"[OntologyView] Found concept: {concept?.Name ?? "NULL"}, Total concepts in ontology: {ontology?.Concepts?.Count ?? 0}");
         if (concept != null)
         {
             await SelectConcept(concept);
-        }
-        else
-        {
-            Console.WriteLine($"[OntologyView] WARNING: Concept with ID {conceptId} not found!");
         }
     }
 
@@ -1955,9 +1957,15 @@ else
 
     private void ShowAddIndividualDialog()
     {
-        if (ontology == null || individualManagementPanel == null) return;
+        if (ontology == null) return;
 
-        individualManagementPanel.ShowAddIndividualDialog();
+        newIndividual = new Individual
+        {
+            OntologyId = Id
+        };
+        newIndividualProperties = new List<IndividualProperty>();
+        editingIndividual = null;
+        showAddIndividual = true;
 
         // Hide other dialogs
         if (conceptManagementPanel != null)
@@ -1974,9 +1982,31 @@ else
 
     private void EditIndividual(Individual individual)
     {
-        if (individualManagementPanel == null) return;
+        editingIndividual = individual;
+        newIndividual = new Individual
+        {
+            Id = individual.Id,
+            OntologyId = individual.OntologyId,
+            ConceptId = individual.ConceptId,
+            Name = individual.Name,
+            Description = individual.Description,
+            Label = individual.Label,
+            Uri = individual.Uri
+        };
 
-        individualManagementPanel.ShowEditIndividualDialog(individual);
+        // Clone properties
+        newIndividualProperties = individual.Properties
+            .Select(p => new IndividualProperty
+            {
+                Id = p.Id,
+                IndividualId = p.IndividualId,
+                Name = p.Name,
+                Value = p.Value,
+                DataType = p.DataType
+            })
+            .ToList();
+
+        showAddIndividual = true;
 
         // Hide other dialogs
         if (conceptManagementPanel != null)
@@ -1993,8 +2023,89 @@ else
 
     private async Task DeleteIndividual(Individual individual)
     {
-        if (individualManagementPanel == null) return;
-        await individualManagementPanel.DeleteIndividualAsync(individual);
+        var confirmed = await ConfirmService.ShowAsync(
+            "Delete Individual",
+            $"Are you sure you want to delete the individual \"{individual.Name}\"?",
+            "Delete",
+            ConfirmType.Danger
+        );
+
+        if (confirmed)
+        {
+            try
+            {
+                await IndividualService.DeleteAsync(individual.Id);
+                ToastService.ShowSuccess($"Individual \"{individual.Name}\" deleted successfully.");
+                await HandleIndividualDeleted(individual.Id);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting individual {IndividualId}", individual.Id);
+                ToastService.ShowError($"Failed to delete individual: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task SaveIndividual()
+    {
+        if (string.IsNullOrWhiteSpace(newIndividual.Name) || newIndividual.ConceptId == 0)
+        {
+            return;
+        }
+
+        // Check permissions
+        if (editingIndividual != null && userPermissionLevel < PermissionLevel.ViewAddEdit)
+        {
+            ToastService.ShowError("You do not have permission to edit individuals");
+            return;
+        }
+        else if (editingIndividual == null && userPermissionLevel < PermissionLevel.ViewAndAdd)
+        {
+            ToastService.ShowError("You do not have permission to add individuals");
+            return;
+        }
+
+        try
+        {
+            newIndividual.Properties = newIndividualProperties;
+
+            if (editingIndividual != null)
+            {
+                // Update existing individual
+                await IndividualService.UpdateAsync(newIndividual);
+                ToastService.ShowSuccess($"Updated individual \"{newIndividual.Name}\"");
+                await HandleIndividualUpdated(newIndividual);
+                editingIndividual = null;
+            }
+            else
+            {
+                // Create new individual
+                var createdIndividual = await IndividualService.CreateAsync(newIndividual);
+                ToastService.ShowSuccess($"Created individual \"{newIndividual.Name}\"");
+                await HandleIndividualCreated(createdIndividual);
+            }
+
+            showAddIndividual = false;
+            newIndividual = new Individual();
+            newIndividualProperties = new List<IndividualProperty>();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = ex.InnerException != null
+                ? $"{ex.Message} - {ex.InnerException.Message}"
+                : ex.Message;
+            ToastService.ShowError($"Failed to save individual: {errorMessage}", 8000);
+        }
+    }
+
+    private void CancelIndividualDialog()
+    {
+        showAddIndividual = false;
+        editingIndividual = null;
+        newIndividual = new Individual();
+        newIndividualProperties = new List<IndividualProperty>();
+        StateHasChanged();
     }
 
     // Individual event handlers
@@ -2034,6 +2145,7 @@ else
 
         StateHasChanged();
     }
+
 
     // Restriction management methods
     private void ShowAddRestrictionDialog()
@@ -2140,10 +2252,10 @@ else
         {
             relationshipManagementPanel.HideDialog();
         }
-        if (individualManagementPanel != null)
-        {
-            individualManagementPanel.HideDialog();
-        }
+
+        // Close individual dialog
+        CancelIndividualDialog();
+
         selectedConcept = null;
         selectedRelationship = null;
     }
