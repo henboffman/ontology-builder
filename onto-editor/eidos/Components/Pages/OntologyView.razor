@@ -560,23 +560,51 @@ else
         }
 
         <!-- Floating Panels for Add/Edit Concept and Relationship -->
-        <ConceptManagementPanel @ref="conceptManagementPanel"
-                                OntologyId="@Id"
-                                CustomTemplates="@ontology.CustomTemplates"
-                                ShouldPulse="@shouldPulseSidebar"
-                                UserPermissionLevel="@userPermissionLevel"
-                                OnConceptCreated="@HandleConceptCreated"
-                                OnConceptUpdated="@HandleConceptUpdated"
-                                OnCancelRequested="@HandleConceptCancelRequested" />
-
-        <RelationshipManagementPanel @ref="relationshipManagementPanel"
-                                     OntologyId="@Id"
-                                     Concepts="@ontology.Concepts"
-                                     Relationships="@ontology.Relationships"
+        @if (showAddConcept)
+        {
+            <AddConceptFloatingPanel @ref="addConceptFloatingPanel"
+                                     IsVisible="@showAddConcept"
+                                     IsEditing="@(editingConcept != null)"
                                      ShouldPulse="@shouldPulseSidebar"
-                                     UserPermissionLevel="@userPermissionLevel"
-                                     OnRelationshipCreated="@HandleRelationshipCreated"
-                                     OnRelationshipUpdated="@HandleRelationshipUpdated" />
+                                     CustomTemplates="@ontology.CustomTemplates"
+                                     ConceptName="@newConcept.Name"
+                                     ConceptNameChanged="@((value) => newConcept.Name = value)"
+                                     ConceptCategory="@newConcept.Category"
+                                     ConceptCategoryChanged="@OnConceptCategoryChanged"
+                                     ConceptExplanation="@newConcept.SimpleExplanation"
+                                     ConceptExplanationChanged="@((value) => newConcept.SimpleExplanation = value)"
+                                     ConceptExamples="@newConcept.Examples"
+                                     ConceptExamplesChanged="@((value) => newConcept.Examples = value)"
+                                     ConceptColor="@newConcept.Color"
+                                     ConceptColorChanged="@((value) => newConcept.Color = value)"
+                                     OnSaveClick="@SaveConcept"
+                                     OnSaveAndAddAnotherClick="@SaveConceptAndAddAnother"
+                                     OnCancelClick="@CancelConceptDialog"
+                                     OnTemplateSelected="@ApplyConceptTemplate" />
+        }
+
+        @if (showAddRelationship)
+        {
+            <AddRelationshipFloatingPanel IsVisible="@showAddRelationship"
+                                          IsEditing="@(editingRelationship != null)"
+                                          ShouldPulse="@shouldPulseSidebar"
+                                          Concepts="@ontology.Concepts"
+                                          ExistingRelationshipTypes="@GetExistingRelationshipTypes()"
+                                          SourceConceptId="@newRelationship.SourceConceptId"
+                                          SourceConceptIdChanged="@((value) => newRelationship.SourceConceptId = value)"
+                                          TargetConceptId="@newRelationship.TargetConceptId"
+                                          TargetConceptIdChanged="@((value) => newRelationship.TargetConceptId = value)"
+                                          RelationType="@newRelationship.RelationType"
+                                          RelationTypeChanged="@((value) => newRelationship.RelationType = value)"
+                                          CustomType="@customRelationType"
+                                          CustomTypeChanged="@((value) => customRelationType = value)"
+                                          Label="@newRelationship.Label"
+                                          LabelChanged="@((value) => newRelationship.Label = value)"
+                                          Description="@newRelationship.Description"
+                                          DescriptionChanged="@((value) => newRelationship.Description = value)"
+                                          OnSaveClick="@SaveRelationship"
+                                          OnCancelClick="@CancelRelationshipDialog" />
+        }
 
 }
 
@@ -609,15 +637,25 @@ else
     public string? GuestSessionToken { get; set; }
 
     private GraphViewContainer? graphViewContainer;
-    private ConceptManagementPanel? conceptManagementPanel;
-    private RelationshipManagementPanel? relationshipManagementPanel;
+    private AddConceptFloatingPanel? addConceptFloatingPanel;
     private AdminConceptDialog? adminConceptDialog;
+
+    // Concept dialog state (moved from ConceptManagementPanel)
+    private bool showAddConcept = false;
+    private Concept? editingConcept = null;
+    private Concept newConcept = new();
 
     // Individual dialog state (moved from IndividualManagementPanel)
     private bool showAddIndividual = false;
     private Individual? editingIndividual = null;
     private Individual newIndividual = new();
     private List<IndividualProperty> newIndividualProperties = new();
+
+    // Relationship dialog state (moved from RelationshipManagementPanel)
+    private bool showAddRelationship = false;
+    private Relationship? editingRelationship = null;
+    private Relationship newRelationship = new();
+    private string customRelationType = string.Empty;
 
     private string editingNotes = string.Empty;
     private string sortOption = "category";
@@ -913,14 +951,8 @@ else
     private async Task SwitchViewMode(ViewMode mode)
     {
         viewMode = mode;
-        if (conceptManagementPanel != null)
-        {
-            conceptManagementPanel.HideDialog();
-        }
-        if (relationshipManagementPanel != null)
-        {
-            relationshipManagementPanel.HideDialog();
-        }
+        CancelConceptDialog();
+        CancelRelationshipDialog();
         selectedConcept = null;
 
         // Update presence with current view
@@ -962,30 +994,45 @@ else
 
     private async Task ShowAddConceptDialog()
     {
-        if (conceptManagementPanel != null)
+        try
         {
-            await conceptManagementPanel.ShowAddConceptDialog();
+            var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+
+            newConcept = new Concept
+            {
+                OntologyId = Id,
+                Color = prefs.DefaultConceptColor
+            };
+
+            Logger.LogInformation("Applied default color {Color} from preferences", prefs.DefaultConceptColor);
         }
-        if (relationshipManagementPanel != null)
+        catch (Exception ex)
         {
-            relationshipManagementPanel.HideDialog();
+            // Fallback to random color if preferences fail to load
+            Logger.LogError(ex, "Failed to load user preferences for concept creation, using random color");
+            newConcept = new Concept
+            {
+                OntologyId = Id,
+                Color = "#" + Random.Shared.Next(0x1000000).ToString("X6")
+            };
         }
+
+        showAddConcept = true;
+        editingConcept = null;
+
+        CancelRelationshipDialog();
+        CancelIndividualDialog();
         selectedConcept = null;
+        StateHasChanged();
     }
 
     private void ShowBulkCreateDialog()
     {
         showBulkCreate = true;
-        if (conceptManagementPanel != null)
-        {
-            conceptManagementPanel.HideDialog();
-        }
-        if (relationshipManagementPanel != null)
-        {
-            relationshipManagementPanel.HideDialog();
-        }
 
-        // Close individual dialog
+        // Hide all other dialogs
+        CancelConceptDialog();
+        CancelRelationshipDialog();
         CancelIndividualDialog();
     }
 
@@ -1011,52 +1058,421 @@ else
         ToastService.ShowSuccess("Bulk creation completed successfully!");
     }
 
-
-    private async Task ShowAddRelationshipDialog()
-    {
-        if (relationshipManagementPanel != null)
-        {
-            await relationshipManagementPanel.ShowAddRelationshipDialog();
-        }
-        if (conceptManagementPanel != null)
-        {
-            conceptManagementPanel.HideDialog();
-        }
-        selectedConcept = null;
-    }
-
     private void EditConcept(Concept concept)
     {
-        if (conceptManagementPanel != null)
+        editingConcept = concept;
+        newConcept = new Concept
         {
-            conceptManagementPanel.ShowEditConceptDialog(concept);
-        }
-        if (relationshipManagementPanel != null)
-        {
-            relationshipManagementPanel.HideDialog();
-        }
+            Id = concept.Id,
+            OntologyId = concept.OntologyId,
+            Name = concept.Name,
+            Category = concept.Category,
+            SimpleExplanation = concept.SimpleExplanation,
+            Definition = concept.Definition,
+            Examples = concept.Examples,
+            Color = concept.Color,
+            SourceOntology = concept.SourceOntology
+        };
+        showAddConcept = true;
+
+        CancelRelationshipDialog();
+        CancelIndividualDialog();
         selectedConcept = null;
+        StateHasChanged();
     }
 
     private async Task DuplicateConcept(Concept concept)
     {
-        if (conceptManagementPanel != null)
+        newConcept = new Concept
         {
-            await conceptManagementPanel.ShowDuplicateConceptDialog(concept);
-        }
-        if (relationshipManagementPanel != null)
-        {
-            relationshipManagementPanel.HideDialog();
-        }
+            OntologyId = Id,
+            Name = $"{concept.Name} (Copy)",
+            Category = concept.Category,
+            SimpleExplanation = concept.SimpleExplanation,
+            Definition = concept.Definition,
+            Examples = concept.Examples,
+            Color = concept.Color
+        };
+        editingConcept = null;
+        showAddConcept = true;
+
+        CancelRelationshipDialog();
+        CancelIndividualDialog();
         selectedConcept = null;
 
         shouldPulseSidebar = true;
         StateHasChanged();
         await Task.Delay(3600);
         shouldPulseSidebar = false;
+
+        ToastService.ShowInfo($"Ready to create copy of \"{concept.Name}\". Click 'Add' to save or 'Cancel' to discard.", 5000);
     }
 
-    private void HandleNodeCtrlClick(int conceptId)
+    private async Task SaveConcept()
+    {
+        if (string.IsNullOrWhiteSpace(newConcept.Name))
+            return;
+
+        // Check permissions
+        if (editingConcept != null && userPermissionLevel < PermissionLevel.ViewAddEdit)
+        {
+            ToastService.ShowError("You do not have permission to edit concepts");
+            return;
+        }
+        else if (editingConcept == null && userPermissionLevel < PermissionLevel.ViewAndAdd)
+        {
+            ToastService.ShowError("You do not have permission to add concepts");
+            return;
+        }
+
+        try
+        {
+            if (editingConcept != null)
+            {
+                // Update existing concept
+                editingConcept.Name = newConcept.Name;
+                editingConcept.Category = newConcept.Category;
+                editingConcept.SimpleExplanation = newConcept.SimpleExplanation;
+                editingConcept.Definition = newConcept.Definition;
+                editingConcept.Examples = newConcept.Examples;
+                editingConcept.Color = newConcept.Color;
+                editingConcept.SourceOntology = newConcept.SourceOntology;
+
+                await ConceptService.UpdateAsync(editingConcept);
+                ToastService.ShowSuccess($"Updated concept \"{newConcept.Name}\"");
+                editingConcept = null;
+            }
+            else
+            {
+                // Create new concept
+                newConcept.OntologyId = Id;
+                await ConceptService.CreateAsync(newConcept);
+                ToastService.ShowSuccess($"Created concept \"{newConcept.Name}\"");
+            }
+
+            showAddConcept = false;
+            newConcept = new Concept();
+            await LoadOntology();
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = ex.InnerException != null
+                ? $"{ex.Message} - {ex.InnerException.Message}"
+                : ex.Message;
+            ToastService.ShowError($"Failed to save concept: {errorMessage}", 8000);
+        }
+    }
+
+    private async Task SaveConceptAndAddAnother()
+    {
+        if (string.IsNullOrWhiteSpace(newConcept.Name))
+            return;
+
+        // Check permissions
+        if (userPermissionLevel < PermissionLevel.ViewAndAdd)
+        {
+            ToastService.ShowError("You do not have permission to add concepts");
+            return;
+        }
+
+        try
+        {
+            var conceptName = newConcept.Name;
+            newConcept.OntologyId = Id;
+            await ConceptService.CreateAsync(newConcept);
+            ToastService.ShowSuccess($"Created concept \"{conceptName}\"", 2000);
+
+            // Get user preferences for the new concept defaults
+            var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+
+            // Clear the form with fresh defaults
+            newConcept = new Concept
+            {
+                OntologyId = Id,
+                Color = prefs.DefaultConceptColor,
+                Category = newConcept.Category // Keep the same category for convenience
+            };
+
+            // Keep the form open
+            showAddConcept = true;
+            await LoadOntology();
+            StateHasChanged();
+
+            // Focus the name input field
+            await FocusConceptNameInput();
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = ex.InnerException != null
+                ? $"{ex.Message} - {ex.InnerException.Message}"
+                : ex.Message;
+            ToastService.ShowError($"Failed to save concept: {errorMessage}", 8000);
+        }
+    }
+
+    private void CancelConceptDialog()
+    {
+        showAddConcept = false;
+        editingConcept = null;
+        newConcept = new Concept();
+        StateHasChanged();
+    }
+
+    private async Task OnConceptCategoryChanged(string? category)
+    {
+        newConcept.Category = category;
+
+        // Auto-apply color based on category if preferences allow
+        try
+        {
+            var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+
+            if (prefs.AutoColorByCategory)
+            {
+                newConcept.Color = prefs.GetColorForCategory(category);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to auto-apply color for category {Category}", category);
+        }
+    }
+
+    private void ApplyConceptTemplate(string templateValue)
+    {
+        if (string.IsNullOrWhiteSpace(templateValue))
+            return;
+
+        // Check if it's a custom template (format: "custom:123") or default (format: "default:Entity")
+        if (templateValue.StartsWith("custom:"))
+        {
+            var templateIdStr = templateValue.Substring(7); // Remove "custom:" prefix
+            if (int.TryParse(templateIdStr, out var templateId))
+            {
+                var customTemplate = ontology?.CustomTemplates?.FirstOrDefault(t => t.Id == templateId);
+                if (customTemplate != null)
+                {
+                    newConcept.Category = customTemplate.Category;
+                    newConcept.SimpleExplanation = customTemplate.Description;
+                    newConcept.Examples = customTemplate.Examples;
+                    newConcept.Color = customTemplate.Color;
+                    ToastService.ShowInfo($"Applied custom template '{customTemplate.Category}' - customize as needed");
+                }
+            }
+        }
+        else if (templateValue.StartsWith("default:"))
+        {
+            var templateCategory = templateValue.Substring(8); // Remove "default:" prefix
+            var template = CommonConceptTemplates.Templates.FirstOrDefault(t => t.Category == templateCategory);
+            if (template != null)
+            {
+                newConcept.Category = template.Category;
+                newConcept.SimpleExplanation = template.Description;
+                newConcept.Examples = template.Examples;
+                newConcept.Color = template.Color;
+                ToastService.ShowInfo($"Applied {template.Category} template - customize as needed");
+            }
+        }
+    }
+
+    private async Task FocusConceptNameInput()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("setTimeout", new object[]
+            {
+                DotNetObjectReference.Create(new FocusHelper(async () =>
+                {
+                    await JS.InvokeVoidAsync("eval", "document.querySelector('.concept-name-input')?.focus()");
+                })),
+                100
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to focus concept name input");
+        }
+    }
+
+    // Helper class for JS callback
+    private class FocusHelper
+    {
+        private readonly Func<Task> _action;
+        public FocusHelper(Func<Task> action) => _action = action;
+
+        [JSInvokable]
+        public async Task Invoke() => await _action();
+    }
+
+    #region Relationship Management Methods
+
+    private Task ShowAddRelationshipDialog()
+    {
+        newRelationship = new Relationship { OntologyId = Id };
+        customRelationType = string.Empty;
+        showAddRelationship = true;
+        editingRelationship = null;
+        CancelConceptDialog();
+        CancelIndividualDialog();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task ShowAddRelationshipDialog(int sourceConceptId, int targetConceptId)
+    {
+        newRelationship = new Relationship
+        {
+            OntologyId = Id,
+            SourceConceptId = sourceConceptId,
+            TargetConceptId = targetConceptId
+        };
+        customRelationType = string.Empty;
+        showAddRelationship = true;
+        editingRelationship = null;
+        CancelConceptDialog();
+        CancelIndividualDialog();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void ShowEditRelationshipDialog(Relationship relationship)
+    {
+        editingRelationship = relationship;
+        newRelationship = new Relationship
+        {
+            Id = relationship.Id,
+            OntologyId = relationship.OntologyId,
+            SourceConceptId = relationship.SourceConceptId,
+            TargetConceptId = relationship.TargetConceptId,
+            RelationType = relationship.RelationType,
+            Label = relationship.Label,
+            Description = relationship.Description
+        };
+        customRelationType = string.Empty;
+        showAddRelationship = true;
+        CancelConceptDialog();
+        CancelIndividualDialog();
+        StateHasChanged();
+    }
+
+    private Task ShowDuplicateRelationshipDialog(Relationship relationship)
+    {
+        newRelationship = new Relationship
+        {
+            OntologyId = Id,
+            SourceConceptId = relationship.SourceConceptId,
+            TargetConceptId = relationship.TargetConceptId,
+            RelationType = relationship.RelationType,
+            Label = relationship.Label,
+            Description = relationship.Description
+        };
+        customRelationType = string.Empty;
+        editingRelationship = null;
+        showAddRelationship = true;
+        CancelConceptDialog();
+        CancelIndividualDialog();
+        StateHasChanged();
+
+        ToastService.ShowInfo("Ready to create copy of relationship. Click 'Add' to save or 'Cancel' to discard.", 5000);
+        return Task.CompletedTask;
+    }
+
+    private void CancelRelationshipDialog()
+    {
+        showAddRelationship = false;
+        editingRelationship = null;
+        newRelationship = new Relationship();
+        customRelationType = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task SaveRelationship()
+    {
+        // Check permissions
+        if (editingRelationship != null && userPermissionLevel < PermissionLevel.ViewAddEdit)
+        {
+            ToastService.ShowError("You do not have permission to edit relationships");
+            return;
+        }
+        else if (editingRelationship == null && userPermissionLevel < PermissionLevel.ViewAndAdd)
+        {
+            ToastService.ShowError("You do not have permission to add relationships");
+            return;
+        }
+
+        var sourceConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == newRelationship.SourceConceptId);
+        var targetConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == newRelationship.TargetConceptId);
+
+        if (sourceConcept == null || targetConcept == null)
+        {
+            ToastService.ShowError("Source or target concept not found");
+            return;
+        }
+
+        // Use custom relationship type if specified
+        if (!string.IsNullOrWhiteSpace(customRelationType))
+        {
+            newRelationship.RelationType = customRelationType;
+        }
+
+        if (string.IsNullOrWhiteSpace(newRelationship.RelationType))
+        {
+            ToastService.ShowError("Please select or enter a relationship type");
+            return;
+        }
+
+        try
+        {
+            if (editingRelationship != null)
+            {
+                // Update existing relationship
+                editingRelationship.SourceConceptId = newRelationship.SourceConceptId;
+                editingRelationship.TargetConceptId = newRelationship.TargetConceptId;
+                editingRelationship.RelationType = newRelationship.RelationType;
+                editingRelationship.Label = newRelationship.Label;
+                editingRelationship.Description = newRelationship.Description;
+
+                await OntologyService.UpdateRelationshipAsync(editingRelationship);
+                ToastService.ShowSuccess("Updated relationship");
+                editingRelationship = null;
+            }
+            else
+            {
+                // Create new relationship
+                newRelationship.OntologyId = Id;
+                await OntologyService.CreateRelationshipAsync(newRelationship);
+                ToastService.ShowSuccess($"Created relationship: {sourceConcept.Name} → {targetConcept.Name}");
+            }
+
+            showAddRelationship = false;
+            customRelationType = string.Empty;
+            newRelationship = new Relationship();
+            await LoadOntology();
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = ex.InnerException != null
+                ? $"{ex.Message} - {ex.InnerException.Message}"
+                : ex.Message;
+            ToastService.ShowError($"Failed to save relationship: {errorMessage}", 8000);
+        }
+    }
+
+    private IEnumerable<string> GetExistingRelationshipTypes()
+    {
+        if (ontology?.Relationships == null)
+            return Enumerable.Empty<string>();
+
+        return ontology.Relationships
+            .Select(r => r.RelationType)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct()
+            .OrderBy(t => t);
+    }
+
+    #endregion
+
+    private async Task HandleNodeCtrlClick(int conceptId)
     {
         if (firstSelectedConceptId == null)
         {
@@ -1077,15 +1493,9 @@ else
             var sourceConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == firstSelectedConceptId.Value);
             var targetConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == conceptId);
 
-            if (sourceConcept != null && targetConcept != null && relationshipManagementPanel != null)
+            if (sourceConcept != null && targetConcept != null)
             {
-                relationshipManagementPanel.ShowAddRelationshipDialog(firstSelectedConceptId.Value, conceptId);
-                if (conceptManagementPanel != null)
-                {
-                    conceptManagementPanel.HideDialog();
-                }
-                selectedConcept = null;
-
+                await ShowAddRelationshipDialog(firstSelectedConceptId.Value, conceptId);
                 ToastService.ShowInfo($"Creating relationship: \"{sourceConcept.Name}\" → \"{targetConcept.Name}\"", 3000);
             }
 
@@ -1095,61 +1505,16 @@ else
 
     private void EditRelationship(Relationship relationship)
     {
-        if (relationshipManagementPanel != null)
-        {
-            relationshipManagementPanel.ShowEditRelationshipDialog(relationship);
-        }
-        if (conceptManagementPanel != null)
-        {
-            conceptManagementPanel.HideDialog();
-        }
-        selectedConcept = null;
+        ShowEditRelationshipDialog(relationship);
     }
 
     private async Task DuplicateRelationship(Relationship relationship)
     {
-        if (relationshipManagementPanel != null)
-        {
-            await relationshipManagementPanel.ShowDuplicateRelationshipDialog(relationship);
-        }
-        if (conceptManagementPanel != null)
-        {
-            conceptManagementPanel.HideDialog();
-        }
-        selectedConcept = null;
-
+        await ShowDuplicateRelationshipDialog(relationship);
         shouldPulseSidebar = true;
         StateHasChanged();
         await Task.Delay(3600);
         shouldPulseSidebar = false;
-    }
-
-    private async Task HandleRelationshipCreated(Relationship relationship)
-    {
-        try
-        {
-            await OntologyService.CreateRelationshipAsync(relationship);
-            await LoadOntology();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to create relationship");
-            throw; // Let the panel handle the error display
-        }
-    }
-
-    private async Task HandleRelationshipUpdated(Relationship relationship)
-    {
-        try
-        {
-            await OntologyService.UpdateRelationshipAsync(relationship);
-            await LoadOntology();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to update relationship");
-            throw; // Let the panel handle the error display
-        }
     }
 
     private async Task DeleteConcept(int conceptId)
@@ -1230,14 +1595,8 @@ else
         // Set selected concept - ViewState.SetSelectedConcept will automatically clear relationship and individual
         selectedConcept = concept;
 
-        if (conceptManagementPanel != null)
-        {
-            conceptManagementPanel.HideDialog();
-        }
-        if (relationshipManagementPanel != null)
-        {
-            relationshipManagementPanel.HideDialog();
-        }
+        CancelConceptDialog();
+        CancelRelationshipDialog();
 
         // Force UI update for the details sidebar
         StateHasChanged();
@@ -1248,14 +1607,8 @@ else
         // Set selected relationship - ViewState.SetSelectedRelationship will automatically clear concept and individual
         selectedRelationship = relationship;
 
-        if (conceptManagementPanel != null)
-        {
-            conceptManagementPanel.HideDialog();
-        }
-        if (relationshipManagementPanel != null)
-        {
-            relationshipManagementPanel.HideDialog();
-        }
+        CancelConceptDialog();
+        CancelRelationshipDialog();
 
         // Force UI update for the details sidebar
         StateHasChanged();
@@ -1968,14 +2321,8 @@ else
         showAddIndividual = true;
 
         // Hide other dialogs
-        if (conceptManagementPanel != null)
-        {
-            conceptManagementPanel.HideDialog();
-        }
-        if (relationshipManagementPanel != null)
-        {
-            relationshipManagementPanel.HideDialog();
-        }
+        CancelConceptDialog();
+        CancelRelationshipDialog();
         selectedConcept = null;
         StateHasChanged();
     }
@@ -2009,14 +2356,8 @@ else
         showAddIndividual = true;
 
         // Hide other dialogs
-        if (conceptManagementPanel != null)
-        {
-            conceptManagementPanel.HideDialog();
-        }
-        if (relationshipManagementPanel != null)
-        {
-            relationshipManagementPanel.HideDialog();
-        }
+        CancelConceptDialog();
+        CancelRelationshipDialog();
         selectedConcept = null;
         StateHasChanged();
     }
@@ -2244,14 +2585,8 @@ else
     // Mobile Editor Management
     private void CloseMobileEditor()
     {
-        if (conceptManagementPanel != null)
-        {
-            conceptManagementPanel.HideDialog();
-        }
-        if (relationshipManagementPanel != null)
-        {
-            relationshipManagementPanel.HideDialog();
-        }
+        CancelConceptDialog();
+        CancelRelationshipDialog();
 
         // Close individual dialog
         CancelIndividualDialog();
@@ -2357,52 +2692,6 @@ else
 
     #endregion
 
-    #region Concept Management Event Handlers
-
-    /// <summary>
-    /// Handles the concept created event from ConceptManagementPanel.
-    /// </summary>
-    private async Task HandleConceptCreated(Concept concept)
-    {
-        try
-        {
-            await OntologyService.CreateConceptAsync(concept);
-            await LoadOntology();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to create concept {ConceptName}", concept.Name);
-            throw; // Re-throw to let the panel handle the error display
-        }
-    }
-
-    /// <summary>
-    /// Handles the concept updated event from ConceptManagementPanel.
-    /// </summary>
-    private async Task HandleConceptUpdated(Concept concept)
-    {
-        try
-        {
-            await OntologyService.UpdateConceptAsync(concept);
-            await LoadOntology();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to update concept {ConceptId}", concept.Id);
-            throw; // Re-throw to let the panel handle the error display
-        }
-    }
-
-    /// <summary>
-    /// Handles the cancel event from ConceptManagementPanel.
-    /// </summary>
-    private async Task HandleConceptCancelRequested()
-    {
-        // No action needed, just an event notification
-        await Task.CompletedTask;
-    }
-
-    #endregion
 
 }
 
