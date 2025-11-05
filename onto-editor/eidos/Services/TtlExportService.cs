@@ -270,6 +270,9 @@ namespace Eidos.Services
             // Export property declarations for all relationship types
             ExportPropertyDeclarations(graph, ontology, baseUri, rdfType, rdfsLabel, rdfsComment);
 
+            // Export concept property definitions (DataProperty and ObjectProperty)
+            ExportConceptPropertyDefinitions(graph, ontology, baseUri, rdfType, rdfsLabel, rdfsComment);
+
             // Export relationships
             foreach (var relationship in ontology.Relationships)
             {
@@ -360,6 +363,109 @@ namespace Eidos.Services
                     var rangeUri = CreateConceptUri(baseUri, relType.TargetConcepts[0]);
                     var rangeNode = graph.CreateUriNode(UriFactory.Create(rangeUri));
                     graph.Assert(propertyNode, rdfsRange, rangeNode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Export concept property definitions (DataProperty and ObjectProperty) with domains, ranges, and characteristics.
+        /// This exports OWL property declarations at the schema level (class-level property definitions).
+        /// </summary>
+        private void ExportConceptPropertyDefinitions(IGraph graph, Ontology ontology, string baseUri,
+            IUriNode rdfType, IUriNode rdfsLabel, IUriNode rdfsComment)
+        {
+            var owlDatatypeProperty = graph.CreateUriNode("owl:DatatypeProperty");
+            var owlObjectProperty = graph.CreateUriNode("owl:ObjectProperty");
+            var owlFunctionalProperty = graph.CreateUriNode("owl:FunctionalProperty");
+            var rdfsDomain = graph.CreateUriNode("rdfs:domain");
+            var rdfsRange = graph.CreateUriNode("rdfs:range");
+            var rdfsSubClassOf = graph.CreateUriNode("rdfs:subClassOf");
+            var owlRestriction = graph.CreateUriNode("owl:Restriction");
+            var owlOnProperty = graph.CreateUriNode("owl:onProperty");
+            var owlMinCardinality = graph.CreateUriNode("owl:minCardinality");
+
+            // Iterate through all concepts and their property definitions
+            foreach (var concept in ontology.Concepts)
+            {
+                if (concept.ConceptProperties == null || !concept.ConceptProperties.Any())
+                    continue;
+
+                var conceptUri = CreateConceptUri(baseUri, concept);
+                var conceptNode = graph.CreateUriNode(UriFactory.Create(conceptUri));
+
+                foreach (var property in concept.ConceptProperties)
+                {
+                    // Create property URI (use custom URI if provided, otherwise generate)
+                    var propertyUri = !string.IsNullOrWhiteSpace(property.Uri)
+                        ? property.Uri
+                        : baseUri + SanitizePropertyName(property.Name);
+
+                    var propertyNode = graph.CreateUriNode(UriFactory.Create(propertyUri));
+
+                    // Determine property type and export accordingly
+                    if (property.PropertyType == Models.Enums.PropertyType.DataProperty)
+                    {
+                        // Export as owl:DatatypeProperty
+                        graph.Assert(propertyNode, rdfType, owlDatatypeProperty);
+
+                        // Set range to XSD datatype
+                        if (!string.IsNullOrWhiteSpace(property.DataType))
+                        {
+                            var xsdTypeUri = GetXsdDataType(property.DataType);
+                            var xsdTypeNode = graph.CreateUriNode(UriFactory.Create(xsdTypeUri));
+                            graph.Assert(propertyNode, rdfsRange, xsdTypeNode);
+                        }
+                    }
+                    else if (property.PropertyType == Models.Enums.PropertyType.ObjectProperty)
+                    {
+                        // Export as owl:ObjectProperty
+                        graph.Assert(propertyNode, rdfType, owlObjectProperty);
+
+                        // Set range to target concept
+                        if (property.RangeConcept != null)
+                        {
+                            var rangeConceptUri = CreateConceptUri(baseUri, property.RangeConcept);
+                            var rangeConceptNode = graph.CreateUriNode(UriFactory.Create(rangeConceptUri));
+                            graph.Assert(propertyNode, rdfsRange, rangeConceptNode);
+                        }
+                    }
+
+                    // Set domain to the concept this property is defined for
+                    graph.Assert(propertyNode, rdfsDomain, conceptNode);
+
+                    // Add label
+                    var labelLiteral = graph.CreateLiteralNode(property.Name);
+                    graph.Assert(propertyNode, rdfsLabel, labelLiteral);
+
+                    // Add description/comment if available
+                    if (!string.IsNullOrWhiteSpace(property.Description))
+                    {
+                        var commentLiteral = graph.CreateLiteralNode(property.Description);
+                        graph.Assert(propertyNode, rdfsComment, commentLiteral);
+                    }
+
+                    // Export functional characteristic
+                    if (property.IsFunctional)
+                    {
+                        graph.Assert(propertyNode, rdfType, owlFunctionalProperty);
+                    }
+
+                    // Export required characteristic as OWL restriction with minCardinality 1
+                    if (property.IsRequired)
+                    {
+                        // Create anonymous restriction node
+                        var restrictionNode = graph.CreateBlankNode();
+                        graph.Assert(restrictionNode, rdfType, owlRestriction);
+                        graph.Assert(restrictionNode, owlOnProperty, propertyNode);
+
+                        // Add minCardinality 1 (required = must have at least one value)
+                        var minOneLiteral = graph.CreateLiteralNode("1",
+                            UriFactory.Create(OntologyNamespaces.Xsd.NonNegativeInteger));
+                        graph.Assert(restrictionNode, owlMinCardinality, minOneLiteral);
+
+                        // Link concept to restriction via rdfs:subClassOf
+                        graph.Assert(conceptNode, rdfsSubClassOf, restrictionNode);
+                    }
                 }
             }
         }

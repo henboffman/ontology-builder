@@ -18,7 +18,8 @@ public class OntologyRepository : BaseRepository<Ontology>, IOntologyRepository
     /// <returns>The ontology with all related data, or null if not found</returns>
     /// <remarks>
     /// Navigation properties loaded:
-    /// - Concepts with their Properties
+    /// - Concepts with their Properties (individual property values)
+    /// - Concepts with their ConceptProperties (property definitions for OWL export)
     /// - Relationships with SourceConcept and TargetConcept
     /// - Individuals with their Properties (for individual visualization in graph view)
     /// - IndividualRelationships (for individual relationship edges in graph view)
@@ -36,6 +37,9 @@ public class OntologyRepository : BaseRepository<Ontology>, IOntologyRepository
             .AsNoTracking()
             .Include(o => o.Concepts)
                 .ThenInclude(c => c.Properties)
+            .Include(o => o.Concepts)
+                .ThenInclude(c => c.ConceptProperties)       // Load concept property definitions for TTL export
+                    .ThenInclude(cp => cp.RangeConcept)      // Load range concept for ObjectProperty types
             .Include(o => o.Concepts)
                 .ThenInclude(c => c.Restrictions)
                     .ThenInclude(r => r.AllowedConcept)
@@ -76,11 +80,13 @@ public class OntologyRepository : BaseRepository<Ontology>, IOntologyRepository
             Message = "Loading concepts..."
         });
 
-        // Load concepts with properties
+        // Load concepts with properties and concept property definitions
         await context.Entry(ontology)
             .Collection(o => o.Concepts)
             .Query()
             .Include(c => c.Properties)
+            .Include(c => c.ConceptProperties)
+                .ThenInclude(cp => cp.RangeConcept)
             .LoadAsync();
 
         onProgress?.Invoke(new ImportProgress

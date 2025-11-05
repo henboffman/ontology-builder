@@ -254,6 +254,7 @@ namespace Eidos.Services
             var conceptMapping = new Dictionary<int, int>(); // old ID -> new ID
             var clonedConcepts = new List<Concept>();
             var clonedProperties = new List<Property>();
+            var clonedConceptProperties = new List<ConceptProperty>(); // NEW: For property definitions
 
             // Prepare all concepts first
             foreach (var concept in sourceOntology.Concepts)
@@ -270,7 +271,8 @@ namespace Eidos.Services
                     Category = concept.Category,
                     Color = concept.Color,
                     SourceOntology = concept.SourceOntology,
-                    Properties = new List<Property>() // Initialize for later
+                    Properties = new List<Property>(), // Initialize for later
+                    ConceptProperties = new List<ConceptProperty>() // NEW: Initialize for property definitions
                 };
 
                 clonedConcepts.Add(clonedConcept);
@@ -290,6 +292,8 @@ namespace Eidos.Services
 
                     // Prepare properties for this concept
                     var originalConcept = sourceOntology.Concepts.First(sc => sc.Id == originalId);
+
+                    // Clone individual property values
                     foreach (var property in originalConcept.Properties)
                     {
                         c.Properties.Add(new Property
@@ -299,6 +303,25 @@ namespace Eidos.Services
                             DataType = property.DataType,
                             Description = property.Description
                         });
+                    }
+
+                    // Clone concept property definitions
+                    if (originalConcept.ConceptProperties != null)
+                    {
+                        foreach (var conceptProperty in originalConcept.ConceptProperties)
+                        {
+                            c.ConceptProperties.Add(new ConceptProperty
+                            {
+                                Name = conceptProperty.Name,
+                                PropertyType = conceptProperty.PropertyType,
+                                DataType = conceptProperty.DataType,
+                                RangeConceptId = conceptProperty.RangeConceptId, // Will need to remap after all concepts inserted
+                                IsRequired = conceptProperty.IsRequired,
+                                IsFunctional = conceptProperty.IsFunctional,
+                                Description = conceptProperty.Description,
+                                Uri = conceptProperty.Uri
+                            });
+                        }
                     }
                 }
 
@@ -310,6 +333,26 @@ namespace Eidos.Services
                 {
                     conceptMapping[sourceOntology.Concepts.ToList()[i].Id] = clonedConcepts[i].Id;
                 }
+
+                // Fix ConceptId foreign keys and remap RangeConceptId for ConceptProperties
+                foreach (var clonedConcept in clonedConcepts)
+                {
+                    foreach (var conceptProperty in clonedConcept.ConceptProperties)
+                    {
+                        // Set ConceptId explicitly (EF Core might not have set it since concept had Id=0 when property was added)
+                        conceptProperty.ConceptId = clonedConcept.Id;
+
+                        // Remap RangeConceptId for ObjectProperty types
+                        if (conceptProperty.RangeConceptId.HasValue &&
+                            conceptMapping.ContainsKey(conceptProperty.RangeConceptId.Value))
+                        {
+                            conceptProperty.RangeConceptId = conceptMapping[conceptProperty.RangeConceptId.Value];
+                        }
+                    }
+                }
+
+                // Save the ConceptProperties with correct ConceptId and remapped RangeConceptId
+                await context.SaveChangesAsync();
             }
 
             // Clone all relationships (optimized - batch insert instead of N+1)

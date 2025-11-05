@@ -9,9 +9,87 @@
     </div>
 
     <div class="release-timeline">
-        <!-- Latest: List View Tabs & Interactive Validation -->
+        <!-- Latest: Concept Property Definitions -->
         <div class="release-item">
             <div class="release-badge badge bg-primary">Latest</div>
+            <div class="release-date">November 5, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-diagram-2 text-primary me-2"></i>
+                Concept Property Definitions (OWL Properties)
+            </h4>
+            <div class="release-content">
+                <p class="lead">Define proper OWL property schemas on your concepts with full Protégé compatibility!</p>
+
+                <h5>🎯 Property Definition System</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Two Property Types</strong>
+                        <ul>
+                            <li><strong>DataProperty</strong> - Properties with literal values (text, numbers, dates)</li>
+                            <li><strong>ObjectProperty</strong> - Properties referencing other individuals in your ontology</li>
+                            <li>Select data types: string, integer, decimal, boolean, date, anyURI</li>
+                            <li>Specify range concepts for ObjectProperty types</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Property Characteristics</strong>
+                        <ul>
+                            <li><strong>IsRequired</strong> - Mark properties as mandatory</li>
+                            <li><strong>IsFunctional</strong> - Limit properties to single values</li>
+                            <li>Add descriptions to document property purpose</li>
+                            <li>Custom URIs for property identifiers</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Where to Define Properties</strong>
+                        <ul>
+                            <li>Open Settings > Manage Concepts tab</li>
+                            <li>Edit any concept to see Property Definitions section</li>
+                            <li>Add, edit, or remove property definitions</li>
+                            <li>Properties define the schema for individuals of that concept type</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>📤 Export Enhancements</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>TTL Export</strong>
+                        <ul>
+                            <li>Properties export as proper owl:DatatypeProperty and owl:ObjectProperty</li>
+                            <li>Includes rdfs:domain (the concept) and rdfs:range (data type or target concept)</li>
+                            <li>owl:FunctionalProperty declarations for IsFunctional properties</li>
+                            <li>Full OWL 2 compliance - import into Protégé seamlessly!</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>JSON Export</strong>
+                        <ul>
+                            <li>ConceptProperties included in JSON export</li>
+                            <li>Complete property metadata for data interchange</li>
+                            <li>Range concept names resolved for ObjectProperty types</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>🔧 Technical Implementation</h5>
+                <ul class="feature-list">
+                    <li>New ConceptProperty model and database table</li>
+                    <li>ConceptPropertyService for property management</li>
+                    <li>Enhanced TtlExportService with full OWL property export</li>
+                    <li>Clone functionality preserves property definitions</li>
+                    <li>Efficient eager loading with EF Core Include</li>
+                </ul>
+
+                <div class="alert alert-success mt-3">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    <strong>Example:</strong> Create a "Person" concept, add a DataProperty "age" with integer type marked as required. Then add an ObjectProperty "hasEmployer" with range "Organization". Export to TTL and open in Protégé to see proper OWL property declarations!
+                </div>
+            </div>
+        </div>
+
+        <!-- List View Tabs & Interactive Validation -->
+        <div class="release-item">
             <div class="release-date">November 1, 2025</div>
             <h4 class="release-title">
                 <i class="bi bi-list-check text-primary me-2"></i>

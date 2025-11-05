@@ -211,6 +211,7 @@ public static class OntologyVisibility
 
         // Navigation properties
         public ICollection<Property> Properties { get; set; } = new List<Property>();
+        public ICollection<ConceptProperty> ConceptProperties { get; set; } = new List<ConceptProperty>(); // OWL property definitions
         public ICollection<Relationship> RelationshipsAsSource { get; set; } = new List<Relationship>();
         public ICollection<Relationship> RelationshipsAsTarget { get; set; } = new List<Relationship>();
         public ICollection<ConceptRestriction> Restrictions { get; set; } = new List<ConceptRestriction>();

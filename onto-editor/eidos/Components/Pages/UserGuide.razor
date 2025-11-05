@@ -24,6 +24,9 @@
                     <button class="nav-link @(activeSection == "concepts" ? "active" : "")" @onclick='async () => await ScrollToSection("concepts")'>
                         <i class="bi bi-box"></i> Working with Concepts
                     </button>
+                    <button class="nav-link @(activeSection == "property-definitions" ? "active" : "")" @onclick='async () => await ScrollToSection("property-definitions")'>
+                        <i class="bi bi-diagram-2"></i> Property Definitions
+                    </button>
                     <button class="nav-link @(activeSection == "restrictions" ? "active" : "")" @onclick='async () => await ScrollToSection("restrictions")'>
                         <i class="bi bi-shield-check"></i> Restrictions
                     </button>
@@ -154,6 +157,209 @@
 
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i> <strong>Warning:</strong> Deleting a concept also removes all its relationships. This action can be undone with <kbd>Ctrl</kbd> + <kbd>Z</kbd>.
+                    </div>
+                </section>
+
+                <!-- Property Definitions -->
+                <section id="property-definitions" class="doc-section">
+                    <h2><i class="bi bi-diagram-2 text-primary"></i> Property Definitions</h2>
+
+                    <h3>What are Property Definitions?</h3>
+                    <p>Property Definitions let you define the <strong>schema</strong> for properties on concepts - like creating a template that says "this type of concept should have these specific properties." This is different from individual property values that you set on specific instances.</p>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> <strong>Think of it this way:</strong> If "Person" is a concept, property definitions would specify that all people have an "age" property (a number) and a "hasEmployer" property (linking to an Organization). Then when you create an individual person, you can fill in those property values.
+                    </div>
+
+                    <h3>Why Use Property Definitions?</h3>
+                    <ul>
+                        <li><strong>OWL Compliance</strong> - Create proper semantic ontologies compatible with Protégé and other OWL tools</li>
+                        <li><strong>Type Safety</strong> - Define what data types properties should hold (text, numbers, dates, etc.)</li>
+                        <li><strong>Documentation</strong> - Document the expected structure of your concepts</li>
+                        <li><strong>Reusability</strong> - Define once on the concept, applies to all individuals of that type</li>
+                        <li><strong>Validation Ready</strong> - Foundation for future automatic validation features</li>
+                    </ul>
+
+                    <h3>Types of Properties</h3>
+
+                    <h4><span class="badge bg-primary">DataProperty</span></h4>
+                    <p>Properties that hold literal values like text, numbers, or dates.</p>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Available Data Types:</strong></p>
+                            <ul>
+                                <li><strong>string</strong> - Text values (names, descriptions)</li>
+                                <li><strong>integer</strong> - Whole numbers (age, quantity)</li>
+                                <li><strong>decimal</strong> - Numbers with decimals (price, temperature)</li>
+                                <li><strong>boolean</strong> - True/False values</li>
+                                <li><strong>date</strong> - Calendar dates</li>
+                                <li><strong>anyURI</strong> - Web addresses</li>
+                            </ul>
+                            <p class="mb-2 mt-3"><strong>Example:</strong></p>
+                            <p class="text-muted mb-0">On a "Person" concept, add a DataProperty called "age" with data type "integer" marked as required.</p>
+                        </div>
+                    </div>
+
+                    <h4><span class="badge bg-success">ObjectProperty</span></h4>
+                    <p>Properties that reference other individuals in your ontology - creating relationships between instances.</p>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Key Features:</strong></p>
+                            <ul>
+                                <li>Specify which concept type the property points to (the "range")</li>
+                                <li>Creates semantic links between individuals</li>
+                                <li>Exports to OWL with proper owl:ObjectProperty declarations</li>
+                            </ul>
+                            <p class="mb-2 mt-3"><strong>Example:</strong></p>
+                            <p class="text-muted mb-0">On a "Book" concept, add an ObjectProperty called "hasAuthor" with range "Person" - meaning books can have authors who are people.</p>
+                        </div>
+                    </div>
+
+                    <h3>Property Characteristics</h3>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title"><span class="badge bg-danger">IsRequired</span></h5>
+                                    <p class="card-text">Marks the property as mandatory - individuals of this concept must have this property.</p>
+                                    <p class="text-muted small mb-0">Example: "title" on a "Book" concept</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title"><span class="badge bg-warning">IsFunctional</span></h5>
+                                    <p class="card-text">Limits the property to a single value. In OWL terms, makes it an owl:FunctionalProperty.</p>
+                                    <p class="text-muted small mb-0">Example: "birthDate" on a "Person" concept</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>How to Add Property Definitions</h3>
+
+                    <h4>Step 1: Navigate to Manage Concepts</h4>
+                    <ol>
+                        <li>Open your ontology</li>
+                        <li>Click the <i class="bi bi-gear"></i> <strong>Settings</strong> button</li>
+                        <li>Go to the <strong>Manage Concepts</strong> tab</li>
+                    </ol>
+
+                    <h4>Step 2: Edit a Concept</h4>
+                    <ol>
+                        <li>Find the concept you want to add properties to</li>
+                        <li>Click the <span class="badge bg-warning"><i class="bi bi-pencil"></i> Edit</span> button</li>
+                        <li>Scroll down to the <strong>Property Definitions</strong> section</li>
+                    </ol>
+
+                    <h4>Step 3: Add a Property</h4>
+                    <ol>
+                        <li>Click <span class="badge bg-success"><i class="bi bi-plus"></i> Add Property</span></li>
+                        <li>Enter the <strong>Property Name</strong> (e.g., "age", "hasAuthor", "title")</li>
+                        <li>Select <strong>Property Type</strong>:
+                            <ul>
+                                <li><strong>DataProperty</strong> - For literal values</li>
+                                <li><strong>ObjectProperty</strong> - For references to other individuals</li>
+                            </ul>
+                        </li>
+                        <li>If DataProperty, select the <strong>Data Type</strong> (string, integer, etc.)</li>
+                        <li>If ObjectProperty, select the <strong>Range Concept</strong> (what type of individual this property points to)</li>
+                        <li>Optionally check:
+                            <ul>
+                                <li><strong>IsRequired</strong> - Property is mandatory</li>
+                                <li><strong>IsFunctional</strong> - Property can only have one value</li>
+                            </ul>
+                        </li>
+                        <li>Add a <strong>Description</strong> to explain the property's purpose</li>
+                        <li>Optionally set a custom <strong>URI</strong> for the property identifier</li>
+                        <li>Click <span class="badge bg-primary">Save</span></li>
+                    </ol>
+
+                    <h3>Real-World Example: Building a Library Ontology</h3>
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Concept: Book</h5>
+                            <p class="mb-2">Property Definitions for Book:</p>
+
+                            <h6 class="mt-3">DataProperties:</h6>
+                            <ul>
+                                <li><strong>title</strong>
+                                    <ul>
+                                        <li>Type: DataProperty</li>
+                                        <li>Data Type: string</li>
+                                        <li>IsRequired: ✓</li>
+                                        <li>IsFunctional: ✓</li>
+                                        <li>Description: "The title of the book"</li>
+                                    </ul>
+                                </li>
+                                <li><strong>isbn</strong>
+                                    <ul>
+                                        <li>Type: DataProperty</li>
+                                        <li>Data Type: string</li>
+                                        <li>IsFunctional: ✓</li>
+                                        <li>Description: "ISBN identifier"</li>
+                                    </ul>
+                                </li>
+                                <li><strong>publicationYear</strong>
+                                    <ul>
+                                        <li>Type: DataProperty</li>
+                                        <li>Data Type: integer</li>
+                                        <li>Description: "Year the book was published"</li>
+                                    </ul>
+                                </li>
+                            </ul>
+
+                            <h6 class="mt-3">ObjectProperties:</h6>
+                            <ul>
+                                <li><strong>hasAuthor</strong>
+                                    <ul>
+                                        <li>Type: ObjectProperty</li>
+                                        <li>Range: Person (concept)</li>
+                                        <li>IsRequired: ✓</li>
+                                        <li>Description: "The author who wrote the book"</li>
+                                    </ul>
+                                </li>
+                                <li><strong>hasPublisher</strong>
+                                    <ul>
+                                        <li>Type: ObjectProperty</li>
+                                        <li>Range: Organization (concept)</li>
+                                        <li>IsFunctional: ✓</li>
+                                        <li>Description: "The publisher of the book"</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h3>Exporting Property Definitions</h3>
+
+                    <h4>TTL Export (Protégé Compatible)</h4>
+                    <p>When you export your ontology to TTL format, property definitions are included as proper OWL declarations:</p>
+                    <ul>
+                        <li>DataProperties export as <code>owl:DatatypeProperty</code></li>
+                        <li>ObjectProperties export as <code>owl:ObjectProperty</code></li>
+                        <li>Includes <code>rdfs:domain</code> (the concept) and <code>rdfs:range</code> (data type or target concept)</li>
+                        <li>Functional properties include <code>owl:FunctionalProperty</code> declaration</li>
+                        <li>Import the TTL file into Protégé to see the full property schema!</li>
+                    </ul>
+
+                    <h4>JSON Export</h4>
+                    <p>Property definitions are also included in JSON exports in the <code>conceptProperties</code> array for each concept, making it easy to exchange ontology schemas with other systems.</p>
+
+                    <h3>Tips for Using Property Definitions</h3>
+                    <ul>
+                        <li><strong>Start Simple</strong> - Define the most important properties first</li>
+                        <li><strong>Use Clear Names</strong> - Property names should be self-explanatory</li>
+                        <li><strong>Add Descriptions</strong> - Help others understand what each property represents</li>
+                        <li><strong>Think About Cardinality</strong> - Use IsFunctional for single-valued properties</li>
+                        <li><strong>Use ObjectProperties</strong> - They create rich semantic relationships between concepts</li>
+                        <li><strong>Test in Protégé</strong> - Export to TTL and open in Protégé to validate your property schema</li>
+                    </ul>
+
+                    <div class="alert alert-success">
+                        <i class="bi bi-lightbulb"></i> <strong>Pro Tip:</strong> Property Definitions create the schema/template, while individual property values are the actual data on specific instances. Think of properties like a form template, and individual property values as the filled-out form!
                     </div>
                 </section>
 

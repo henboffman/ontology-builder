@@ -406,6 +406,7 @@ builder.Services.AddScoped<IRelationshipService, RelationshipService>();
 builder.Services.AddScoped<IOntologyShareService, OntologyShareService>();
 builder.Services.AddScoped<IOntologyActivityService, OntologyActivityService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
+builder.Services.AddScoped<IConceptPropertyService, ConceptPropertyService>();
 builder.Services.AddScoped<IIndividualService, IndividualService>();
 builder.Services.AddScoped<ICollaborationBoardService, CollaborationBoardService>();
 builder.Services.AddScoped<UserGroupService>();

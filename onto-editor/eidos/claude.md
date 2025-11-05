@@ -87,15 +87,20 @@ eidos/
 - Create, edit, delete ontologies
 - Fork/clone existing ontologies
 - Import from TTL/RDF/OWL formats
-- Export to TTL format
+- Export to TTL and JSON formats with full property schemas
 - Template system for quick starts
 - Tagging and categorization
 
 ### 2. Concept & Relationship Management
 
 - Add concepts with properties (name, description, URI, category)
+- Define property schemas on concepts (ConceptProperty definitions)
+  - DataProperty with data type constraints (string, integer, decimal, boolean, date, anyURI)
+  - ObjectProperty with range concept specifications
+  - IsRequired and IsFunctional characteristics
+  - Full OWL 2 compliance with TTL export
 - Define relationships between concepts (is-a, part-of, related-to, custom)
-- Individual instances of concepts
+- Individual instances of concepts with property values
 - Hierarchical concept organization
 - Bulk concept entry with "Save & Add Another"
 
@@ -201,12 +206,15 @@ With each feature or modification, update these documentation locations with the
 
 - **OntologyService**: CRUD operations for ontologies
 - **ConceptService**: Concept management with command pattern
+- **ConceptPropertyService**: Property definition management (DataProperty/ObjectProperty)
 - **RelationshipService**: Relationship operations
 - **CollaborationBoardService**: Collaboration post and response management
 - **OntologyPermissionService**: Comprehensive permission checking
 - **UserGroupService**: Group and membership management
 - **UserPreferenceService**: User settings with caching
 - **ActivityTrackingService**: Version control and history
+- **TtlExportService**: OWL/TTL export with full property schema support
+- **JsonExportStrategy**: JSON export including property definitions
 
 ### Infrastructure Services
 
@@ -223,8 +231,10 @@ With each feature or modification, update these documentation locations with the
 
 - **Ontologies**: Ontology metadata (Name, Description, Visibility, ConceptCount, RelationshipCount)
 - **Concepts**: Concepts with properties (Name, Description, URI, Category)
+- **ConceptProperties**: Property definitions on concepts (PropertyType, DataType, RangeConceptId, IsRequired, IsFunctional)
 - **Relationships**: Links between concepts (FromConceptId, ToConceptId, RelationshipType)
 - **Individuals**: Instances of concepts
+- **IndividualProperties**: Property values on individuals
 - **IndividualRelationships**: Relationships between individuals
 
 ### Collaboration Tables
@@ -359,6 +369,17 @@ _logger.LogError(ex, "Failed to load ontology {OntologyId} for user {UserId}", o
 - Features should be added to the FeatureToggles database table
 
 ## Recent Major Features
+
+### November 5, 2025 - Concept Property Definitions (OWL Properties)
+
+- Complete OWL property schema system
+- DataProperty and ObjectProperty types with data type constraints
+- IsRequired and IsFunctional characteristics
+- Full TTL export with owl:DatatypeProperty and owl:ObjectProperty
+- JSON export includes property definitions
+- ConceptPropertyService and repository for property management
+- Clone functionality preserves property definitions
+- Protégé-compatible OWL 2 export
 
 ### October 31, 2025 - Collaboration Board & Automated Group Management
 

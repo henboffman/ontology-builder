@@ -4,6 +4,222 @@ This document tracks major development milestones, features, and changes to the 
 
 ---
 
+## 2025-11-05 - Concept Property Definitions (OWL Properties)
+
+### Features Added
+
+#### 🎯 Concept Property Definition System
+A comprehensive system for defining OWL-compliant property schemas on concepts, enabling proper semantic modeling with DataProperty and ObjectProperty types.
+
+**Key Capabilities:**
+- **Property Type Specification**: Define properties as DataProperty (literal values) or ObjectProperty (references to other individuals)
+- **Data Type Constraints**: Specify data types for DataProperty (string, integer, decimal, boolean, date, anyURI)
+- **Range Specification**: For ObjectProperty, specify which concept type the property points to
+- **Cardinality Controls**: Mark properties as required (IsRequired) or single-valued (IsFunctional)
+- **Full OWL Export**: Properties export to TTL format with proper owl:DatatypeProperty and owl:ObjectProperty declarations
+- **JSON Export**: Properties included in JSON export for data interchange
+- **Clone Support**: Property definitions preserved when cloning ontologies
+
+#### 📊 UI Components
+
+**ConceptPropertyManager.razor** (`Components/Ontology/Admin/ConceptPropertyManager.razor`):
+- Integrated into Admin Concept Dialog
+- Add/edit/delete property definitions
+- Property type selector (DataProperty vs ObjectProperty)
+- Data type dropdown for DataProperty
+- Concept selector for ObjectProperty range
+- IsRequired and IsFunctional checkboxes
+- URI input for custom property identifiers
+- Description field for documentation
+
+#### 🔧 Service Layer
+
+**ConceptPropertyService** (`Services/ConceptPropertyService.cs`):
+- `CreatePropertyAsync()`: Create new property definition with validation
+- `UpdatePropertyAsync()`: Update existing property definition
+- `DeletePropertyAsync()`: Remove property definition
+- `GetPropertiesByConceptIdAsync()`: Retrieve all properties for a concept
+- `GetPropertyByIdAsync()`: Get single property by ID
+- Full validation of property types and ranges
+
+**ConceptPropertyRepository** (`Data/Repositories/ConceptPropertyRepository.cs`):
+- CRUD operations for ConceptProperty entities
+- Efficient loading with Include for RangeConcept navigation
+- Proper EF Core tracking and change detection
+
+#### 📤 Export Enhancements
+
+**TTL Export** (`Services/TtlExportService.cs`):
+- Exports owl:DatatypeProperty declarations with rdfs:domain and rdfs:range
+- Exports owl:ObjectProperty declarations with rdfs:domain and range concept
+- Includes owl:FunctionalProperty declarations for IsFunctional properties
+- Full OWL 2 compliance with proper URIs and namespacing
+
+**JSON Export** (`Services/Export/JsonExportStrategy.cs`):
+- Added ConceptProperties collection to concept export
+- Exports property name, type, data type, range concept name
+- Includes IsRequired, IsFunctional, Description, Uri, timestamps
+- ConceptPropertyExportModel for clean JSON structure
+
+### Database Changes
+
+**Migration: AddConceptPropertyDefinitions**
+- New table: `ConceptProperties`
+  - Primary key: Id
+  - Foreign keys: ConceptId (required), RangeConceptId (nullable for ObjectProperty)
+  - Columns: Name, PropertyType, DataType, IsRequired, IsFunctional, Description, Uri, CreatedAt, UpdatedAt
+  - Index on ConceptId for efficient concept property lookups
+  - Index on RangeConceptId for relationship queries
+
+### Files Modified
+
+#### Database & Models
+- `Models/ConceptProperty.cs` - New model with PropertyType enum (DataProperty, ObjectProperty)
+- `Models/Concept.cs` - Added ConceptProperties navigation property
+- `Data/OntologyDbContext.cs` - Added ConceptProperties DbSet and relationships
+- `Migrations/20251105014621_AddConceptPropertyDefinitions.cs` - Migration file
+
+#### Services
+- `Services/ConceptPropertyService.cs` (NEW) - Business logic for property management
+- `Services/Interfaces/IConceptPropertyService.cs` (NEW) - Service interface
+- `Services/TtlExportService.cs` - Enhanced TTL export with property definitions
+- `Services/Export/JsonExportStrategy.cs` - JSON export with ConceptProperties
+- `Services/OntologyService.cs` - Clone functionality updated for properties
+
+#### Repositories
+- `Data/Repositories/ConceptPropertyRepository.cs` (NEW) - Data access for properties
+- `Data/Repositories/Interfaces/IConceptPropertyRepository.cs` (NEW) - Repository interface
+- `Data/Repositories/OntologyRepository.cs` - Added ConceptProperties eager loading
+
+#### UI Components
+- `Components/Ontology/Admin/ConceptPropertyManager.razor` (NEW) - Property management UI
+- `Components/Ontology/Admin/AdminConceptDialog.razor` - Integrated property manager
+
+### Technical Details
+
+#### Property Type System
+**DataProperty** - Properties with literal values:
+- Supported data types: string, integer, decimal, boolean, date, anyURI
+- Exports to owl:DatatypeProperty with xsd:datatype range
+- Example: "age" property with integer datatype
+
+**ObjectProperty** - Properties referencing other individuals:
+- Range specified as a Concept from the ontology
+- Exports to owl:ObjectProperty with concept URI as range
+- Example: "hasAuthor" property with range "Person" concept
+
+#### OWL Export Format
+```turtle
+# DataProperty example
+:hasAge rdf:type owl:DatatypeProperty ;
+        rdfs:domain :Person ;
+        rdfs:range xsd:integer ;
+        owl:FunctionalProperty true ;
+        rdfs:comment "The person's age in years" .
+
+# ObjectProperty example
+:hasAuthor rdf:type owl:ObjectProperty ;
+           rdfs:domain :Book ;
+           rdfs:range :Person ;
+           rdfs:comment "The author who wrote the book" .
+```
+
+#### Clone Functionality Fix
+**Problem**: When cloning ontologies, ConceptProperty foreign keys weren't being set correctly.
+
+**Solution** (OntologyService.cs lines 308-355):
+1. Clone ConceptProperty objects and add to concept collection
+2. Save concepts to database (assigns IDs)
+3. Explicitly set `ConceptId` on each property
+4. Remap `RangeConceptId` to point to cloned concept IDs using concept mapping dictionary
+5. Save changes to persist foreign keys
+
+```csharp
+// Remap foreign keys after concepts have IDs
+foreach (var clonedConcept in clonedConcepts)
+{
+    foreach (var conceptProperty in clonedConcept.ConceptProperties)
+    {
+        conceptProperty.ConceptId = clonedConcept.Id;
+
+        if (conceptProperty.RangeConceptId.HasValue &&
+            conceptMapping.ContainsKey(conceptProperty.RangeConceptId.Value))
+        {
+            conceptProperty.RangeConceptId = conceptMapping[conceptProperty.RangeConceptId.Value];
+        }
+    }
+}
+```
+
+### User Benefits
+
+1. **Semantic Compliance**: Create OWL 2 compliant ontologies with proper property definitions
+2. **Protégé Compatibility**: Export to TTL and import into Protégé with full property schema intact
+3. **Type Safety**: Define expected data types for properties, improving data quality
+4. **Reusability**: Define properties once on concepts, use for all individuals of that type
+5. **Documentation**: Property descriptions help explain the ontology structure
+6. **Validation Ready**: Foundation for future property value validation on individuals
+
+### Known Limitations & Future Enhancements
+
+**Current Limitations:**
+- Individual editor does not yet use ConceptProperty definitions for form generation
+- No runtime validation of property values against definitions
+- No support for property restrictions (allValuesFrom, someValuesFrom)
+- No inverse property declarations
+- No property chains or characteristics (transitive, symmetric, etc.)
+
+**Potential Future Enhancements:**
+- Dynamic individual property forms based on ConceptProperty definitions
+- Property value validation against data types and ranges
+- OWL restriction support (allValuesFrom, someValuesFrom, hasValue)
+- Inverse property declarations (owl:inverseOf)
+- Property characteristics (owl:TransitiveProperty, owl:SymmetricProperty)
+- Property chains for complex inferences
+- Import ConceptProperty definitions from TTL files
+- Bulk property definition import
+
+### Testing Recommendations
+
+**Manual Testing Scenarios:**
+1. **Create DataProperty**:
+   - Create concept "Person"
+   - Add DataProperty "age" with integer datatype
+   - Mark as required and functional
+   - Export to TTL, verify owl:DatatypeProperty declaration
+
+2. **Create ObjectProperty**:
+   - Create concepts "Book" and "Author"
+   - Add ObjectProperty "hasAuthor" on Book with range Author
+   - Export to TTL, verify owl:ObjectProperty with range
+
+3. **Clone Ontology**:
+   - Create ontology with concepts and properties
+   - Clone ontology
+   - Verify all properties copied with correct foreign keys
+   - Verify RangeConceptId remapped to new concept IDs
+
+4. **JSON Export**:
+   - Create properties on concepts
+   - Export to JSON
+   - Verify conceptProperties array includes all properties
+   - Verify rangeConceptName populated for ObjectProperty
+
+5. **Edit Properties**:
+   - Create property definition
+   - Edit name, type, description
+   - Verify changes persist
+   - Delete property, verify removal
+
+### Performance Considerations
+
+- Properties eagerly loaded with concepts using `Include()` to avoid N+1 queries
+- OntologyRepository uses `AsSplitQuery()` to prevent cartesian explosion
+- ConceptPropertyService validates property uniqueness per concept
+- Clone operation batches property creation for efficiency
+
+---
+
 ## 2025-11-01 - UI/UX Enhancements: List View Tabs & Interactive Validation
 
 **Update 3**: Comprehensive improvements to List View organization and validation workflow

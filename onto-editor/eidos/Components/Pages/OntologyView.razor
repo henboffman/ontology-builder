@@ -19,6 +19,7 @@
 @inject IOntologyShareService ShareService
 @inject IUserPreferencesService PreferencesService
 @inject IConceptService ConceptService
+@inject IConceptPropertyService ConceptPropertyService
 @inject IIndividualService IndividualService
 @inject IRestrictionService RestrictionService
 @inject ITtlImportService TtlImportService
@@ -212,6 +213,7 @@ else
                                    ValidationResult="@validationResult"
                                    SortOption="@sortOption"
                                    SortOptionChanged="@((value) => sortOption = value)"
+                                   @bind-ActiveListTab="@activeListTab"
                                    OnAddConceptClick="@GetConditionalCallback(CanAdd(), ShowAddConceptDialog)"
                                    OnAddRelationshipClick="@GetConditionalCallback(CanAdd(), ShowAddRelationshipDialog)"
                                    OnConceptSelect="@SelectConcept"
@@ -294,7 +296,9 @@ else
                     <SelectedNodeDetailsPanel SelectedConcept="@selectedConcept"
                                              SelectedRelationship="@selectedRelationship"
                                              SelectedIndividual="@selectedIndividual"
-                                             ConnectedConcepts="@GetConnectedConcepts()" />
+                                             ConnectedConcepts="@GetConnectedConcepts()"
+                                             ConceptProperties="@selectedConceptProperties"
+                                             OnPropertiesChanged="@HandlePropertiesChanged" />
                 </div>
             </div>
 
@@ -313,7 +317,9 @@ else
                 <SelectedNodeDetailsPanel SelectedConcept="@selectedConcept"
                                          SelectedRelationship="@selectedRelationship"
                                          SelectedIndividual="@selectedIndividual"
-                                         ConnectedConcepts="@GetConnectedConcepts()" />
+                                         ConnectedConcepts="@GetConnectedConcepts()"
+                                         ConceptProperties="@selectedConceptProperties"
+                                         OnPropertiesChanged="@HandlePropertiesChanged" />
             </div> *@
         </div> <!-- Close ontology-main-layout -->
     </div> <!-- Close container-fluid -->
@@ -496,6 +502,14 @@ else
                                         }
                                     }
 
+                                    @* Property Definitions Section *@
+                                    <hr class="my-3" />
+                                    <div class="mb-3">
+                                        <ConceptPropertyEditor ConceptId="@selectedConcept.Id"
+                                                              Properties="@(selectedConceptProperties ?? new List<ConceptProperty>())"
+                                                              PropertiesChanged="@HandlePropertiesChanged" />
+                                    </div>
+
                                     <hr class="my-3" />
 
                                     <ConceptRestrictionsEditor Restrictions="@selectedConceptRestrictions"
@@ -576,7 +590,7 @@ else
                                      ConceptExamples="@newConcept.Examples"
                                      ConceptExamplesChanged="@((value) => newConcept.Examples = value)"
                                      ConceptColor="@newConcept.Color"
-                                     ConceptColorChanged="@((value) => newConcept.Color = value)"
+                                     ConceptColorChanged="@OnConceptColorChanged"
                                      OnSaveClick="@SaveConcept"
                                      OnSaveAndAddAnotherClick="@SaveConceptAndAddAnother"
                                      OnCancelClick="@CancelConceptDialog"
@@ -644,6 +658,7 @@ else
     private bool showAddConcept = false;
     private Concept? editingConcept = null;
     private Concept newConcept = new();
+    private string? lastUsedConceptColor = null;  // Persists color across consecutive concept creation
 
     // Individual dialog state (moved from IndividualManagementPanel)
     private bool showAddIndividual = false;
@@ -661,6 +676,7 @@ else
     private string sortOption = "category";
     private bool shouldPulseSidebar = false;
     private int? firstSelectedConceptId = null;
+    private string activeListTab = "concepts";  // Preserves tab selection in List view
 
     // Validation
     private ValidationResult? validationResult = null;
@@ -687,8 +703,12 @@ else
         set
         {
             viewState.SetSelectedConcept(value);
+            // Load properties when concept is selected
+            _ = LoadSelectedConceptPropertiesAsync();
         }
     }
+
+    private ICollection<ConceptProperty>? selectedConceptProperties = null;
 
     private Relationship? selectedRelationship
     {
@@ -948,6 +968,38 @@ else
         return connections.OrderBy(c => c.ConceptName).ToList();
     }
 
+    /// <summary>
+    /// Loads property definitions for the currently selected concept
+    /// </summary>
+    private async Task LoadSelectedConceptPropertiesAsync()
+    {
+        if (selectedConcept == null)
+        {
+            selectedConceptProperties = null;
+            return;
+        }
+
+        try
+        {
+            selectedConceptProperties = await ConceptPropertyService.GetPropertiesByConceptIdAsync(selectedConcept.Id);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load properties for concept {ConceptId}", selectedConcept.Id);
+            selectedConceptProperties = new List<ConceptProperty>();
+        }
+    }
+
+    /// <summary>
+    /// Handles changes to concept properties (add/edit/delete)
+    /// </summary>
+    private async Task HandlePropertiesChanged()
+    {
+        await LoadSelectedConceptPropertiesAsync();
+        StateHasChanged();
+    }
+
     private async Task SwitchViewMode(ViewMode mode)
     {
         viewMode = mode;
@@ -994,28 +1046,35 @@ else
 
     private async Task ShowAddConceptDialog()
     {
-        try
-        {
-            var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+        string colorToUse;
 
-            newConcept = new Concept
-            {
-                OntologyId = Id,
-                Color = prefs.DefaultConceptColor
-            };
-
-            Logger.LogInformation("Applied default color {Color} from preferences", prefs.DefaultConceptColor);
-        }
-        catch (Exception ex)
+        // Use last used color if available, otherwise load from preferences
+        if (!string.IsNullOrWhiteSpace(lastUsedConceptColor))
         {
-            // Fallback to random color if preferences fail to load
-            Logger.LogError(ex, "Failed to load user preferences for concept creation, using random color");
-            newConcept = new Concept
-            {
-                OntologyId = Id,
-                Color = "#" + Random.Shared.Next(0x1000000).ToString("X6")
-            };
+            colorToUse = lastUsedConceptColor;
+            Logger.LogInformation("Using last used color {Color} for new concept", colorToUse);
         }
+        else
+        {
+            try
+            {
+                var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+                colorToUse = prefs.DefaultConceptColor;
+                Logger.LogInformation("Applied default color {Color} from preferences", colorToUse);
+            }
+            catch (Exception ex)
+            {
+                // Fallback to random color if preferences fail to load
+                Logger.LogError(ex, "Failed to load user preferences for concept creation, using random color");
+                colorToUse = "#" + Random.Shared.Next(0x1000000).ToString("X6");
+            }
+        }
+
+        newConcept = new Concept
+        {
+            OntologyId = Id,
+            Color = colorToUse
+        };
 
         showAddConcept = true;
         editingConcept = null;
@@ -1218,6 +1277,18 @@ else
         StateHasChanged();
     }
 
+    private void OnConceptColorChanged(string? color)
+    {
+        newConcept.Color = color;
+
+        // Update last used color when user manually changes it
+        if (!string.IsNullOrWhiteSpace(color))
+        {
+            lastUsedConceptColor = color;
+            Logger.LogInformation("Updated last used concept color to {Color}", color);
+        }
+    }
+
     private async Task OnConceptCategoryChanged(string? category)
     {
         newConcept.Category = category;
@@ -1229,7 +1300,12 @@ else
 
             if (prefs.AutoColorByCategory)
             {
-                newConcept.Color = prefs.GetColorForCategory(category);
+                var autoColor = prefs.GetColorForCategory(category);
+                newConcept.Color = autoColor;
+
+                // Also update last used color when auto-applying
+                lastUsedConceptColor = autoColor;
+                Logger.LogInformation("Auto-applied and saved color {Color} for category {Category}", autoColor, category);
             }
         }
         catch (Exception ex)

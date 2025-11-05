@@ -53,6 +53,19 @@ public class JsonExportStrategy : IExportStrategy
                     DataType = p.DataType,
                     Description = p.Description
                 }).ToList(),
+                ConceptProperties = c.ConceptProperties.Select(cp => new ConceptPropertyExportModel
+                {
+                    Name = cp.Name,
+                    PropertyType = cp.PropertyType.ToString(),
+                    DataType = cp.DataType,
+                    RangeConceptName = cp.RangeConcept?.Name,
+                    IsRequired = cp.IsRequired,
+                    IsFunctional = cp.IsFunctional,
+                    Description = cp.Description,
+                    Uri = cp.Uri,
+                    CreatedAt = cp.CreatedAt,
+                    UpdatedAt = cp.UpdatedAt
+                }).ToList(),
                 Restrictions = c.Restrictions.Select(r => new RestrictionExportModel
                 {
                     RestrictionType = r.RestrictionType,
@@ -187,7 +200,22 @@ public class JsonExportStrategy : IExportStrategy
         public double? PositionY { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<PropertyExportModel> Properties { get; set; } = new();
+        public List<ConceptPropertyExportModel> ConceptProperties { get; set; } = new();
         public List<RestrictionExportModel> Restrictions { get; set; } = new();
+    }
+
+    private class ConceptPropertyExportModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string PropertyType { get; set; } = string.Empty;
+        public string? DataType { get; set; }
+        public string? RangeConceptName { get; set; }
+        public bool IsRequired { get; set; }
+        public bool IsFunctional { get; set; }
+        public string? Description { get; set; }
+        public string? Uri { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
     }
 
     private class RelationshipExportModel

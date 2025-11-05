@@ -75,6 +75,17 @@
                     </div>
                 </div>
             }
+
+            @* Property Definitions Section *@
+            @if (ConceptProperties != null)
+            {
+                <hr class="my-2" />
+                <div class="mb-2">
+                    <ConceptPropertyEditor ConceptId="@SelectedConcept.Id"
+                                          Properties="@ConceptProperties"
+                                          PropertiesChanged="@OnPropertiesChanged" />
+                </div>
+            }
         }
         else if (SelectedRelationship != null)
         {
@@ -149,6 +160,8 @@
     [Parameter] public Relationship? SelectedRelationship { get; set; }
     [Parameter] public Individual? SelectedIndividual { get; set; }
     [Parameter] public IEnumerable<ConceptConnection>? ConnectedConcepts { get; set; }
+    [Parameter] public ICollection<ConceptProperty>? ConceptProperties { get; set; }
+    [Parameter] public EventCallback OnPropertiesChanged { get; set; }
 
     protected override void OnParametersSet()
     {

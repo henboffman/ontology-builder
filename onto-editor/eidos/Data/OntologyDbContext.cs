@@ -17,6 +17,7 @@ namespace Eidos.Data
         public DbSet<Concept> Concepts { get; set; }
         public DbSet<Relationship> Relationships { get; set; }
         public DbSet<Property> Properties { get; set; }
+        public DbSet<ConceptProperty> ConceptProperties { get; set; } // OWL property definitions
         public DbSet<CustomConceptTemplate> CustomConceptTemplates { get; set; }
         public DbSet<OntologyLink> OntologyLinks { get; set; }
         public DbSet<FeatureToggle> FeatureToggles { get; set; }
@@ -134,6 +135,25 @@ namespace Eidos.Data
                 .WithMany(c => c.Properties)
                 .HasForeignKey(p => p.ConceptId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure ConceptProperty - Concept (domain)
+            modelBuilder.Entity<ConceptProperty>()
+                .HasOne(p => p.Concept)
+                .WithMany(c => c.ConceptProperties)
+                .HasForeignKey(p => p.ConceptId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure ConceptProperty - RangeConcept (for ObjectProperty type)
+            modelBuilder.Entity<ConceptProperty>()
+                .HasOne(p => p.RangeConcept)
+                .WithMany()
+                .HasForeignKey(p => p.RangeConceptId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // PERFORMANCE: Add index on ConceptId for efficient property queries
+            modelBuilder.Entity<ConceptProperty>()
+                .HasIndex(p => p.ConceptId)
+                .HasDatabaseName("IX_ConceptProperty_ConceptId");
 
             // Configure CustomConceptTemplate
             modelBuilder.Entity<CustomConceptTemplate>()

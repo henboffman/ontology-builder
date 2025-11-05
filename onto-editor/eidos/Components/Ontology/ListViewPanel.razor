@@ -312,8 +312,23 @@
 @inject IJSRuntime JSRuntime
 
 @code {
-    // Tab state
-    private string activeListTab = "concepts";
+    [Parameter]
+    public string ActiveListTab { get; set; } = "concepts";
+
+    [Parameter]
+    public EventCallback<string> ActiveListTabChanged { get; set; }
+
+    private string activeListTab
+    {
+        get => ActiveListTab;
+        set
+        {
+            if (ActiveListTab != value)
+            {
+                ActiveListTabChanged.InvokeAsync(value);
+            }
+        }
+    }
 
     [Parameter, EditorRequired]
     public ICollection<Concept> Concepts { get; set; } = new List<Concept>();

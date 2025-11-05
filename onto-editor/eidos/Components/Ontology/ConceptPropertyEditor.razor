@@ -1,0 +1,371 @@
+@using Eidos.Models
+@using Eidos.Models.Enums
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@inject IConceptPropertyService ConceptPropertyService
+@inject IConceptService ConceptService
+@inject ToastService ToastService
+@inject ILogger<ConceptPropertyEditor> Logger
+@inject IJSRuntime JSRuntime
+
+<div class="concept-property-editor">
+    @if (Properties.Any())
+    {
+        <div class="properties-list mb-3">
+            <h6 class="mb-2">Property Definitions</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Range/DataType</th>
+                            <th>Required</th>
+                            <th>Functional</th>
+                            <th style="width: 100px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var property in Properties.OrderBy(p => p.Name))
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@property.Name</strong>
+                                    @if (!string.IsNullOrWhiteSpace(property.Description))
+                                    {
+                                        <br />
+                                        <small class="text-muted">@property.Description</small>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @(property.PropertyType == PropertyType.DataProperty ? "bg-primary" : "bg-success")">
+                                        @(property.PropertyType == PropertyType.DataProperty ? "Data" : "Object")
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (property.PropertyType == PropertyType.DataProperty)
+                                    {
+                                        <code>@property.DataType</code>
+                                    }
+                                    else if (property.RangeConcept != null)
+                                    {
+                                        <span>@property.RangeConcept.Name</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (property.IsRequired)
+                                    {
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-circle text-muted"></i>
+                                    }
+                                </td>
+                                <td>
+                                    @if (property.IsFunctional)
+                                    {
+                                        <i class="bi bi-check-circle-fill text-info"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-circle text-muted"></i>
+                                    }
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => EditProperty(property)" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteProperty(property)" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <button class="btn btn-sm btn-outline-success" @onclick="AddProperty">
+        <i class="bi bi-plus-circle me-1"></i> Add Property
+    </button>
+
+    @if (showPropertyDialog)
+    {
+        <div class="modal show d-block" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(editingProperty?.Id > 0 ? "Edit" : "Add") Property</h5>
+                        <button type="button" class="btn-close" @onclick="ClosePropertyDialog"></button>
+                    </div>
+                    <div class="modal-body">
+                        @if (editingProperty != null)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Property Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" @bind="editingProperty.Name"
+                                       placeholder="e.g., hasAge, knows, hasAuthor" />
+                                <small class="form-text text-muted">Letters, numbers, and underscores only</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Property Type <span class="text-danger">*</span></label>
+                                <select class="form-select" @bind="editingProperty.PropertyType" @bind:after="OnPropertyTypeChanged">
+                                    <option value="@PropertyType.DataProperty">Data Property (relates to literal values)</option>
+                                    <option value="@PropertyType.ObjectProperty">Object Property (relates to other concepts)</option>
+                                </select>
+                            </div>
+
+                            @if (editingProperty.PropertyType == PropertyType.DataProperty)
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">Data Type <span class="text-danger">*</span></label>
+                                    <select class="form-select" @bind="editingProperty.DataType">
+                                        <option value="">-- Select Data Type --</option>
+                                        <option value="string">string</option>
+                                        <option value="integer">integer</option>
+                                        <option value="decimal">decimal</option>
+                                        <option value="boolean">boolean</option>
+                                        <option value="date">date</option>
+                                        <option value="dateTime">dateTime</option>
+                                        <option value="float">float</option>
+                                        <option value="double">double</option>
+                                        <option value="anyURI">anyURI</option>
+                                    </select>
+                                </div>
+                            }
+                            else if (editingProperty.PropertyType == PropertyType.ObjectProperty)
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">Range Concept <span class="text-danger">*</span></label>
+                                    <select class="form-select" @bind="editingProperty.RangeConceptId">
+                                        <option value="">-- Select Concept --</option>
+                                        @foreach (var concept in availableConcepts)
+                                        {
+                                            <option value="@concept.Id">@concept.Name</option>
+                                        }
+                                    </select>
+                                    <small class="form-text text-muted">The concept that this property relates to</small>
+                                </div>
+                            }
+
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" rows="2" @bind="editingProperty.Description"
+                                          placeholder="Brief description of what this property represents"></textarea>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" @bind="editingProperty.IsRequired" id="isRequired" />
+                                        <label class="form-check-label" for="isRequired">
+                                            Required
+                                        </label>
+                                        <small class="form-text text-muted d-block">Must have at least one value</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" @bind="editingProperty.IsFunctional" id="isFunctional" />
+                                        <label class="form-check-label" for="isFunctional">
+                                            Functional
+                                        </label>
+                                        <small class="form-text text-muted d-block">Can have only one value</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">URI (optional)</label>
+                                <input type="text" class="form-control" @bind="editingProperty.Uri"
+                                       placeholder="Auto-generated if left blank" />
+                                <small class="form-text text-muted">Custom URI for RDF/OWL export</small>
+                            </div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="ClosePropertyDialog">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="SaveProperty">
+                            @(editingProperty?.Id > 0 ? "Update" : "Add") Property
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop show"></div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public int ConceptId { get; set; }
+
+    [Parameter]
+    public ICollection<ConceptProperty> Properties { get; set; } = new List<ConceptProperty>();
+
+    [Parameter]
+    public EventCallback PropertiesChanged { get; set; }
+
+    private bool showPropertyDialog = false;
+    private ConceptProperty? editingProperty = null;
+    private List<Concept> availableConcepts = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Load available concepts for ObjectProperty range selection
+        await LoadAvailableConceptsAsync();
+    }
+
+    private async Task LoadAvailableConceptsAsync()
+    {
+        try
+        {
+            // Get the ontology ID from the current concept
+            var currentConcept = await ConceptService.GetByIdAsync(ConceptId);
+            if (currentConcept != null)
+            {
+                // Get all concepts in the same ontology
+                var allConcepts = await ConceptService.GetByOntologyIdAsync(currentConcept.OntologyId);
+                availableConcepts = allConcepts.OrderBy(c => c.Name).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load available concepts for property editor");
+        }
+    }
+
+    private void AddProperty()
+    {
+        editingProperty = new ConceptProperty
+        {
+            ConceptId = ConceptId,
+            PropertyType = PropertyType.DataProperty,
+            DataType = "string"
+        };
+        showPropertyDialog = true;
+    }
+
+    private void EditProperty(ConceptProperty property)
+    {
+        // Create a copy to edit
+        editingProperty = new ConceptProperty
+        {
+            Id = property.Id,
+            ConceptId = property.ConceptId,
+            Name = property.Name,
+            PropertyType = property.PropertyType,
+            DataType = property.DataType,
+            RangeConceptId = property.RangeConceptId,
+            IsRequired = property.IsRequired,
+            IsFunctional = property.IsFunctional,
+            Description = property.Description,
+            Uri = property.Uri
+        };
+        showPropertyDialog = true;
+    }
+
+    private void OnPropertyTypeChanged()
+    {
+        if (editingProperty != null)
+        {
+            // Clear type-specific fields when switching types
+            if (editingProperty.PropertyType == PropertyType.DataProperty)
+            {
+                editingProperty.RangeConceptId = null;
+                editingProperty.DataType = "string";
+            }
+            else
+            {
+                editingProperty.DataType = null;
+                editingProperty.RangeConceptId = null;
+            }
+        }
+    }
+
+    private async Task SaveProperty()
+    {
+        if (editingProperty == null)
+            return;
+
+        try
+        {
+            if (editingProperty.Id > 0)
+            {
+                await ConceptPropertyService.UpdateAsync(editingProperty);
+                ToastService.ShowSuccess($"Property '{editingProperty.Name}' updated successfully");
+                Logger.LogInformation("Updated property {PropertyId} for concept {ConceptId}",
+                    editingProperty.Id, ConceptId);
+            }
+            else
+            {
+                var created = await ConceptPropertyService.CreateAsync(editingProperty);
+                ToastService.ShowSuccess($"Property '{created.Name}' added successfully");
+                Logger.LogInformation("Created property {PropertyName} for concept {ConceptId}",
+                    created.Name, ConceptId);
+            }
+
+            // Reload properties
+            await ReloadPropertiesAsync();
+            ClosePropertyDialog();
+        }
+        catch (ArgumentException ex)
+        {
+            ToastService.ShowError($"Validation error: {ex.Message}");
+            Logger.LogWarning(ex, "Validation error saving property for concept {ConceptId}", ConceptId);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Failed to save property. Please try again.");
+            Logger.LogError(ex, "Failed to save property for concept {ConceptId}", ConceptId);
+        }
+    }
+
+    private async Task DeleteProperty(ConceptProperty property)
+    {
+        if (!await JSRuntime.InvokeAsync<bool>("confirm",
+            $"Are you sure you want to delete the property '{property.Name}'?"))
+        {
+            return;
+        }
+
+        try
+        {
+            await ConceptPropertyService.DeleteAsync(property.Id);
+            ToastService.ShowSuccess($"Property '{property.Name}' deleted successfully");
+            Logger.LogInformation("Deleted property {PropertyId} from concept {ConceptId}",
+                property.Id, ConceptId);
+
+            await ReloadPropertiesAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Failed to delete property. Please try again.");
+            Logger.LogError(ex, "Failed to delete property {PropertyId}", property.Id);
+        }
+    }
+
+    private async Task ReloadPropertiesAsync()
+    {
+        try
+        {
+            var updatedProperties = await ConceptPropertyService.GetPropertiesByConceptIdAsync(ConceptId);
+            Properties = updatedProperties;
+            await PropertiesChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to reload properties for concept {ConceptId}", ConceptId);
+        }
+    }
+
+    private void ClosePropertyDialog()
+    {
+        showPropertyDialog = false;
+        editingProperty = null;
+    }
+}

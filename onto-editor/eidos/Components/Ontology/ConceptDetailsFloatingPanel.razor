@@ -80,6 +80,17 @@
 
         <hr class="my-3" />
 
+        @* Property Definitions Section *@
+        @if (ConceptProperties != null)
+        {
+            <div class="mb-3">
+                <ConceptPropertyEditor ConceptId="@Concept.Id"
+                                      Properties="@ConceptProperties"
+                                      PropertiesChanged="@OnPropertiesChanged" />
+            </div>
+            <hr class="my-3" />
+        }
+
         @* Restrictions Section *@
         <ConceptRestrictionsEditor Restrictions="@Restrictions"
                                   OnAddRestrictionClick="@OnAddRestrictionClick"
@@ -95,6 +106,8 @@
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public Concept? Concept { get; set; }
     [Parameter] public IEnumerable<ConceptConnection>? ConnectedConcepts { get; set; }
+    [Parameter] public ICollection<ConceptProperty>? ConceptProperties { get; set; }
+    [Parameter] public EventCallback OnPropertiesChanged { get; set; }
     [Parameter] public IEnumerable<ConceptRestriction>? Restrictions { get; set; }
     [Parameter] public EventCallback OnAddRestrictionClick { get; set; }
     [Parameter] public EventCallback<ConceptRestriction> OnEditRestrictionClick { get; set; }
