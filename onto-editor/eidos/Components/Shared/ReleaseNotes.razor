@@ -9,9 +9,86 @@
     </div>
 
     <div class="release-timeline">
-        <!-- Latest: Concept Property Definitions -->
+        <!-- Latest: Virtualized Ontology Links -->
         <div class="release-item">
             <div class="release-badge badge bg-primary">Latest</div>
+            <div class="release-date">November 6, 2025</div>
+            <h4 class="release-title">
+                <i class="bi bi-diagram-3 text-primary me-2"></i>
+                Virtualized Ontology Links
+            </h4>
+            <div class="release-content">
+                <p class="lead">Link and visualize external ontologies without duplicating data - like OWL imports for your knowledge graphs!</p>
+
+                <h5>🔗 Link Ontology Feature</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>Two Link Types</strong>
+                        <ul>
+                            <li><strong>Internal Links</strong> - Link to other ontologies within Eidos (requires view permission)</li>
+                            <li><strong>External Links</strong> - Link to external ontology URIs (e.g., BFO, Dublin Core)</li>
+                            <li>Click "Link Ontology" in the actions bar to create links</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Virtual Visualization</strong>
+                        <ul>
+                            <li>Linked ontologies appear as expandable hexagon nodes in graph view</li>
+                            <li>Click to expand and see all concepts from the linked ontology</li>
+                            <li>Virtual concepts shown with distinctive hexagon shapes and source badges</li>
+                            <li>Create relationships between your concepts and virtual concepts</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>List View Integration</strong>
+                        <ul>
+                            <li>Toggle "Show Virtual" to see concepts and relationships from linked ontologies</li>
+                            <li>Virtual items shown with light blue gradient background</li>
+                            <li>Source ontology badges show where each virtual item originates</li>
+                            <li>Nested ontology support with indentation for multi-level links</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>📥 Import Virtual Concepts</h5>
+                <ul class="feature-list">
+                    <li>
+                        <strong>One-Click Import</strong>
+                        <ul>
+                            <li>Click "Import" button on any virtual concept in list view</li>
+                            <li>Or Ctrl+Click virtual concepts in graph view to import and create relationships</li>
+                            <li>Properties are automatically imported with the concept</li>
+                            <li>Imported concepts track their source ontology</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Smart Property Import</strong>
+                        <ul>
+                            <li>All ConceptProperty definitions come along with imported concepts</li>
+                            <li>Maintains full property schemas (DataProperty, ObjectProperty)</li>
+                            <li>Preserves IsRequired and IsFunctional characteristics</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h5>🔧 Technical Features</h5>
+                <ul class="feature-list">
+                    <li>Non-destructive linking - source ontologies remain unchanged</li>
+                    <li>Real-time updates when linked ontologies change</li>
+                    <li>Color-coding: "By Source" mode colors nodes by source ontology</li>
+                    <li>Permission-aware: only shows links you have permission to view</li>
+                    <li>TTL export includes owl:imports declarations for external links</li>
+                </ul>
+
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    <strong>Example:</strong> Link to the Basic Formal Ontology (BFO) to reuse foundational concepts. Expand the BFO node in graph view, import "Process" or "Entity", and create relationships between your domain concepts and these upper ontology terms!
+                </div>
+            </div>
+        </div>
+
+        <!-- Concept Property Definitions -->
+        <div class="release-item">
             <div class="release-date">November 5, 2025</div>
             <h4 class="release-title">
                 <i class="bi bi-diagram-2 text-primary me-2"></i>

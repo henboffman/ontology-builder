@@ -42,8 +42,7 @@ public class OntologySettingsTests : TestContext
         // Create real permission service with in-memory database
         var dbName = $"TestDb_{Guid.NewGuid()}";
         _contextFactory = new TestDbContextFactory(dbName);
-        var context = _contextFactory.CreateDbContext();
-        _permissionService = new OntologyPermissionService(context);
+        _permissionService = new OntologyPermissionService(_contextFactory);
 
         // Setup authentication
         var claims = new List<Claim>

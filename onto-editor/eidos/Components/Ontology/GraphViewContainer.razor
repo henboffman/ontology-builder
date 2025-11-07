@@ -13,6 +13,14 @@
           OnNodeClicked="@HandleNodeClick"
           OnEdgeClicked="@HandleEdgeClick"
           OnIndividualClicked="@HandleIndividualClick"
+          OnOntologyLinkClicked="@HandleOntologyLinkClick"
+          OnVirtualConceptClicked="@OnVirtualConceptClick"
+          OnVirtualConceptCtrlClicked="@OnVirtualConceptCtrlClick"
+          OnViewModeChanged="@OnViewModeChanged"
+          OnUndoClick="@OnUndoClick"
+          OnRedoClick="@OnRedoClick"
+          CanUndo="@CanUndo"
+          CanRedo="@CanRedo"
           CanAdd="@CanAdd"
           @ref="graphView" />
 
@@ -68,6 +76,57 @@
     /// </summary>
     [Parameter]
     public EventCallback<int> OnIndividualClick { get; set; }
+
+    /// <summary>
+    /// Callback invoked when an ontology link node is clicked in the graph.
+    /// Passes the ontology link ID.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnOntologyLinkClick { get; set; }
+
+    /// <summary>
+    /// Callback invoked when a virtual concept node is clicked in the graph.
+    /// Passes the node ID and label.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string nodeId, string label)> OnVirtualConceptClick { get; set; }
+
+    /// <summary>
+    /// Callback invoked when a virtual concept node is Ctrl+clicked in the graph.
+    /// Passes the node ID and label for relationship creation.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string nodeId, string label)> OnVirtualConceptCtrlClick { get; set; }
+
+    /// <summary>
+    /// Callback invoked when view mode is changed.
+    /// </summary>
+    [Parameter]
+    public EventCallback<ViewMode> OnViewModeChanged { get; set; }
+
+    /// <summary>
+    /// Callback invoked when undo is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnUndoClick { get; set; }
+
+    /// <summary>
+    /// Callback invoked when redo is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnRedoClick { get; set; }
+
+    /// <summary>
+    /// Indicates whether undo is available.
+    /// </summary>
+    [Parameter]
+    public bool CanUndo { get; set; }
+
+    /// <summary>
+    /// Indicates whether redo is available.
+    /// </summary>
+    [Parameter]
+    public bool CanRedo { get; set; }
 
     /// <summary>
     /// Indicates whether the user has permission to add concepts/relationships.
@@ -166,6 +225,24 @@
         }
 
         await OnIndividualClick.InvokeAsync(individualId);
+    }
+
+    /// <summary>
+    /// Handles ontology link node clicks in the graph.
+    /// Shows information about the linked ontology.
+    /// </summary>
+    /// <param name="linkId">The ID of the clicked ontology link.</param>
+    private async Task HandleOntologyLinkClick(int linkId)
+    {
+        // Find the link in the ontology
+        var link = ViewState?.Ontology?.LinkedOntologies?.FirstOrDefault(l => l.Id == linkId);
+        if (link != null)
+        {
+            // You could select it in the ViewState if needed
+            // For now, just invoke the parent callback
+        }
+
+        await OnOntologyLinkClick.InvokeAsync(linkId);
     }
 
     /// <summary>

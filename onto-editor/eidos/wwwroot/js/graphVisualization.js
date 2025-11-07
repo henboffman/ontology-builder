@@ -76,6 +76,42 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
                     'border-style': 'dashed'
                 }
             },
+            // ====================================================================
+            // Ontology Link Node Styling (Virtualized Nodes)
+            // ====================================================================
+            // Linked ontologies are visually distinguished from regular concepts:
+            // - Hexagon shape (unique visual identifier)
+            // - Double border (indicates special/virtual nature)
+            // - 1.3x larger size for prominence
+            // - Purple default color (#9B59B6) if not customized
+            // ====================================================================
+            {
+                selector: 'node[nodeType = "ontologyLink"]',
+                style: {
+                    'shape': 'hexagon',
+                    'width': (options.nodeSize * 1.3) + 'px',
+                    'height': (options.nodeSize * 1.3) + 'px',
+                    'border-width': Math.max(2, Math.round(options.nodeSize * 0.08)),
+                    'border-style': 'double'
+                }
+            },
+            // ====================================================================
+            // Virtual Concept Node Styling (Concepts from Linked Ontologies)
+            // ====================================================================
+            // Concepts from linked ontologies shown when expanded:
+            // - Round rectangle shape (distinct from ellipse concepts)
+            // - Dashed border (indicates virtual/referenced nature)
+            // - Lighter purple color for visual grouping
+            // ====================================================================
+            {
+                selector: 'node[nodeType = "virtualConcept"]',
+                style: {
+                    'shape': 'round-rectangle',
+                    'border-width': Math.max(1, Math.round(options.nodeSize * 0.05)),
+                    'border-style': 'dashed',
+                    'background-opacity': 0.85
+                }
+            },
             {
                 selector: 'edge',
                 style: {
@@ -128,6 +164,66 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
                 style: {
                     'line-color': '#7B68EE',
                     'target-arrow-color': '#7B68EE'
+                }
+            },
+            // ====================================================================
+            // Virtual Link Edge Styling
+            // ====================================================================
+            // Edges connecting ontology link nodes to their child concepts.
+            // - Dashed line to indicate virtual/container relationship
+            // - Light purple color (#B19CD9) to match ontology link theme
+            // - Thinner than regular edges
+            // - "contains" label to indicate hierarchical relationship
+            // ====================================================================
+            {
+                selector: 'edge[edgeType = "virtualLink"]',
+                style: {
+                    'line-style': 'dashed',
+                    'line-color': '#B19CD9',
+                    'target-arrow-color': '#B19CD9',
+                    'width': Math.max(1, options.edgeThickness - 1),
+                    'target-arrow-shape': 'vee',
+                    'opacity': 0.6
+                }
+            },
+            // ====================================================================
+            // Virtual Relationship Edge Styling
+            // ====================================================================
+            // Edges representing actual relationships within the linked ontology.
+            // - Solid line like regular relationships (semantic connections)
+            // - Light blue color (#87CEEB) to distinguish from base ontology
+            // - Triangle arrow to show directionality
+            // - Shows the internal structure of the virtual ontology
+            // ====================================================================
+            {
+                selector: 'edge[edgeType = "virtualRelationship"]',
+                style: {
+                    'line-style': 'solid',
+                    'line-color': '#87CEEB',
+                    'target-arrow-color': '#87CEEB',
+                    'width': options.edgeThickness,
+                    'target-arrow-shape': 'triangle',
+                    'opacity': 0.7
+                }
+            },
+            // ====================================================================
+            // Bridge Edge Styling (Cross-Ontology Connections)
+            // ====================================================================
+            // Edges connecting imported concepts to their virtual counterparts.
+            // - Dotted line to indicate equivalence relationship
+            // - Gold/yellow color (#FFD700) to stand out as special connection
+            // - Bidirectional (no arrow) since it represents "same as" relationship
+            // - Shows how ontologies are connected through imported concepts
+            // ====================================================================
+            {
+                selector: 'edge[edgeType = "bridge"]',
+                style: {
+                    'line-style': 'dotted',
+                    'line-color': '#FFD700',
+                    'width': Math.max(2, options.edgeThickness),
+                    'target-arrow-shape': 'none', // No arrow for equivalence
+                    'opacity': 0.8,
+                    'line-dash-pattern': [2, 4]
                 }
             },
             {
@@ -301,7 +397,7 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
 
                 console.log('Node clicked:', { nodeId, nodeType });
 
-                // Handle individual nodes differently from concept nodes
+                // Handle different node types
                 if (nodeType === 'individual') {
                     // Extract the individual ID from the node ID (format: "individual-123")
                     const individualId = parseInt(nodeId.replace('individual-', ''));
@@ -312,6 +408,30 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
                         dotNetHelper.invokeMethodAsync('OnIndividualClick', individualId)
                             .then(() => console.log('OnIndividualClick succeeded'))
                             .catch(err => console.error('OnIndividualClick failed:', err));
+                    }
+                } else if (nodeType === 'ontologyLink') {
+                    // Extract the ontology link ID from the node ID (format: "ontologylink-123")
+                    const linkId = parseInt(nodeId.replace('ontologylink-', ''));
+                    console.log('Ontology link node clicked, ID:', linkId);
+
+                    // Call the ontology link click handler
+                    if (dotNetHelper.invokeMethodAsync) {
+                        dotNetHelper.invokeMethodAsync('OnOntologyLinkClick', linkId)
+                            .then(() => console.log('OnOntologyLinkClick succeeded'))
+                            .catch(err => console.error('OnOntologyLinkClick failed:', err));
+                    }
+                } else if (nodeType === 'virtualConcept') {
+                    // Virtual concept from linked ontology
+                    // Pass the full node ID to allow parsing on the server side
+                    const label = node.data('label');
+
+                    // Check if Cmd (Mac) or Ctrl (Windows/Linux) was pressed
+                    if (event.originalEvent.metaKey || event.originalEvent.ctrlKey) {
+                        // Ctrl/Cmd + click to create relationships with virtual concepts
+                        dotNetHelper.invokeMethodAsync('OnVirtualConceptCtrlClick', nodeId, label);
+                    } else {
+                        // Regular click to show details
+                        dotNetHelper.invokeMethodAsync('OnVirtualConceptClick', nodeId, label);
                     }
                 } else {
                     // Extract the concept ID from the node ID (format: "concept-123")

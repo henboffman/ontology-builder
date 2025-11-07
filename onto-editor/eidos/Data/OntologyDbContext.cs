@@ -163,11 +163,35 @@ namespace Eidos.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Configure OntologyLink
-            modelBuilder.Entity<OntologyLink>()
-                .HasOne(l => l.Ontology)
-                .WithMany(o => o.LinkedOntologies)
-                .HasForeignKey(l => l.OntologyId)
-                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<OntologyLink>(entity =>
+            {
+                // Parent ontology relationship
+                entity.HasOne(l => l.Ontology)
+                    .WithMany(o => o.LinkedOntologies)
+                    .HasForeignKey(l => l.OntologyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Linked ontology relationship (for Internal links)
+                entity.HasOne(l => l.LinkedOntology)
+                    .WithMany() // No inverse navigation
+                    .HasForeignKey(l => l.LinkedOntologyId)
+                    .OnDelete(DeleteBehavior.SetNull); // If linked ontology deleted, set to null
+
+                // Indexes for performance
+                entity.HasIndex(l => l.OntologyId);
+                entity.HasIndex(l => l.LinkedOntologyId);
+                entity.HasIndex(l => new { l.OntologyId, l.LinkType });
+
+                // Validation: must have either Uri (External) or LinkedOntologyId (Internal)
+                entity.ToTable(t => t.HasCheckConstraint(
+                    "CK_OntologyLink_HasTarget",
+                    "(LinkType = 0 AND Uri IS NOT NULL) OR (LinkType = 1 AND LinkedOntologyId IS NOT NULL)"));
+
+                // Prevent linking ontology to itself
+                entity.ToTable(t => t.HasCheckConstraint(
+                    "CK_OntologyLink_NoSelfReference",
+                    "OntologyId <> LinkedOntologyId OR LinkedOntologyId IS NULL"));
+            });
 
             // Configure Individual - Ontology
             modelBuilder.Entity<Individual>()

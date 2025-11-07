@@ -16,14 +16,14 @@ public class GraphViewStateTests
         var state = new GraphViewState();
 
         // Assert
-        Assert.Equal("ontology-graph", state.GraphElementId);
+        Assert.Equal("cy", state.GraphElementId);
         Assert.False(state.IsGraphInitialized);
         Assert.Null(state.LastRefreshTime);
         Assert.Equal(GraphLayout.Hierarchical, state.CurrentLayout);
         Assert.False(state.ShowIndividuals);
         Assert.True(state.ShowLabels);
         Assert.True(state.ShowEdgeLabels);
-        Assert.Equal(GraphColorMode.ByCategory, state.ColorMode);
+        Assert.Equal("concept", state.ColorMode);
         Assert.False(state.IsNodeDragging);
         Assert.Null(state.HoveredNodeId);
         Assert.Null(state.DraggedNodeId);
@@ -34,7 +34,7 @@ public class GraphViewStateTests
         Assert.Empty(state.HiddenRelationshipTypes);
         Assert.Null(state.SearchText);
         Assert.Equal(0.1, state.MinZoom);
-        Assert.Equal(3.0, state.MaxZoom);
+        Assert.Equal(5.0, state.MaxZoom);
         Assert.True(state.AnimateLayout);
         Assert.Equal(500, state.AnimationDuration);
     }
@@ -145,10 +145,10 @@ public class GraphViewStateTests
         var state = new GraphViewState();
 
         // Act
-        state.SetColorMode(GraphColorMode.Monochrome);
+        state.SetColorMode("source");
 
         // Assert
-        Assert.Equal(GraphColorMode.Monochrome, state.ColorMode);
+        Assert.Equal("source", state.ColorMode);
     }
 
     [Fact]
@@ -454,7 +454,7 @@ public class GraphViewStateTests
         state.SetLayout(GraphLayout.ForceDirected);
         state.ToggleIndividuals();
         state.ToggleLabels();
-        state.SetColorMode(GraphColorMode.Monochrome);
+        state.SetColorMode("source");
         state.SetZoomLevel(2.0);
         state.FilterByCategory("Test");
 
@@ -466,7 +466,7 @@ public class GraphViewStateTests
         Assert.False(state.ShowIndividuals);
         Assert.True(state.ShowLabels);
         Assert.True(state.ShowEdgeLabels);
-        Assert.Equal(GraphColorMode.ByCategory, state.ColorMode);
+        Assert.Equal("concept", state.ColorMode);
         Assert.Equal(1.0, state.ZoomLevel);
         Assert.Null(state.CategoryFilter);
         Assert.Empty(state.HiddenConceptIds);
@@ -536,10 +536,9 @@ public class GraphViewStateTests
         var state = new GraphViewState();
         var colorModes = new[]
         {
-            GraphColorMode.ByCategory,
-            GraphColorMode.Gradient,
-            GraphColorMode.Monochrome,
-            GraphColorMode.Random
+            "concept",
+            "source",
+            "category"
         };
 
         // Act & Assert

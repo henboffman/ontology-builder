@@ -80,6 +80,7 @@
                         <h6 class="mt-4">Key Capabilities</h6>
                         <ul>
                             <li><strong>Visual Ontology Editor</strong> - Interactive graph-based concept and relationship management</li>
+                            <li><strong>Virtualized Ontology Links</strong> - Link and visualize external ontologies without data duplication</li>
                             <li><strong>Real-time Collaboration</strong> - Multiple users can work on the same ontology simultaneously</li>
                             <li><strong>Import/Export</strong> - Full TTL (Turtle) format support for interoperability</li>
                             <li><strong>Permission System</strong> - Group-based access control with fine-grained permissions</li>
@@ -628,6 +629,27 @@
                                     <li><code>RevokeGroupAccessAsync()</code></li>
                                     <li><code>GetAccessibleOntologiesAsync()</code></li>
                                 </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <strong>OntologyLinkService</strong>
+                            </div>
+                            <div class="card-body">
+                                <p class="small">Manages ontology linking and virtualization.</p>
+                                <h6>Key Methods:</h6>
+                                <ul class="small">
+                                    <li><code>CreateExternalLinkAsync()</code></li>
+                                    <li><code>LinkInternalOntologyAsync()</code></li>
+                                    <li><code>GetLinksForOntologyAsync()</code></li>
+                                    <li><code>ValidateCircularDependency()</code></li>
+                                </ul>
+                                <div class="alert alert-info mt-2 p-2 small">
+                                    <strong>New in v1.6:</strong> Enables virtualized ontology viewing and OWL-style imports
+                                </div>
                             </div>
                         </div>
                     </div>

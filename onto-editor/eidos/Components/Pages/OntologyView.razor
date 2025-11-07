@@ -153,6 +153,11 @@ else
         <!-- Fork/Clone Dialog -->
         <ForkCloneDialog @ref="forkCloneDialog" />
 
+        <!-- Link Ontology Dialog -->
+        <LinkOntologyDialog @ref="linkOntologyDialog"
+                           CurrentOntologyId="@Id"
+                           OnOntologyLinked="@HandleOntologyLinked" />
+
         <!-- Bulk Create Dialog -->
         @if (showBulkCreate)
         {
@@ -174,6 +179,7 @@ else
                            CanEdit="@CanEdit()"
                            CanAdd="@CanAdd()"
                            PresenceUsers="@presenceUsers"
+                           CurrentViewMode="@viewMode"
                            OnLineageClick="@ShowLineageDialog"
                            OnForkClick="@ShowForkDialogFromHeader"
                            OnCloneClick="@ShowCloneDialogFromHeader"
@@ -184,7 +190,13 @@ else
                            OnAddConceptClick="@ShowAddConceptDialog"
                            OnAddRelationshipClick="@ShowAddRelationshipDialog"
                            OnBulkCreateClick="@ShowBulkCreateDialog"
+                           OnLinkOntologyClick="@ShowLinkOntologyDialog"
                            OnManageConceptsClick="@ShowAdminConceptDialog"
+                           OnViewModeChanged="@SwitchViewMode"
+                           OnUndoClick="@HandleUndo"
+                           OnRedoClick="@HandleRedo"
+                           CanUndo="@OntologyService.CanUndo()"
+                           CanRedo="@OntologyService.CanRedo()"
                            OnNavigateToUserView="@NavigateToUserView" />
 
         <!-- Main Content Layout Wrapper (Desktop: side-by-side, Mobile: stacked) -->
@@ -202,6 +214,14 @@ else
                                        OnNodeCtrlClick="@GetConditionalCallback(CanAdd(), HandleNodeCtrlClick)"
                                        OnEdgeClick="@HandleEdgeClick"
                                        OnIndividualClick="@HandleIndividualClick"
+                                       OnOntologyLinkClick="@HandleOntologyLinkClick"
+                                       OnVirtualConceptClick="@HandleVirtualConceptClick"
+                                       OnVirtualConceptCtrlClick="@(async (data) => { if (CanAdd()) await HandleVirtualConceptCtrlClick(data); })"
+                                       OnViewModeChanged="@SwitchViewMode"
+                                       OnUndoClick="@HandleUndo"
+                                       OnRedoClick="@HandleRedo"
+                                       CanUndo="@OntologyService.CanUndo()"
+                                       CanRedo="@OntologyService.CanRedo()"
                                        CanAdd="@CanAdd()"
                                        @ref="graphViewContainer" />
                 }
@@ -210,6 +230,7 @@ else
                     <ListViewPanel @key="@($"listview-{ontology.Id}-{ontology.UpdatedAt.Ticks}")"
                                    Concepts="@ontology.Concepts"
                                    Relationships="@ontology.Relationships"
+                                   LinkedOntologies="@ontology.LinkedOntologies"
                                    ValidationResult="@validationResult"
                                    SortOption="@sortOption"
                                    SortOptionChanged="@((value) => sortOption = value)"
@@ -222,7 +243,8 @@ else
                                    OnConceptDelete="@GetConditionalCallback(CanEdit(), DeleteConcept)"
                                    OnRelationshipEdit="@GetConditionalCallback(CanEdit(), EditRelationship)"
                                    OnRelationshipDuplicate="@DuplicateRelationship"
-                                   OnRelationshipDelete="@GetConditionalCallback(CanEdit(), DeleteRelationship)" />
+                                   OnRelationshipDelete="@GetConditionalCallback(CanEdit(), DeleteRelationship)"
+                                   OnVirtualConceptImport="@HandleVirtualConceptImportFromList" />
                 }
                 else if (viewMode == ViewMode.Hierarchy)
                 {
@@ -280,19 +302,12 @@ else
                     <OntologyFrameworkGuide />
                 }
             </div>
+            </div>
 
-            <!-- View Navigation Sidebar -->
-            <div class="ontology-view-nav">
-                <ViewModeSelector CurrentViewMode="@viewMode"
-                                 OnViewModeChanged="@SwitchViewMode"
-                                 CanUndo="@OntologyService.CanUndo()"
-                                 CanRedo="@OntologyService.CanRedo()"
-                                 OnUndoClick="@HandleUndo"
-                                 OnRedoClick="@HandleRedo"
-                                 PresenceUsers="@presenceUsers" />
-
-                <!-- Selected Node Details Panel (Mobile/Tablet only - hidden on desktop) -->
-                <div class="mt-3 d-md-none">
+            <!-- Details Panel Sidebar (Right Side) - Hidden on Graph page -->
+            @if (viewMode != ViewMode.Graph)
+            {
+                <div class="ontology-details-sidebar">
                     <SelectedNodeDetailsPanel SelectedConcept="@selectedConcept"
                                              SelectedRelationship="@selectedRelationship"
                                              SelectedIndividual="@selectedIndividual"
@@ -300,32 +315,12 @@ else
                                              ConceptProperties="@selectedConceptProperties"
                                              OnPropertiesChanged="@HandlePropertiesChanged" />
                 </div>
-            </div>
-
-            <!-- Validation Panel (Bottom) -->
-            <div class="ontology-validation-section">
-                <ValidationPanel OntologyId="@Id"
-                                ValidationResult="@validationResult"
-                                OnIssueClick="@HandleIssueClick"
-                                OnRefresh="@RefreshValidation" />
-            </div>
-            </div>
-
-            <!-- Desktop Sidebar - Details Only (Editors moved to floating panels) (visible on md and up) -->
-            <!-- TEMPORARILY HIDDEN - Testing floating modal only -->
-            @* <div class="d-none d-md-block ontology-details-sidebar">
-                <SelectedNodeDetailsPanel SelectedConcept="@selectedConcept"
-                                         SelectedRelationship="@selectedRelationship"
-                                         SelectedIndividual="@selectedIndividual"
-                                         ConnectedConcepts="@GetConnectedConcepts()"
-                                         ConceptProperties="@selectedConceptProperties"
-                                         OnPropertiesChanged="@HandlePropertiesChanged" />
-            </div> *@
+            }
         </div> <!-- Close ontology-main-layout -->
     </div> <!-- Close container-fluid -->
 
-    <!-- Floating Modal - Editors (visible on all screen sizes) -->
-        @if ((showAddIndividual || selectedConcept != null || selectedRelationship != null || selectedIndividual != null))
+    <!-- Floating Modal - Only on Graph page -->
+        @if (viewMode == ViewMode.Graph && (showAddIndividual || selectedConcept != null || selectedRelationship != null || selectedIndividual != null))
         {
             <div class="ontology-floating-modal">
                 <div class="ontology-floating-modal-backdrop" @onclick="CloseMobileEditor"></div>
@@ -787,6 +782,7 @@ else
     private bool showShareModal = false;
     private OntologyLineage? lineageComponent;
     private ForkCloneDialog? forkCloneDialog;
+    private LinkOntologyDialog? linkOntologyDialog;
 
     // SignalR real-time collaboration
     private DotNetObjectReference<OntologyView>? dotNetRef;
@@ -1093,6 +1089,21 @@ else
         CancelConceptDialog();
         CancelRelationshipDialog();
         CancelIndividualDialog();
+    }
+
+    private async Task ShowLinkOntologyDialog()
+    {
+        if (linkOntologyDialog != null)
+        {
+            await linkOntologyDialog.ShowAsync();
+        }
+    }
+
+    private async Task HandleOntologyLinked()
+    {
+        // Reload the ontology to reflect the newly linked ontology
+        await LoadOntology();
+        StateHasChanged();
     }
 
     private async Task ShowAdminConceptDialog()
@@ -1715,6 +1726,274 @@ else
         {
             SelectIndividual(individual);
         }
+    }
+
+    private void HandleOntologyLinkClick(int linkId)
+    {
+        var link = ontology?.LinkedOntologies?.FirstOrDefault(l => l.Id == linkId);
+        if (link != null)
+        {
+            // Show a toast with link information for now
+            ToastService.ShowInfo($"Linked Ontology: {link.Name}");
+            // TODO: In the future, this could open a details panel or navigate to the linked ontology
+        }
+    }
+
+    private void HandleVirtualConceptClick((string nodeId, string label) data)
+    {
+        // Parse the virtual concept node ID: "virtualconcept-{linkId}-{conceptId}"
+        var parts = data.nodeId.Split('-');
+        if (parts.Length != 3 || parts[0] != "virtualconcept")
+        {
+            ToastService.ShowWarning("Invalid virtual concept ID format");
+            return;
+        }
+
+        if (!int.TryParse(parts[1], out int linkId) || !int.TryParse(parts[2], out int conceptId))
+        {
+            ToastService.ShowWarning("Could not parse virtual concept ID");
+            return;
+        }
+
+        // Find the linked ontology and the virtual concept
+        var link = ontology?.LinkedOntologies?.FirstOrDefault(l => l.Id == linkId);
+        if (link?.LinkedOntology?.Concepts == null)
+        {
+            ToastService.ShowWarning("Linked ontology not found");
+            return;
+        }
+
+        var virtualConcept = link.LinkedOntology.Concepts.FirstOrDefault(c => c.Id == conceptId);
+        if (virtualConcept == null)
+        {
+            ToastService.ShowWarning("Virtual concept not found");
+            return;
+        }
+
+        // Select the virtual concept to show in details panel
+        SelectConcept(virtualConcept);
+    }
+
+    private async Task HandleVirtualConceptCtrlClick((string nodeId, string label) data)
+    {
+        // Parse the virtual concept node ID: "virtualconcept-{linkId}-{conceptId}"
+        var parts = data.nodeId.Split('-');
+        if (parts.Length != 3 || parts[0] != "virtualconcept")
+        {
+            ToastService.ShowError("Invalid virtual concept ID");
+            return;
+        }
+
+        if (!int.TryParse(parts[1], out int linkId) || !int.TryParse(parts[2], out int conceptId))
+        {
+            ToastService.ShowError("Invalid virtual concept ID format");
+            return;
+        }
+
+        // Find the linked ontology and the virtual concept
+        var link = ontology?.LinkedOntologies?.FirstOrDefault(l => l.Id == linkId);
+        if (link?.LinkedOntology == null)
+        {
+            ToastService.ShowError("Linked ontology not found");
+            return;
+        }
+
+        var virtualConcept = link.LinkedOntology.Concepts?.FirstOrDefault(c => c.Id == conceptId);
+        if (virtualConcept == null)
+        {
+            ToastService.ShowError("Virtual concept not found");
+            return;
+        }
+
+        // Handle relationship creation logic
+        if (firstSelectedConceptId == null)
+        {
+            // This is the first selection - import the virtual concept and select it
+            ToastService.ShowInfo($"Importing \"{virtualConcept.Name}\" from {link.Name}...");
+
+            // Import the concept into the current ontology
+            var importedConcept = new Concept
+            {
+                OntologyId = ontology.Id,
+                Name = virtualConcept.Name,
+                Definition = virtualConcept.Definition,
+                SimpleExplanation = virtualConcept.SimpleExplanation,
+                Examples = virtualConcept.Examples,
+                Category = virtualConcept.Category,
+                Color = virtualConcept.Color,
+                SourceOntology = link.Name // Mark where it came from
+            };
+
+            await ConceptService.CreateAsync(importedConcept);
+
+            // Import concept properties
+            if (virtualConcept.ConceptProperties?.Any() == true)
+            {
+                foreach (var virtualProperty in virtualConcept.ConceptProperties)
+                {
+                    var importedProperty = new ConceptProperty
+                    {
+                        ConceptId = importedConcept.Id,
+                        Name = virtualProperty.Name,
+                        Uri = virtualProperty.Uri,
+                        PropertyType = virtualProperty.PropertyType,
+                        DataType = virtualProperty.DataType,
+                        RangeConceptId = virtualProperty.RangeConceptId,
+                        IsRequired = virtualProperty.IsRequired,
+                        IsFunctional = virtualProperty.IsFunctional,
+                        Description = virtualProperty.Description
+                    };
+
+                    await ConceptPropertyService.CreateAsync(importedProperty);
+                }
+            }
+
+            await LoadOntology();
+
+            // Select the newly imported concept
+            firstSelectedConceptId = importedConcept.Id;
+            ToastService.ShowInfo($"First node selected: \"{importedConcept.Name}\". Ctrl+click another node to create relationship.", 5000);
+        }
+        else
+        {
+            // Second selection - import if needed and create relationship
+            var sourceConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == firstSelectedConceptId.Value);
+            if (sourceConcept == null)
+            {
+                ToastService.ShowError("Source concept not found");
+                firstSelectedConceptId = null;
+                return;
+            }
+
+            // Import the virtual concept
+            ToastService.ShowInfo($"Importing \"{virtualConcept.Name}\" from {link.Name}...");
+
+            var importedConcept = new Concept
+            {
+                OntologyId = ontology.Id,
+                Name = virtualConcept.Name,
+                Definition = virtualConcept.Definition,
+                SimpleExplanation = virtualConcept.SimpleExplanation,
+                Examples = virtualConcept.Examples,
+                Category = virtualConcept.Category,
+                Color = virtualConcept.Color,
+                SourceOntology = link.Name
+            };
+
+            await ConceptService.CreateAsync(importedConcept);
+
+            // Import concept properties
+            if (virtualConcept.ConceptProperties?.Any() == true)
+            {
+                foreach (var virtualProperty in virtualConcept.ConceptProperties)
+                {
+                    var importedProperty = new ConceptProperty
+                    {
+                        ConceptId = importedConcept.Id,
+                        Name = virtualProperty.Name,
+                        Uri = virtualProperty.Uri,
+                        PropertyType = virtualProperty.PropertyType,
+                        DataType = virtualProperty.DataType,
+                        RangeConceptId = virtualProperty.RangeConceptId,
+                        IsRequired = virtualProperty.IsRequired,
+                        IsFunctional = virtualProperty.IsFunctional,
+                        Description = virtualProperty.Description
+                    };
+
+                    await ConceptPropertyService.CreateAsync(importedProperty);
+                }
+            }
+
+            await LoadOntology();
+
+            // Show dialog to create relationship
+            ShowAddRelationshipDialog(sourceConcept.Id, importedConcept.Id);
+            firstSelectedConceptId = null;
+        }
+    }
+
+    /// <summary>
+    /// Handles importing a virtual concept from the list view.
+    /// This simply imports the concept without any relationship creation logic.
+    /// </summary>
+    private async Task HandleVirtualConceptImportFromList((int linkId, Concept concept) data)
+    {
+        if (ontology == null) return;
+
+        var (linkId, virtualConceptParam) = data;
+        var link = ontology.LinkedOntologies?.FirstOrDefault(l => l.Id == linkId);
+
+        if (link == null)
+        {
+            ToastService.ShowError("Linked ontology not found");
+            return;
+        }
+
+        // Reload the virtual concept from the linked ontology to ensure ConceptProperties are loaded
+        var virtualConcept = link.LinkedOntology?.Concepts.FirstOrDefault(c => c.Id == virtualConceptParam.Id);
+
+        if (virtualConcept == null)
+        {
+            ToastService.ShowError("Virtual concept not found in linked ontology");
+            return;
+        }
+
+        // Check if this concept is already imported
+        var existingConcept = ontology.Concepts.FirstOrDefault(c =>
+            c.Name == virtualConcept.Name && c.SourceOntology == link.Name);
+
+        if (existingConcept != null)
+        {
+            ToastService.ShowWarning($"Concept \"{virtualConcept.Name}\" from {link.Name} is already imported");
+            return;
+        }
+
+        ToastService.ShowInfo($"Importing \"{virtualConcept.Name}\" from {link.Name}...");
+
+        // Import the concept into the current ontology
+        var importedConcept = new Concept
+        {
+            OntologyId = ontology.Id,
+            Name = virtualConcept.Name,
+            Definition = virtualConcept.Definition,
+            SimpleExplanation = virtualConcept.SimpleExplanation,
+            Examples = virtualConcept.Examples,
+            Category = virtualConcept.Category,
+            Color = virtualConcept.Color,
+            SourceOntology = link.Name // Mark where it came from
+        };
+
+        await ConceptService.CreateAsync(importedConcept);
+
+        // Import concept properties (property definitions)
+        if (virtualConcept.ConceptProperties?.Any() == true)
+        {
+            foreach (var virtualProperty in virtualConcept.ConceptProperties)
+            {
+                var importedProperty = new ConceptProperty
+                {
+                    ConceptId = importedConcept.Id,
+                    Name = virtualProperty.Name,
+                    Uri = virtualProperty.Uri,
+                    PropertyType = virtualProperty.PropertyType,
+                    DataType = virtualProperty.DataType,
+                    RangeConceptId = virtualProperty.RangeConceptId,
+                    IsRequired = virtualProperty.IsRequired,
+                    IsFunctional = virtualProperty.IsFunctional,
+                    Description = virtualProperty.Description
+                };
+
+                await ConceptPropertyService.CreateAsync(importedProperty);
+            }
+        }
+
+        await LoadOntology();
+
+        var propertyCount = virtualConcept.ConceptProperties?.Count ?? 0;
+        var message = propertyCount > 0
+            ? $"Successfully imported \"{virtualConcept.Name}\" with {propertyCount} {(propertyCount == 1 ? "property" : "properties")}"
+            : $"Successfully imported \"{virtualConcept.Name}\"";
+        ToastService.ShowSuccess(message);
     }
 
     private void ShowImportDialog()

@@ -273,6 +273,9 @@ namespace Eidos.Services
             // Export concept property definitions (DataProperty and ObjectProperty)
             ExportConceptPropertyDefinitions(graph, ontology, baseUri, rdfType, rdfsLabel, rdfsComment);
 
+            // Export property restrictions (must be after property declarations)
+            ExportPropertyRestrictions(graph, ontology, baseUri, rdfType, rdfsSubClassOf);
+
             // Export relationships
             foreach (var relationship in ontology.Relationships)
             {
@@ -449,23 +452,55 @@ namespace Eidos.Services
                     {
                         graph.Assert(propertyNode, rdfType, owlFunctionalProperty);
                     }
+                }
+            }
+        }
 
-                    // Export required characteristic as OWL restriction with minCardinality 1
-                    if (property.IsRequired)
-                    {
-                        // Create anonymous restriction node
-                        var restrictionNode = graph.CreateBlankNode();
-                        graph.Assert(restrictionNode, rdfType, owlRestriction);
-                        graph.Assert(restrictionNode, owlOnProperty, propertyNode);
+        /// <summary>
+        /// Export OWL restrictions for required properties.
+        /// This method must be called AFTER all properties are declared to ensure proper ordering.
+        /// </summary>
+        private void ExportPropertyRestrictions(IGraph graph, Ontology ontology, string baseUri,
+            IUriNode rdfType, IUriNode rdfsSubClassOf)
+        {
+            var owlRestriction = graph.CreateUriNode("owl:Restriction");
+            var owlOnProperty = graph.CreateUriNode("owl:onProperty");
+            var owlMinCardinality = graph.CreateUriNode("owl:minCardinality");
 
-                        // Add minCardinality 1 (required = must have at least one value)
-                        var minOneLiteral = graph.CreateLiteralNode("1",
-                            UriFactory.Create(OntologyNamespaces.Xsd.NonNegativeInteger));
-                        graph.Assert(restrictionNode, owlMinCardinality, minOneLiteral);
+            // Iterate through all concepts and their property definitions
+            foreach (var concept in ontology.Concepts)
+            {
+                if (concept.ConceptProperties == null || !concept.ConceptProperties.Any())
+                    continue;
 
-                        // Link concept to restriction via rdfs:subClassOf
-                        graph.Assert(conceptNode, rdfsSubClassOf, restrictionNode);
-                    }
+                var conceptUri = CreateConceptUri(baseUri, concept);
+                var conceptNode = graph.CreateUriNode(UriFactory.Create(conceptUri));
+
+                foreach (var property in concept.ConceptProperties)
+                {
+                    // Only create restrictions for required properties
+                    if (!property.IsRequired)
+                        continue;
+
+                    // Create property URI (use custom URI if provided, otherwise generate)
+                    var propertyUri = !string.IsNullOrWhiteSpace(property.Uri)
+                        ? property.Uri
+                        : baseUri + SanitizePropertyName(property.Name);
+
+                    var propertyNode = graph.CreateUriNode(UriFactory.Create(propertyUri));
+
+                    // Create anonymous restriction node
+                    var restrictionNode = graph.CreateBlankNode();
+                    graph.Assert(restrictionNode, rdfType, owlRestriction);
+                    graph.Assert(restrictionNode, owlOnProperty, propertyNode);
+
+                    // Add minCardinality 1 (required = must have at least one value)
+                    var minOneLiteral = graph.CreateLiteralNode("1",
+                        UriFactory.Create(OntologyNamespaces.Xsd.NonNegativeInteger));
+                    graph.Assert(restrictionNode, owlMinCardinality, minOneLiteral);
+
+                    // Link concept to restriction via rdfs:subClassOf
+                    graph.Assert(conceptNode, rdfsSubClassOf, restrictionNode);
                 }
             }
         }

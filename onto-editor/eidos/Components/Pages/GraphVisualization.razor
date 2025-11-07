@@ -1,4 +1,5 @@
 @using Eidos.Models
+@using Eidos.Models.Enums
 @using Eidos.Services.Interfaces
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
@@ -7,8 +8,8 @@
 <div style="position: relative; width: 100%; height: @Height;">
     <div id="@GraphId" style="width: 100%; height: 100%; border: 1px solid var(--border-color); border-radius: 0.375rem; background-color: var(--canvas-bg);"></div>
 
-    <!-- Text Size Control Overlay -->
-    <div style="position: absolute; top: 10px; right: 10px; background: var(--card-bg); padding: 10px 15px; border-radius: 8px; box-shadow: var(--shadow); z-index: 1000; min-width: 180px;">
+    <!-- Text Size Control Overlay (Bottom Left) -->
+    <div style="position: absolute; bottom: 10px; left: 10px; background: var(--card-bg); padding: 10px 15px; border-radius: 8px; box-shadow: var(--shadow); z-index: 1000; min-width: 180px;">
         <div class="d-flex flex-column gap-1">
             <label class="form-label small mb-1" style="font-weight: 600;">
                 <i class="bi bi-fonts"></i> Text Size: @(textSizeScale)%
@@ -69,6 +70,15 @@
     public EventCallback<int> OnIndividualClicked { get; set; }
 
     [Parameter]
+    public EventCallback<int> OnOntologyLinkClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<(string nodeId, string label)> OnVirtualConceptClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<(string nodeId, string label)> OnVirtualConceptCtrlClicked { get; set; }
+
+    [Parameter]
     public EventCallback OnBackgroundCmdShiftClicked { get; set; }
 
     private string GraphId = $"graph-{Guid.NewGuid():N}";
@@ -77,6 +87,12 @@
     private int lastRelationshipCount = 0;
     private int textSizeScale = 100; // Percentage scale for text size (50-150%)
     private bool preferencesLoaded = false;
+
+    /// <summary>
+    /// Tracks which ontology link nodes are expanded to show their concepts.
+    /// Key: OntologyLink.Id, Value: true if expanded
+    /// </summary>
+    private HashSet<int> expandedLinkIds = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -170,8 +186,11 @@
             sourceColorMap[sourceOntologies[i]] = predefinedColors[i % predefinedColors.Length];
         }
 
-        // Build nodes from concepts
-        var nodes = Ontology.Concepts.Select(c =>
+        // Build nodes and edges - use List<object> to allow different types
+        var nodes = new List<object>();
+        var edges = new List<object>();
+
+        nodes.AddRange(Ontology.Concepts.Select(c =>
         {
             var nodeColor = ColorMode == "source"
                 ? sourceColorMap[c.SourceOntology ?? "Original"]
@@ -192,7 +211,192 @@
                     sourceOntology = c.SourceOntology ?? "Original"
                 }
             };
-        }).ToList();
+        }));
+
+        // ====================================================================================
+        // Virtualized Ontology Link Nodes
+        // ====================================================================================
+        // Adds nodes representing linked ontologies (both external URI-based and internal DB references).
+        // These appear as hexagon-shaped nodes to distinguish them from regular concepts.
+        // Internal links show the linked ontology name and sync status.
+        // When expanded, child concepts from the linked ontology are displayed.
+        // ====================================================================================
+        if (Ontology.LinkedOntologies?.Any() == true)
+        {
+            var linkNodes = Ontology.LinkedOntologies
+                .Where(link => link.LinkType == LinkType.Internal) // Only show internal links as nodes
+                .Select(link =>
+                {
+                    var linkColor = link.Color ?? "#9B59B6"; // Purple default for virtual nodes
+                    var isExpanded = expandedLinkIds.Contains(link.Id);
+                    var expandIndicator = isExpanded ? "[-]" : "[+]";
+                    var conceptCount = link.LinkedOntology?.Concepts?.Count ?? 0;
+
+                    return new
+                    {
+                        data = new
+                        {
+                            id = $"ontologylink-{link.Id}",
+                            label = $"{expandIndicator} {link.Name}",
+                            color = linkColor,
+                            nodeType = "ontologyLink",
+                            definition = link.Description ?? "",
+                            explanation = $"Virtualized reference to {link.Name} ({conceptCount} concepts)",
+                            examples = link.UpdateAvailable ? "Updates available! Click to expand." : $"Click to {(isExpanded ? "collapse" : "expand")}",
+                            category = "Linked Ontology",
+                            sourceOntology = "Virtual Link",
+                            isExpanded = isExpanded
+                        }
+                    };
+                });
+
+            nodes.AddRange(linkNodes);
+
+            // Add child concepts from expanded links
+            foreach (var link in Ontology.LinkedOntologies.Where(l => l.LinkType == LinkType.Internal && expandedLinkIds.Contains(l.Id)))
+            {
+                if (link.LinkedOntology?.Concepts != null)
+                {
+                    var childConcepts = link.LinkedOntology.Concepts.Select(c =>
+                    {
+                        var nodeColor = c.Color ?? "#E8B4F0"; // Lighter purple for child concepts
+
+                        return new
+                        {
+                            data = new
+                            {
+                                id = $"virtualconcept-{link.Id}-{c.Id}",
+                                label = c.Name,
+                                color = nodeColor,
+                                nodeType = "virtualConcept",
+                                definition = c.Definition ?? "",
+                                explanation = c.SimpleExplanation ?? "",
+                                examples = c.Examples ?? "",
+                                category = c.Category ?? "",
+                                sourceOntology = $"{link.Name} (Virtual)",
+                                parentLinkId = link.Id // Track which link this belongs to
+                            }
+                        };
+                    });
+
+                    nodes.AddRange(childConcepts);
+
+                    // ====================================================================================
+                    // Virtual Ontology Relationships
+                    // ====================================================================================
+                    // Render the actual relationships that exist within the linked ontology.
+                    // These show the semantic connections between virtual concepts, not just containment.
+                    // ====================================================================================
+                    if (link.LinkedOntology.Relationships?.Any() == true)
+                    {
+                        var virtualRelationships = link.LinkedOntology.Relationships.Select(r => new
+                        {
+                            data = new
+                            {
+                                id = $"virtualrel-{link.Id}-{r.Id}",
+                                source = $"virtualconcept-{link.Id}-{r.SourceConceptId}",
+                                target = $"virtualconcept-{link.Id}-{r.TargetConceptId}",
+                                label = r.Label ?? r.RelationType,
+                                edgeType = "virtualRelationship",
+                                description = r.Description ?? $"{r.RelationType} (from {link.Name})"
+                            }
+                        });
+
+                        edges.AddRange(virtualRelationships);
+
+                        // ====================================================================================
+                        // Orphan Concept Container Edges
+                        // ====================================================================================
+                        // For concepts that don't participate in any relationships, add a "contains" edge
+                        // from the ontology link node so they remain visible and connected in the graph.
+                        // ====================================================================================
+                        var conceptsInRelationships = link.LinkedOntology.Relationships
+                            .SelectMany(r => new[] { r.SourceConceptId, r.TargetConceptId })
+                            .Distinct()
+                            .ToHashSet();
+
+                        var orphanConcepts = link.LinkedOntology.Concepts
+                            .Where(c => !conceptsInRelationships.Contains(c.Id));
+
+                        var orphanEdges = orphanConcepts.Select(c => new
+                        {
+                            data = new
+                            {
+                                id = $"link-edge-{link.Id}-{c.Id}",
+                                source = $"ontologylink-{link.Id}",
+                                target = $"virtualconcept-{link.Id}-{c.Id}",
+                                label = "contains",
+                                edgeType = "virtualLink",
+                                description = "Orphan concept (no relationships)"
+                            }
+                        });
+
+                        edges.AddRange(orphanEdges);
+                    }
+                    else
+                    {
+                        // If there are no relationships at all, show "contains" for all concepts
+                        var linkEdges = link.LinkedOntology.Concepts.Select(c => new
+                        {
+                            data = new
+                            {
+                                id = $"link-edge-{link.Id}-{c.Id}",
+                                source = $"ontologylink-{link.Id}",
+                                target = $"virtualconcept-{link.Id}-{c.Id}",
+                                label = "contains",
+                                edgeType = "virtualLink",
+                                description = "Virtual link to concept"
+                            }
+                        });
+
+                        edges.AddRange(linkEdges);
+                    }
+
+                    // ====================================================================================
+                    // Cross-Ontology Bridge Edges
+                    // ====================================================================================
+                    // When a concept has been imported from this linked ontology, create a bridge edge
+                    // connecting the imported concept in the base ontology to its virtual counterpart.
+                    // This visually shows how the two ontologies are connected through imported concepts.
+                    // ====================================================================================
+                    foreach (var virtualConcept in link.LinkedOntology.Concepts)
+                    {
+                        // Find if this virtual concept has been imported into the base ontology
+                        // Match by: Name + SourceOntology matching the link name
+                        var importedConcept = Ontology.Concepts.FirstOrDefault(c =>
+                            c.Name == virtualConcept.Name &&
+                            c.SourceOntology == link.Name);
+
+                        if (importedConcept != null)
+                        {
+                            // Create a bridge edge from the imported concept to the virtual concept
+                            var bridgeEdge = new
+                            {
+                                data = new
+                                {
+                                    id = $"bridge-{importedConcept.Id}-{link.Id}-{virtualConcept.Id}",
+                                    source = $"concept-{importedConcept.Id}",
+                                    target = $"virtualconcept-{link.Id}-{virtualConcept.Id}",
+                                    label = "same as",
+                                    edgeType = "bridge",
+                                    description = $"Bridge: {importedConcept.Name} was imported from {link.Name}"
+                                }
+                            };
+
+                            edges.Add(bridgeEdge);
+
+                            // Now add any relationships from the imported concept
+                            // These will visually bridge between the two ontologies
+                            var outgoingRelationships = Ontology.Relationships
+                                .Where(r => r.SourceConceptId == importedConcept.Id || r.TargetConceptId == importedConcept.Id);
+
+                            // These relationships already exist in the normal relationship edges,
+                            // but they'll now connect to the imported concept which bridges to the virtual concept
+                        }
+                    }
+                }
+            }
+        }
 
         // ====================================================================================
         // Individual Node Visualization (Phase 1 of 3: Nodes)
@@ -240,7 +444,7 @@
         }
 
         // Build edges from relationships
-        var edges = Ontology.Relationships.Select(r => new
+        edges.AddRange(Ontology.Relationships.Select(r => new
         {
             data = new
             {
@@ -251,7 +455,7 @@
                 edgeType = "relationship",
                 description = r.Description ?? ""
             }
-        }).ToList();
+        }));
 
         // ====================================================================================
         // Individual Visualization (Phase 2 of 3: Instance-of Edges)
@@ -351,6 +555,40 @@
     public async Task OnIndividualClick(int individualId)
     {
         await OnIndividualClicked.InvokeAsync(individualId);
+    }
+
+    [JSInvokable]
+    public async Task OnOntologyLinkClick(int linkId)
+    {
+        // Toggle expansion state
+        if (expandedLinkIds.Contains(linkId))
+        {
+            expandedLinkIds.Remove(linkId);
+        }
+        else
+        {
+            expandedLinkIds.Add(linkId);
+        }
+
+        // Re-render the graph to show/hide child concepts
+        await RenderGraph();
+
+        // Still notify parent component
+        await OnOntologyLinkClicked.InvokeAsync(linkId);
+    }
+
+    [JSInvokable]
+    public async Task OnVirtualConceptClick(string nodeId, string label)
+    {
+        // Show info about virtual concept
+        await OnVirtualConceptClicked.InvokeAsync((nodeId, label));
+    }
+
+    [JSInvokable]
+    public async Task OnVirtualConceptCtrlClick(string nodeId, string label)
+    {
+        // Handle Ctrl+click for creating relationships with virtual concepts
+        await OnVirtualConceptCtrlClicked.InvokeAsync((nodeId, label));
     }
 
     [JSInvokable]

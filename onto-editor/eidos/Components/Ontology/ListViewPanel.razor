@@ -1,5 +1,6 @@
 @using Eidos.Models
 @using Eidos.Models.Enums
+@using Enums = Eidos.Models.Enums
 
 <!-- List View Tabs -->
 <div class="list-view-tabs-container">
@@ -27,14 +28,27 @@
         <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
             <div>
                 <h5 class="mb-0">Concepts</h5>
-                @if (!string.IsNullOrWhiteSpace(searchQuery) && Concepts.Any())
+                @if (!string.IsNullOrWhiteSpace(searchQuery) && AllConcepts.Any())
                 {
-                    <small class="text-muted">Showing @FilteredConcepts.Count() of @Concepts.Count concepts</small>
+                    <small class="text-muted">Showing @FilteredConcepts.Count() of @AllConcepts.Count() concepts</small>
                 }
             </div>
-            <button class="btn btn-sm btn-primary" @onclick="OnAddConceptClick">
-                <i class="bi bi-plus-circle"></i> Add Concept
-            </button>
+            <div class="d-flex gap-2 align-items-center">
+                @if (LinkedOntologies?.Any() == true)
+                {
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="showVirtualConceptsToggle"
+                               checked="@showVirtualConcepts"
+                               @onchange="@((ChangeEventArgs e) => showVirtualConcepts = (bool)e.Value!)">
+                        <label class="form-check-label small" for="showVirtualConceptsToggle">
+                            <i class="bi bi-hexagon"></i> Show Virtual
+                        </label>
+                    </div>
+                }
+                <button class="btn btn-sm btn-primary" @onclick="OnAddConceptClick">
+                    <i class="bi bi-plus-circle"></i> Add Concept
+                </button>
+            </div>
         </div>
         <div class="d-flex gap-2 align-items-stretch flex-wrap">
             <div class="input-group input-group-sm flex-grow-1" style="min-width: 200px;">
@@ -78,23 +92,39 @@
         else
         {
             <div class="list-group" style="max-height: 600px; overflow-y: auto;">
-                @foreach (var concept in SortedConcepts)
+                @foreach (var item in SortedConcepts)
                 {
-                    var conceptIssue = GetConceptIssue(concept.Id);
+                    var concept = item.Concept;
+                    var conceptIssue = item.IsVirtual ? null : GetConceptIssue(concept.Id);
                     var borderClass = conceptIssue != null ? GetValidationBorderClass(conceptIssue.Severity) : "";
-                    <div class="list-group-item list-group-item-action concept-list-item @borderClass"
-                         id="concept-@concept.Id"
-                         @onclick="() => OnConceptSelect.InvokeAsync(concept)"
+                    var virtualClass = item.IsVirtual ? "virtual-concept-item" : "";
+                    <div class="list-group-item list-group-item-action concept-list-item @borderClass @virtualClass"
+                         id="@(item.IsVirtual ? $"virtualconcept-{item.LinkId}-{concept.Id}" : $"concept-{concept.Id}")"
+                         @onclick="() => HandleConceptClick(item)"
                          style="cursor: pointer; border-left: 4px solid @(concept.Color ?? "var(--concept-secondary)")">
                         <div class="concept-item-layout">
                             <div class="concept-content">
                                 <div class="concept-header">
+                                    @if (item.IsVirtual)
+                                    {
+                                        <i class="bi bi-hexagon text-primary me-1" title="Virtual concept from @item.SourceOntologyName"></i>
+                                        @if (item.NestingLevel > 0)
+                                        {
+                                            <span class="badge bg-info badge-sm me-1" title="Nested @item.NestingLevel level(s) deep">
+                                                L@(item.NestingLevel + 1)
+                                            </span>
+                                        }
+                                    }
                                     @if (conceptIssue != null)
                                     {
                                         <i class="@GetValidationIconClass(conceptIssue.Severity) me-1"
                                            title="@conceptIssue.Message"></i>
                                     }
                                     <h6 class="concept-name">@concept.Name</h6>
+                                    @if (item.IsVirtual)
+                                    {
+                                        <span class="badge bg-primary badge-sm">@item.SourceOntologyName</span>
+                                    }
                                     @if (!string.IsNullOrWhiteSpace(concept.Category))
                                     {
                                         <span class="badge bg-secondary">@concept.Category</span>
@@ -134,59 +164,74 @@
                                     </div>
                                 }
                             </div>
-                            <div class="concept-actions">
-                                <!-- Desktop: Horizontal button group -->
-                                <div class="btn-group d-none d-lg-flex">
-                                    <button class="btn btn-sm btn-outline-primary"
-                                            @onclick:stopPropagation="true"
-                                            @onclick="() => OnConceptEdit.InvokeAsync(concept)"
-                                            title="Edit">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                            @onclick:stopPropagation="true"
-                                            @onclick="() => OnConceptDuplicate.InvokeAsync(concept)"
-                                            title="Duplicate">
-                                        <i class="bi bi-files"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger"
-                                            @onclick:stopPropagation="true"
-                                            @onclick="() => OnConceptDelete.InvokeAsync(concept.Id)"
-                                            title="Delete">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
+                            @if (!item.IsVirtual)
+                            {
+                                <div class="concept-actions">
+                                    <!-- Desktop: Horizontal button group -->
+                                    <div class="btn-group d-none d-lg-flex">
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="() => OnConceptEdit.InvokeAsync(concept)"
+                                                title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="() => OnConceptDuplicate.InvokeAsync(concept)"
+                                                title="Duplicate">
+                                            <i class="bi bi-files"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="() => OnConceptDelete.InvokeAsync(concept.Id)"
+                                                title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
 
-                                <!-- Mobile/Tablet: Dropdown menu -->
-                                <div class="dropdown d-lg-none">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
-                                            type="button"
-                                            @onclick:stopPropagation="true"
-                                            data-bs-toggle="dropdown"
-                                            aria-expanded="false"
-                                            title="Actions">
-                                        <i class="bi bi-three-dots-vertical"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end" @onclick:stopPropagation="true">
-                                        <li>
-                                            <button class="dropdown-item" @onclick="() => OnConceptEdit.InvokeAsync(concept)">
-                                                <i class="bi bi-pencil me-2"></i> Edit
-                                            </button>
-                                        </li>
-                                        <li>
-                                            <button class="dropdown-item" @onclick="() => OnConceptDuplicate.InvokeAsync(concept)">
-                                                <i class="bi bi-files me-2"></i> Duplicate
-                                            </button>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <button class="dropdown-item text-danger" @onclick="() => OnConceptDelete.InvokeAsync(concept.Id)">
-                                                <i class="bi bi-trash me-2"></i> Delete
-                                            </button>
-                                        </li>
-                                    </ul>
+                                    <!-- Mobile/Tablet: Dropdown menu -->
+                                    <div class="dropdown d-lg-none">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                                                type="button"
+                                                @onclick:stopPropagation="true"
+                                                data-bs-toggle="dropdown"
+                                                aria-expanded="false"
+                                                title="Actions">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" @onclick:stopPropagation="true">
+                                            <li>
+                                                <button class="dropdown-item" @onclick="() => OnConceptEdit.InvokeAsync(concept)">
+                                                    <i class="bi bi-pencil me-2"></i> Edit
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button class="dropdown-item" @onclick="() => OnConceptDuplicate.InvokeAsync(concept)">
+                                                    <i class="bi bi-files me-2"></i> Duplicate
+                                                </button>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <button class="dropdown-item text-danger" @onclick="() => OnConceptDelete.InvokeAsync(concept.Id)">
+                                                    <i class="bi bi-trash me-2"></i> Delete
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </div>
-                            </div>
+                            }
+                            else
+                            {
+                                <div class="concept-actions">
+                                    <!-- Virtual concept: Import action only -->
+                                    <button class="btn btn-sm btn-outline-success"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="() => OnVirtualConceptImport.InvokeAsync((item.LinkId, concept))"
+                                            title="Import this concept to your ontology">
+                                        <i class="bi bi-download"></i> Import
+                                    </button>
+                                </div>
+                            }
                         </div>
                     </div>
                 }
@@ -200,11 +245,46 @@
         <div class="list-view-tab-pane @(activeListTab == "relationships" ? "active" : "")">
             <!-- Relationships Card -->
             <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Relationships</h5>
-        <button class="btn btn-sm btn-primary" @onclick="OnAddRelationshipClick">
-            <i class="bi bi-plus-circle"></i> Add Relationship
-        </button>
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <div>
+                <h5 class="mb-0">Relationships</h5>
+                @if (!string.IsNullOrWhiteSpace(relationshipSearchQuery) && AllRelationships.Any())
+                {
+                    <small class="text-muted">Showing @FilteredRelationships.Count() of @AllRelationships.Count() relationships</small>
+                }
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                @if (LinkedOntologies?.Any() == true)
+                {
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="showVirtualRelationshipsToggle"
+                               checked="@showVirtualRelationships"
+                               @onchange="@((ChangeEventArgs e) => showVirtualRelationships = (bool)e.Value!)">
+                        <label class="form-check-label small" for="showVirtualRelationshipsToggle">
+                            <i class="bi bi-hexagon"></i> Show Virtual
+                        </label>
+                    </div>
+                }
+                <button class="btn btn-sm btn-primary" @onclick="OnAddRelationshipClick">
+                    <i class="bi bi-plus-circle"></i> Add Relationship
+                </button>
+            </div>
+        </div>
+        <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text"
+                   class="form-control form-control-sm"
+                   placeholder="Search relationships..."
+                   @bind="relationshipSearchQuery"
+                   @bind:event="oninput" />
+            @if (!string.IsNullOrWhiteSpace(relationshipSearchQuery))
+            {
+                <button class="btn btn-outline-secondary" type="button" @onclick="() => relationshipSearchQuery = string.Empty">
+                    <i class="bi bi-x"></i>
+                </button>
+            }
+        </div>
     </div>
     <div class="card-body">
         @if (Concepts.Count < 2)
@@ -213,91 +293,116 @@
                 <i class="bi bi-info-circle"></i> You need at least 2 concepts before you can create relationships.
             </div>
         }
-        else if (!Relationships.Any())
+        else if (!FilteredRelationships.Any())
         {
-            <div class="alert alert-info">
-                <i class="bi bi-lightbulb"></i> No relationships yet. Click "Add Relationship" to connect your concepts!
+            <div class="alert alert-warning">
+                <i class="bi bi-search"></i> No relationships match your search query "@relationshipSearchQuery"
             </div>
         }
         else
         {
             <div class="list-group">
-                @foreach (var rel in Relationships.OrderBy(r => r.SourceConcept.Name))
+                @foreach (var item in SortedRelationships)
                 {
-                    var relIssue = GetRelationshipIssue(rel.Id);
+                    var rel = item.Relationship;
+                    var relIssue = item.IsVirtual ? null : GetRelationshipIssue(rel.Id);
                     var relBorderClass = relIssue != null ? GetValidationBorderClass(relIssue.Severity) : "";
-                    <div class="list-group-item @relBorderClass" id="relationship-@rel.Id">
+                    var virtualClass = item.IsVirtual ? "virtual-relationship-item" : "";
+                    <div class="list-group-item @relBorderClass @virtualClass" id="@(item.IsVirtual ? $"virtualrel-{item.LinkId}-{rel.Id}" : $"relationship-{rel.Id}")">
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="flex-grow-1">
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    @if (item.IsVirtual)
+                                    {
+                                        <i class="bi bi-hexagon text-primary me-1" title="Virtual relationship from @item.SourceOntologyName"></i>
+                                        @if (item.NestingLevel > 0)
+                                        {
+                                            <span class="badge bg-info badge-sm me-1" title="Nested @item.NestingLevel level(s) deep">
+                                                L@(item.NestingLevel + 1)
+                                            </span>
+                                        }
+                                    }
                                     @if (relIssue != null)
                                     {
                                         <i class="@GetValidationIconClass(relIssue.Severity)"
                                            title="@relIssue.Message"></i>
                                     }
-                                    <span class="badge" style="background-color: @rel.SourceConcept.Color">
-                                        @rel.SourceConcept.Name
-                                    </span>
+                                    @if (rel.SourceConcept != null)
+                                    {
+                                        <span class="badge" style="background-color: @(rel.SourceConcept.Color ?? "#6c757d")">
+                                            @rel.SourceConcept.Name
+                                        </span>
+                                    }
                                     <span class="badge bg-dark">@rel.RelationType</span>
                                     <i class="bi bi-arrow-right"></i>
-                                    <span class="badge" style="background-color: @rel.TargetConcept.Color">
-                                        @rel.TargetConcept.Name
-                                    </span>
+                                    @if (rel.TargetConcept != null)
+                                    {
+                                        <span class="badge" style="background-color: @(rel.TargetConcept.Color ?? "#6c757d")">
+                                            @rel.TargetConcept.Name
+                                        </span>
+                                    }
+                                    @if (item.IsVirtual)
+                                    {
+                                        <span class="badge bg-primary badge-sm">@item.SourceOntologyName</span>
+                                    }
                                 </div>
                                 @if (!string.IsNullOrWhiteSpace(rel.Description))
                                 {
                                     <p class="mb-0 mt-1 small text-muted">@rel.Description</p>
                                 }
                             </div>
-                            <div class="relationship-actions ms-2">
-                                <!-- Desktop: Horizontal button group -->
-                                <div class="btn-group d-none d-lg-flex">
-                                    <button class="btn btn-sm btn-outline-primary"
-                                            @onclick="() => OnRelationshipEdit.InvokeAsync(rel)"
-                                            title="Edit">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                            @onclick="() => OnRelationshipDuplicate.InvokeAsync(rel)"
-                                            title="Duplicate">
-                                        <i class="bi bi-files"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger"
-                                            @onclick="() => OnRelationshipDelete.InvokeAsync(rel.Id)"
-                                            title="Delete">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
+                            @if (!item.IsVirtual)
+                            {
+                                <div class="relationship-actions ms-2">
+                                    <!-- Desktop: Horizontal button group -->
+                                    <div class="btn-group d-none d-lg-flex">
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                @onclick="() => OnRelationshipEdit.InvokeAsync(rel)"
+                                                title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                @onclick="() => OnRelationshipDuplicate.InvokeAsync(rel)"
+                                                title="Duplicate">
+                                            <i class="bi bi-files"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => OnRelationshipDelete.InvokeAsync(rel.Id)"
+                                                title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
 
-                                <!-- Mobile/Tablet: Dropdown menu -->
-                                <div class="dropdown d-lg-none">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
-                                            type="button"
-                                            data-bs-toggle="dropdown"
-                                            aria-expanded="false"
-                                            title="Actions">
-                                        <i class="bi bi-three-dots-vertical"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li>
-                                            <button class="dropdown-item" @onclick="() => OnRelationshipEdit.InvokeAsync(rel)">
-                                                <i class="bi bi-pencil me-2"></i> Edit
-                                            </button>
-                                        </li>
-                                        <li>
-                                            <button class="dropdown-item" @onclick="() => OnRelationshipDuplicate.InvokeAsync(rel)">
-                                                <i class="bi bi-files me-2"></i> Duplicate
-                                            </button>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <button class="dropdown-item text-danger" @onclick="() => OnRelationshipDelete.InvokeAsync(rel.Id)">
-                                                <i class="bi bi-trash me-2"></i> Delete
-                                            </button>
-                                        </li>
-                                    </ul>
+                                    <!-- Mobile/Tablet: Dropdown menu -->
+                                    <div class="dropdown d-lg-none">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                                                type="button"
+                                                data-bs-toggle="dropdown"
+                                                aria-expanded="false"
+                                                title="Actions">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <button class="dropdown-item" @onclick="() => OnRelationshipEdit.InvokeAsync(rel)">
+                                                    <i class="bi bi-pencil me-2"></i> Edit
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button class="dropdown-item" @onclick="() => OnRelationshipDuplicate.InvokeAsync(rel)">
+                                                    <i class="bi bi-files me-2"></i> Duplicate
+                                                </button>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <button class="dropdown-item text-danger" @onclick="() => OnRelationshipDelete.InvokeAsync(rel.Id)">
+                                                    <i class="bi bi-trash me-2"></i> Delete
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </div>
-                            </div>
+                            }
                         </div>
                     </div>
                 }
@@ -335,6 +440,13 @@
 
     [Parameter, EditorRequired]
     public ICollection<Relationship> Relationships { get; set; } = new List<Relationship>();
+
+    [Parameter]
+    public ICollection<OntologyLink>? LinkedOntologies { get; set; }
+
+    private bool showVirtualConcepts = false;
+    private bool showVirtualRelationships = false;
+    private string relationshipSearchQuery = string.Empty;
 
     [Parameter]
     public string SearchQuery { get; set; } = string.Empty;
@@ -376,7 +488,30 @@
     public EventCallback<int> OnRelationshipDelete { get; set; }
 
     [Parameter]
+    public EventCallback<(int linkId, Concept concept)> OnVirtualConceptImport { get; set; }
+
+    [Parameter]
     public ValidationResult? ValidationResult { get; set; }
+
+    // Helper class to represent both base and virtual concepts in the list
+    private class ConceptListItem
+    {
+        public Concept Concept { get; set; } = null!;
+        public bool IsVirtual { get; set; }
+        public int LinkId { get; set; } // Only for virtual concepts
+        public string SourceOntologyName { get; set; } = string.Empty; // Only for virtual concepts
+        public int NestingLevel { get; set; } = 0; // For nested virtual ontologies
+    }
+
+    // Helper class to represent both base and virtual relationships in the list
+    private class RelationshipListItem
+    {
+        public Relationship Relationship { get; set; } = null!;
+        public bool IsVirtual { get; set; }
+        public int LinkId { get; set; } // Only for virtual relationships
+        public string SourceOntologyName { get; set; } = string.Empty; // Only for virtual relationships
+        public int NestingLevel { get; set; } = 0; // For nested virtual ontologies
+    }
 
     // Caching for relationship lookups
     private Dictionary<int, List<Relationship>>? _outgoingRelationshipsCache;
@@ -466,34 +601,188 @@
         }
     }
 
-    private IEnumerable<Concept> FilteredConcepts
+    // Get all concepts (base + virtual if enabled)
+    private IEnumerable<ConceptListItem> AllConcepts
+    {
+        get
+        {
+            var items = new List<ConceptListItem>();
+
+            // Add base ontology concepts
+            foreach (var concept in Concepts)
+            {
+                items.Add(new ConceptListItem
+                {
+                    Concept = concept,
+                    IsVirtual = false
+                });
+            }
+
+            // Add virtual concepts if enabled
+            if (showVirtualConcepts && LinkedOntologies?.Any() == true)
+            {
+                foreach (var link in LinkedOntologies.Where(l => l.LinkType == Enums.LinkType.Internal))
+                {
+                    AddVirtualConcepts(items, link, link.Name, 0);
+                }
+            }
+
+            return items;
+        }
+    }
+
+    // Recursive helper to add virtual concepts (handles nesting)
+    private void AddVirtualConcepts(List<ConceptListItem> items, OntologyLink link, string sourceName, int nestingLevel)
+    {
+        if (link.LinkedOntology?.Concepts != null)
+        {
+            foreach (var concept in link.LinkedOntology.Concepts)
+            {
+                items.Add(new ConceptListItem
+                {
+                    Concept = concept,
+                    IsVirtual = true,
+                    LinkId = link.Id,
+                    SourceOntologyName = sourceName,
+                    NestingLevel = nestingLevel
+                });
+            }
+
+            // Recursively add nested linked ontologies
+            if (link.LinkedOntology.LinkedOntologies?.Any() == true)
+            {
+                foreach (var nestedLink in link.LinkedOntology.LinkedOntologies.Where(l => l.LinkType == Enums.LinkType.Internal))
+                {
+                    AddVirtualConcepts(items, nestedLink, $"{sourceName} → {nestedLink.Name}", nestingLevel + 1);
+                }
+            }
+        }
+    }
+
+    private IEnumerable<ConceptListItem> FilteredConcepts
     {
         get
         {
             if (string.IsNullOrWhiteSpace(searchQuery))
-                return Concepts;
+                return AllConcepts;
 
             var query = searchQuery.ToLower();
-            return Concepts.Where(c =>
-                c.Name.ToLower().Contains(query) ||
-                (c.Definition?.ToLower().Contains(query) ?? false) ||
-                (c.SimpleExplanation?.ToLower().Contains(query) ?? false) ||
-                (c.Examples?.ToLower().Contains(query) ?? false) ||
-                (c.Category?.ToLower().Contains(query) ?? false)
-            );
+            return AllConcepts.Where(item =>
+            {
+                var c = item.Concept;
+                return c.Name.ToLower().Contains(query) ||
+                       (c.Definition?.ToLower().Contains(query) ?? false) ||
+                       (c.SimpleExplanation?.ToLower().Contains(query) ?? false) ||
+                       (c.Examples?.ToLower().Contains(query) ?? false) ||
+                       (c.Category?.ToLower().Contains(query) ?? false) ||
+                       (item.IsVirtual && item.SourceOntologyName.ToLower().Contains(query));
+            });
         }
     }
 
-    private IEnumerable<Concept> SortedConcepts
+    private IEnumerable<ConceptListItem> SortedConcepts
     {
         get
         {
             return SortOption switch
             {
-                "category" => FilteredConcepts.OrderBy(c => c.Category ?? "").ThenBy(c => c.Name),
-                "created" => FilteredConcepts.OrderByDescending(c => c.CreatedAt),
-                _ => FilteredConcepts.OrderBy(c => c.Name)
+                "category" => FilteredConcepts.OrderBy(item => item.Concept.Category ?? "").ThenBy(item => item.Concept.Name),
+                "created" => FilteredConcepts.OrderByDescending(item => item.Concept.CreatedAt),
+                _ => FilteredConcepts.OrderBy(item => item.Concept.Name)
             };
+        }
+    }
+
+    private async Task HandleConceptClick(ConceptListItem item)
+    {
+        // Select both base and virtual concepts to show in details panel
+        await OnConceptSelect.InvokeAsync(item.Concept);
+    }
+
+    // Get all relationships (base + virtual if enabled)
+    private IEnumerable<RelationshipListItem> AllRelationships
+    {
+        get
+        {
+            var items = new List<RelationshipListItem>();
+
+            // Add base ontology relationships
+            foreach (var relationship in Relationships)
+            {
+                items.Add(new RelationshipListItem
+                {
+                    Relationship = relationship,
+                    IsVirtual = false
+                });
+            }
+
+            // Add virtual relationships if enabled
+            if (showVirtualRelationships && LinkedOntologies?.Any() == true)
+            {
+                foreach (var link in LinkedOntologies.Where(l => l.LinkType == Enums.LinkType.Internal))
+                {
+                    AddVirtualRelationships(items, link, link.Name, 0);
+                }
+            }
+
+            return items;
+        }
+    }
+
+    // Recursive helper to add virtual relationships (handles nesting)
+    private void AddVirtualRelationships(List<RelationshipListItem> items, OntologyLink link, string sourceName, int nestingLevel)
+    {
+        if (link.LinkedOntology?.Relationships != null)
+        {
+            foreach (var relationship in link.LinkedOntology.Relationships)
+            {
+                items.Add(new RelationshipListItem
+                {
+                    Relationship = relationship,
+                    IsVirtual = true,
+                    LinkId = link.Id,
+                    SourceOntologyName = sourceName,
+                    NestingLevel = nestingLevel
+                });
+            }
+
+            // Recursively add nested linked ontologies
+            if (link.LinkedOntology.LinkedOntologies?.Any() == true)
+            {
+                foreach (var nestedLink in link.LinkedOntology.LinkedOntologies.Where(l => l.LinkType == Enums.LinkType.Internal))
+                {
+                    AddVirtualRelationships(items, nestedLink, $"{sourceName} → {nestedLink.Name}", nestingLevel + 1);
+                }
+            }
+        }
+    }
+
+    private IEnumerable<RelationshipListItem> FilteredRelationships
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(relationshipSearchQuery))
+                return AllRelationships;
+
+            var query = relationshipSearchQuery.ToLower();
+            return AllRelationships.Where(item =>
+            {
+                var r = item.Relationship;
+                return (r.SourceConcept?.Name?.ToLower().Contains(query) ?? false) ||
+                       (r.TargetConcept?.Name?.ToLower().Contains(query) ?? false) ||
+                       (r.RelationType?.ToLower().Contains(query) ?? false) ||
+                       (r.Description?.ToLower().Contains(query) ?? false) ||
+                       (item.IsVirtual && item.SourceOntologyName.ToLower().Contains(query));
+            });
+        }
+    }
+
+    private IEnumerable<RelationshipListItem> SortedRelationships
+    {
+        get
+        {
+            return FilteredRelationships.OrderBy(item => item.Relationship.SourceConcept?.Name ?? string.Empty)
+                                       .ThenBy(item => item.Relationship.TargetConcept?.Name ?? string.Empty);
         }
     }
 
@@ -614,5 +903,30 @@
 
     [data-bs-theme="dark"] .list-view-tab.active {
         background: var(--bs-gray-900);
+    }
+
+    /* Virtual Concept Styling */
+    .virtual-concept-item {
+        background: linear-gradient(to right, rgba(135, 206, 235, 0.05) 0%, transparent 100%);
+        border-left-style: dashed !important;
+    }
+
+    [data-bs-theme="dark"] .virtual-concept-item {
+        background: linear-gradient(to right, rgba(135, 206, 235, 0.1) 0%, transparent 100%);
+    }
+
+    /* Virtual Relationship Styling */
+    .virtual-relationship-item {
+        background: linear-gradient(to right, rgba(135, 206, 235, 0.05) 0%, transparent 100%);
+        border-left: 3px dashed rgba(135, 206, 235, 0.5) !important;
+    }
+
+    [data-bs-theme="dark"] .virtual-relationship-item {
+        background: linear-gradient(to right, rgba(135, 206, 235, 0.1) 0%, transparent 100%);
+    }
+
+    .badge-sm {
+        font-size: 0.7rem;
+        padding: 0.15rem 0.4rem;
     }
 </style>

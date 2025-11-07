@@ -20,7 +20,7 @@ public class OntologyViewStateTests
         Assert.Null(state.Ontology);
         Assert.Empty(state.Concepts);
         Assert.Empty(state.Relationships);
-        Assert.Empty(state.Individuals);
+        Assert.Null(state.Individuals);
         Assert.Equal(ViewMode.Graph, state.CurrentViewMode);
         Assert.False(state.IsLoading);
         Assert.Null(state.ErrorMessage);
@@ -28,7 +28,7 @@ public class OntologyViewStateTests
         Assert.Null(state.SelectedRelationship);
         Assert.Null(state.SelectedIndividual);
         Assert.True(state.IsSidebarVisible);
-        Assert.False(state.IsDetailsPanelVisible);
+        Assert.True(state.IsDetailsPanelVisible);
         Assert.False(state.IsValidationPanelExpanded);
         Assert.Null(state.UserPermissionLevel);
         Assert.Null(state.CurrentUserId);
@@ -159,32 +159,29 @@ public class OntologyViewStateTests
     }
 
     [Fact]
-    public void SetLoadingState_UpdatesLoadingAndError()
+    public void SetLoading_UpdatesLoading()
     {
         // Arrange
         var state = new OntologyViewState();
 
         // Act
-        state.SetLoadingState(true, "Test error");
+        state.SetLoading(true);
 
         // Assert
         Assert.True(state.IsLoading);
-        Assert.Equal("Test error", state.ErrorMessage);
     }
 
     [Fact]
-    public void SetPermissions_UpdatesPermissionProperties()
+    public void SetPermissionLevel_UpdatesPermissionLevel()
     {
         // Arrange
         var state = new OntologyViewState();
-        var userId = "user123";
         var permissionLevel = PermissionLevel.ViewAddEdit;
 
         // Act
-        state.SetPermissions(userId, permissionLevel);
+        state.SetPermissionLevel(permissionLevel);
 
         // Assert
-        Assert.Equal(userId, state.CurrentUserId);
         Assert.Equal(permissionLevel, state.UserPermissionLevel);
     }
 
@@ -193,7 +190,7 @@ public class OntologyViewStateTests
     {
         // Arrange
         var state = new OntologyViewState();
-        state.SetPermissions("user", PermissionLevel.ViewAndAdd);
+        state.SetPermissionLevel(PermissionLevel.ViewAndAdd);
 
         // Assert
         Assert.True(state.CanAdd);
@@ -204,7 +201,7 @@ public class OntologyViewStateTests
     {
         // Arrange
         var state = new OntologyViewState();
-        state.SetPermissions("user", PermissionLevel.ViewAddEdit);
+        state.SetPermissionLevel(PermissionLevel.ViewAddEdit);
 
         // Assert
         Assert.True(state.CanEdit);
@@ -216,7 +213,7 @@ public class OntologyViewStateTests
     {
         // Arrange
         var state = new OntologyViewState();
-        state.SetPermissions("user", PermissionLevel.FullAccess);
+        state.SetPermissionLevel(PermissionLevel.FullAccess);
 
         // Assert
         Assert.True(state.CanManage);
@@ -229,7 +226,7 @@ public class OntologyViewStateTests
     {
         // Arrange
         var state = new OntologyViewState();
-        state.SetPermissions("user", PermissionLevel.View);
+        state.SetPermissionLevel(PermissionLevel.View);
 
         // Assert
         Assert.False(state.CanAdd);
@@ -374,13 +371,12 @@ public class OntologyViewStateTests
     }
 
     [Fact]
-    public void Individuals_ReturnsEmptyListWhenOntologyIsNull()
+    public void Individuals_ReturnsNullWhenOntologyIsNull()
     {
         // Arrange
         var state = new OntologyViewState();
 
         // Assert
-        Assert.NotNull(state.Individuals);
-        Assert.Empty(state.Individuals);
+        Assert.Null(state.Individuals);
     }
 }

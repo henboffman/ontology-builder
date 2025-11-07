@@ -56,6 +56,35 @@ public class OntologyRepository : BaseRepository<Ontology>, IOntologyRepository
             .Include(o => o.IndividualRelationships)
                 .ThenInclude(ir => ir.TargetIndividual)
             .Include(o => o.LinkedOntologies)
+                .ThenInclude(link => link.LinkedOntology)    // Load linked ontology for expansion
+                    .ThenInclude(lo => lo!.Concepts)         // Load concepts from linked ontology for virtualized display
+                        .ThenInclude(c => c.ConceptProperties) // Load property definitions for virtual concepts
+            .Include(o => o.LinkedOntologies)
+                .ThenInclude(link => link.LinkedOntology)
+                    .ThenInclude(lo => lo!.Relationships)    // Load relationships from linked ontology
+                        .ThenInclude(r => r.SourceConcept)   // Load source concept for each relationship
+            .Include(o => o.LinkedOntologies)
+                .ThenInclude(link => link.LinkedOntology)
+                    .ThenInclude(lo => lo!.Relationships)
+                        .ThenInclude(r => r.TargetConcept)   // Load target concept for each relationship
+            .Include(o => o.LinkedOntologies)
+                .ThenInclude(link => link.LinkedOntology)
+                    .ThenInclude(lo => lo!.LinkedOntologies) // Load nested linked ontologies
+                        .ThenInclude(nestedLink => nestedLink.LinkedOntology)
+                            .ThenInclude(nestedLo => nestedLo!.Concepts)
+                                .ThenInclude(c => c.ConceptProperties) // Load property definitions for nested virtual concepts
+            .Include(o => o.LinkedOntologies)
+                .ThenInclude(link => link.LinkedOntology)
+                    .ThenInclude(lo => lo!.LinkedOntologies)
+                        .ThenInclude(nestedLink => nestedLink.LinkedOntology)
+                            .ThenInclude(nestedLo => nestedLo!.Relationships)
+                                .ThenInclude(r => r.SourceConcept)
+            .Include(o => o.LinkedOntologies)
+                .ThenInclude(link => link.LinkedOntology)
+                    .ThenInclude(lo => lo!.LinkedOntologies)
+                        .ThenInclude(nestedLink => nestedLink.LinkedOntology)
+                            .ThenInclude(nestedLo => nestedLo!.Relationships)
+                                .ThenInclude(r => r.TargetConcept)
             .Include(o => o.CustomTemplates)
             .FirstOrDefaultAsync(o => o.Id == id);
     }

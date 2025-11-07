@@ -1,90 +1,167 @@
 @using Eidos.Models
+@using Eidos.Models.Enums
 @using Eidos.Components.Shared
 
 <!-- Ontology Control Bar -->
-<div class="d-flex justify-content-between align-items-center mb-2 gap-3">
-    <!-- Control Buttons -->
-    <div class="d-flex gap-2 align-items-center flex-shrink-0">
-        <button class="btn btn-sm btn-outline-secondary"
-                @onclick="OnLineageClick"
-                title="View ontology lineage and provenance">
-            <i class="bi bi-diagram-3"></i> Lineage
-        </button>
+<div class="mb-2">
+    <!-- Row 1: Management & Metadata Buttons -->
+    <div class="d-flex justify-content-between align-items-center mb-2 gap-3">
+        <div class="d-flex gap-2 align-items-center flex-shrink-0">
+            <button class="btn btn-sm btn-outline-secondary"
+                    @onclick="OnLineageClick"
+                    title="View ontology lineage and provenance">
+                <i class="bi bi-diagram-3"></i> Lineage
+            </button>
 
-        <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-primary"
-                    @onclick="OnForkClick"
-                    title="Fork this ontology to create a divergent copy">
-                <i class="bi bi-diagram-2"></i> Fork
-            </button>
-            <button class="btn btn-outline-primary"
-                    @onclick="OnCloneClick"
-                    title="Clone this ontology to create an exact copy">
-                <i class="bi bi-files"></i> Clone
-            </button>
+            <div class="btn-group btn-group-sm" role="group">
+                <button class="btn btn-outline-primary"
+                        @onclick="OnForkClick"
+                        title="Fork this ontology to create a divergent copy">
+                    <i class="bi bi-diagram-2"></i> Fork
+                </button>
+                <button class="btn btn-outline-primary"
+                        @onclick="OnCloneClick"
+                        title="Clone this ontology to create an exact copy">
+                    <i class="bi bi-files"></i> Clone
+                </button>
+            </div>
+
+            <div class="btn-group btn-group-sm" role="group">
+                <button class="btn btn-outline-info"
+                        @onclick="OnShareClick"
+                        disabled="@(!CanFullAccess)"
+                        title="Share this ontology with others">
+                    <i class="bi bi-share"></i> Share
+                </button>
+                <button class="btn btn-outline-secondary"
+                        @onclick="OnSettingsClick"
+                        disabled="@(!CanFullAccess)"
+                        title="Edit ontology settings and metadata">
+                    <i class="bi bi-gear"></i> Settings
+                </button>
+            </div>
+
+            <div class="btn-group btn-group-sm" role="group">
+                <button class="btn btn-outline-success"
+                        @onclick="OnImportClick"
+                        disabled="@(!CanEdit)"
+                        title="Import concepts from TTL file">
+                    <i class="bi bi-upload"></i> Import
+                </button>
+                <button class="btn btn-outline-success"
+                        @onclick="OnExportClick"
+                        title="Export ontology to various formats">
+                    <i class="bi bi-download"></i> Export
+                </button>
+            </div>
         </div>
 
-        <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-info"
-                    @onclick="OnShareClick"
-                    disabled="@(!CanFullAccess)"
-                    title="Share this ontology with others">
-                <i class="bi bi-share"></i> Share
-            </button>
-            <button class="btn btn-outline-secondary"
-                    @onclick="OnSettingsClick"
-                    disabled="@(!CanFullAccess)"
-                    title="Edit ontology settings and metadata">
-                <i class="bi bi-gear"></i> Settings
-            </button>
+        <!-- Presence Indicator (Right Side) -->
+        <div class="ms-auto">
+            <PresenceIndicator Users="@PresenceUsers" OnNavigateToUserView="@OnNavigateToUserView" />
         </div>
-
-        <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-success"
-                    @onclick="OnImportClick"
-                    disabled="@(!CanEdit)"
-                    title="Import concepts from TTL file">
-                <i class="bi bi-upload"></i> Import
-            </button>
-            <button class="btn btn-outline-success"
-                    @onclick="OnExportClick"
-                    title="Export ontology to various formats">
-                <i class="bi bi-download"></i> Export
-            </button>
-        </div>
-
-        <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-success"
-                    @onclick="OnAddConceptClick"
-                    disabled="@(!CanAdd)"
-                    title="Add a new concept">
-                <i class="bi bi-plus-circle"></i> Add Concept
-            </button>
-            <button class="btn btn-info"
-                    @onclick="OnAddRelationshipClick"
-                    disabled="@(!CanAdd)"
-                    title="Add a new relationship">
-                <i class="bi bi-arrow-left-right"></i> Add Relationship
-            </button>
-            <button class="btn btn-warning text-dark"
-                    @onclick="OnBulkCreateClick"
-                    disabled="@(!CanAdd)"
-                    title="Create multiple concepts or relationships at once">
-                <i class="bi bi-table"></i> Bulk Create
-            </button>
-        </div>
-
-        <button class="btn btn-sm btn-outline-secondary"
-                @onclick="OnManageConceptsClick"
-                disabled="@(!CanFullAccess)"
-                title="Manage all concepts (Admin only)">
-            <i class="bi bi-list-ul"></i> Manage Concepts
-        </button>
     </div>
 
-    <!-- Presence Indicator (Right Side) -->
-    <div class="ms-auto">
-        <PresenceIndicator Users="@PresenceUsers" OnNavigateToUserView="@OnNavigateToUserView" />
+    <!-- Row 2: Content Creation Actions (closer to content) -->
+    <div class="d-flex gap-2 align-items-center justify-content-between">
+        <div class="d-flex gap-2 align-items-center">
+            <small class="text-muted fw-bold me-2">Quick Actions:</small>
+            <div class="btn-group btn-group-sm" role="group">
+                <button class="btn btn-success"
+                        @onclick="OnAddConceptClick"
+                        disabled="@(!CanAdd)"
+                        title="Add a new concept">
+                    <i class="bi bi-plus-circle"></i> Add Concept
+                </button>
+                <button class="btn btn-info"
+                        @onclick="OnAddRelationshipClick"
+                        disabled="@(!CanAdd)"
+                        title="Add a new relationship">
+                    <i class="bi bi-arrow-left-right"></i> Add Relationship
+                </button>
+                <button class="btn btn-primary"
+                        @onclick="OnLinkOntologyClick"
+                        disabled="@(!CanEdit)"
+                        title="Link another ontology as a virtualized node">
+                    <i class="bi bi-diagram-3"></i> Link Ontology
+                </button>
+                <button class="btn btn-warning text-dark"
+                        @onclick="OnBulkCreateClick"
+                        disabled="@(!CanAdd)"
+                        title="Create multiple concepts or relationships at once">
+                    <i class="bi bi-table"></i> Bulk Create
+                </button>
+            </div>
+
+            <button class="btn btn-sm btn-outline-secondary"
+                    @onclick="OnManageConceptsClick"
+                    disabled="@(!CanFullAccess)"
+                    title="Manage all concepts (Admin only)">
+                <i class="bi bi-list-ul"></i> Manage Concepts
+            </button>
+        </div>
+
+        <!-- Undo/Redo and View Switcher (Right Side) -->
+        <div class="d-flex gap-2 align-items-center">
+            <!-- Undo/Redo Buttons -->
+            <div class="btn-group btn-group-sm" role="group">
+                <button class="btn btn-outline-info"
+                        @onclick="OnUndoClick"
+                        disabled="@(!CanUndo)"
+                        title="Undo (Ctrl+Z)">
+                    <i class="bi bi-arrow-counterclockwise"></i> Undo
+                </button>
+                <button class="btn btn-outline-info"
+                        @onclick="OnRedoClick"
+                        disabled="@(!CanRedo)"
+                        title="Redo (Ctrl+Y)">
+                    <i class="bi bi-arrow-clockwise"></i> Redo
+                </button>
+            </div>
+
+            <!-- View Switcher Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="viewSwitcherDropdown"
+                        data-bs-toggle="dropdown" aria-expanded="false" title="Switch between different views">
+                    <i class="bi bi-grid-3x3-gap"></i> Views
+                </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="viewSwitcherDropdown">
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Graph ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Graph)">
+                    <i class="bi bi-diagram-3 me-2"></i> Graph
+                </button></li>
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.List ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.List)">
+                    <i class="bi bi-list-ul me-2"></i> List
+                </button></li>
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Hierarchy ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Hierarchy)">
+                    <i class="bi bi-diagram-2 me-2"></i> Hierarchy
+                </button></li>
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Instances ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Instances)">
+                    <i class="bi bi-person me-2"></i> Instances
+                </button></li>
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Ttl ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Ttl)">
+                    <i class="bi bi-file-code me-2"></i> TTL
+                </button></li>
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Notes ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)">
+                    <i class="bi bi-journal-text me-2"></i> Notes
+                </button></li>
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Templates ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Templates)">
+                    <i class="bi bi-journal-code me-2"></i> Templates
+                </button></li>
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Links ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Links)">
+                    <i class="bi bi-link-45deg me-2"></i> Links
+                </button></li>
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Collaborators ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Collaborators)">
+                    <i class="bi bi-people-fill me-2"></i> Collaborators
+                </button></li>
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.VersionHistory ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.VersionHistory)">
+                    <i class="bi bi-clock-history me-2"></i> Version History
+                </button></li>
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Help ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Help)">
+                    <i class="bi bi-question-circle me-2"></i> Help
+                </button></li>
+            </ul>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -132,7 +209,28 @@
     public EventCallback OnBulkCreateClick { get; set; }
 
     [Parameter]
+    public EventCallback OnLinkOntologyClick { get; set; }
+
+    [Parameter]
     public EventCallback OnManageConceptsClick { get; set; }
+
+    [Parameter]
+    public ViewMode CurrentViewMode { get; set; }
+
+    [Parameter]
+    public EventCallback<ViewMode> OnViewModeChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnUndoClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnRedoClick { get; set; }
+
+    [Parameter]
+    public bool CanUndo { get; set; }
+
+    [Parameter]
+    public bool CanRedo { get; set; }
 
     [Parameter]
     public EventCallback<string> OnNavigateToUserView { get; set; }

@@ -386,6 +386,7 @@ builder.Services.AddScoped<IRelationshipRepository, RelationshipRepository>();
 builder.Services.AddScoped<IIndividualRepository, IndividualRepository>();
 builder.Services.AddScoped<IRestrictionRepository, RestrictionRepository>();
 builder.Services.AddScoped<ICollaborationPostRepository, CollaborationPostRepository>();
+builder.Services.AddScoped<IOntologyLinkRepository, OntologyLinkRepository>();
 
 // Register Export Strategies (Strategy Pattern)
 builder.Services.AddScoped<IExportStrategy, JsonExportStrategy>();
@@ -414,6 +415,7 @@ builder.Services.AddScoped<HolidayThemeService>();
 builder.Services.AddScoped<IRestrictionService, RestrictionService>();
 builder.Services.AddScoped<IRelationshipSuggestionService, RelationshipSuggestionService>();
 builder.Services.AddScoped<IOntologyValidationService, OntologyValidationService>();
+builder.Services.AddScoped<IOntologyLinkService, OntologyLinkService>();
 
 // Register Import Services (Single Responsibility Principle)
 builder.Services.AddScoped<IRdfParser, RdfParser>();

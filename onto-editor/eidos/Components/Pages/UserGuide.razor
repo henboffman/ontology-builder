@@ -45,6 +45,9 @@
                     <button class="nav-link @(activeSection == "exporting" ? "active" : "")" @onclick='async () => await ScrollToSection("exporting")'>
                         <i class="bi bi-upload"></i> Exporting
                     </button>
+                    <button class="nav-link @(activeSection == "ontology-linking" ? "active" : "")" @onclick='async () => await ScrollToSection("ontology-linking")'>
+                        <i class="bi bi-diagram-3"></i> Ontology Linking
+                    </button>
                     <button class="nav-link @(activeSection == "keyboard-shortcuts" ? "active" : "")" @onclick='async () => await ScrollToSection("keyboard-shortcuts")'>
                         <i class="bi bi-keyboard"></i> Keyboard Shortcuts
                     </button>
@@ -790,6 +793,101 @@
                         <li>Select your desired format</li>
                         <li>Click <strong>Download</strong></li>
                         <li>The file will be saved to your downloads folder</li>
+                    </ol>
+                </section>
+
+                <!-- Ontology Linking -->
+                <section id="ontology-linking" class="doc-section">
+                    <h2><i class="bi bi-diagram-3 text-primary"></i> Ontology Linking</h2>
+
+                    <h3>What is Ontology Linking?</h3>
+                    <p>
+                        Ontology linking allows you to reference and visualize concepts from other ontologies without duplicating data.
+                        It's similar to OWL's <code>owl:imports</code> - you can reuse ontologies and create relationships across them!
+                    </p>
+
+                    <h3>Two Types of Links</h3>
+
+                    <h4>Internal Links</h4>
+                    <p>Link to other ontologies within Eidos that you have permission to view.</p>
+                    <ul>
+                        <li>Real-time updates when source ontology changes</li>
+                        <li>Full access to all concepts and relationships</li>
+                        <li>Respects permission settings</li>
+                    </ul>
+
+                    <h4>External Links</h4>
+                    <p>Link to external ontology URIs (like BFO, Dublin Core, etc.)</p>
+                    <ul>
+                        <li>Reference well-known upper ontologies</li>
+                        <li>Export includes owl:imports declarations</li>
+                        <li>Great for semantic web interoperability</li>
+                    </ul>
+
+                    <h3>How to Link an Ontology</h3>
+                    <ol>
+                        <li>Click <strong>Link Ontology</strong> in the actions bar</li>
+                        <li>Choose <strong>Internal</strong> or <strong>External</strong> link type</li>
+                        <li>
+                            <strong>For Internal:</strong> Select an ontology from the dropdown
+                            <br />
+                            <strong>For External:</strong> Enter the ontology URI (e.g., http://purl.obolibrary.org/obo/bfo.owl)
+                        </li>
+                        <li>Add a display name and optional description</li>
+                        <li>Click <strong>Create Link</strong></li>
+                    </ol>
+
+                    <h3>Viewing Linked Ontologies</h3>
+
+                    <h4>Graph View</h4>
+                    <ul>
+                        <li>Linked ontologies appear as <strong>hexagon nodes</strong> with distinctive styling</li>
+                        <li><strong>Click to expand</strong> and see all concepts from the linked ontology</li>
+                        <li>Virtual concepts also shown as hexagons with source badges</li>
+                        <li>Create relationships between your concepts and virtual concepts</li>
+                        <li>Use "By Source" color mode to color-code by source ontology</li>
+                    </ul>
+
+                    <h4>List View</h4>
+                    <ul>
+                        <li>Toggle <strong>"Show Virtual"</strong> to see concepts from linked ontologies</li>
+                        <li>Virtual items have light blue gradient backgrounds</li>
+                        <li>Source ontology badges show where each concept originates</li>
+                        <li>Nested ontologies shown with indentation</li>
+                    </ul>
+
+                    <h3>Importing Virtual Concepts</h3>
+                    <p>Want to permanently add a virtual concept to your ontology? You can import it!</p>
+
+                    <h4>From List View</h4>
+                    <ol>
+                        <li>Toggle "Show Virtual" on</li>
+                        <li>Find the concept you want to import</li>
+                        <li>Click the <strong>Import</strong> button</li>
+                        <li>The concept and all its properties are copied to your ontology</li>
+                    </ol>
+
+                    <h4>From Graph View</h4>
+                    <ol>
+                        <li>Expand a linked ontology node</li>
+                        <li><kbd>Ctrl</kbd> + <strong>Click</strong> a virtual concept</li>
+                        <li>Select a target concept to create a relationship</li>
+                        <li>The virtual concept is automatically imported!</li>
+                    </ol>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        <strong>Pro Tip:</strong> All property definitions (DataProperty and ObjectProperty) are imported
+                        along with the concept, maintaining the full schema!
+                    </div>
+
+                    <h3>Managing Links</h3>
+                    <p>View and manage your ontology links:</p>
+                    <ol>
+                        <li>Switch to the <strong>Links</strong> view</li>
+                        <li>See all internal and external links</li>
+                        <li>Edit link details or remove links as needed</li>
+                        <li>View statistics about usage of each link</li>
                     </ol>
                 </section>
 

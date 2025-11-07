@@ -131,20 +131,43 @@ public static class OntologyVisibility
 }
 
     /// <summary>
-    /// Represents a link to an external ontology that is referenced/imported
+    /// Represents a link to an ontology - either external (URI-based) or internal (database reference).
+    /// External links reference standard ontologies like BFO, PROV-O.
+    /// Internal links create virtualized nodes that sync with source ontologies.
     /// </summary>
     public class OntologyLink
     {
         public int Id { get; set; }
+
+        /// <summary>
+        /// Parent ontology that contains this link
+        /// </summary>
         public int OntologyId { get; set; }
         public Ontology Ontology { get; set; } = null!;
 
         /// <summary>
-        /// URI/namespace of the linked ontology (e.g., http://purl.obolibrary.org/obo/bfo.owl)
+        /// Type of link: External (URI-based) or Internal (database FK)
         /// </summary>
         [Required]
+        public Enums.LinkType LinkType { get; set; } = Enums.LinkType.External;
+
+        /// <summary>
+        /// URI/namespace of the linked ontology (for External links)
+        /// Example: http://purl.obolibrary.org/obo/bfo.owl
+        /// </summary>
         [StringLength(500)]
-        public string Uri { get; set; } = string.Empty;
+        public string? Uri { get; set; }
+
+        /// <summary>
+        /// ID of the linked ontology in the database (for Internal links)
+        /// Creates a virtualized reference to another user's ontology
+        /// </summary>
+        public int? LinkedOntologyId { get; set; }
+
+        /// <summary>
+        /// Navigation property to the linked ontology (for Internal links)
+        /// </summary>
+        public Ontology? LinkedOntology { get; set; }
 
         /// <summary>
         /// Display name for the linked ontology
@@ -165,16 +188,52 @@ public static class OntologyVisibility
         public string? Description { get; set; }
 
         /// <summary>
+        /// Graph position X coordinate (for Internal links displayed as nodes)
+        /// </summary>
+        public double? PositionX { get; set; }
+
+        /// <summary>
+        /// Graph position Y coordinate (for Internal links displayed as nodes)
+        /// </summary>
+        public double? PositionY { get; set; }
+
+        /// <summary>
+        /// Color for the virtualized node (for Internal links)
+        /// </summary>
+        [StringLength(20)]
+        public string? Color { get; set; }
+
+        /// <summary>
         /// Whether concepts from this ontology were imported
         /// </summary>
         public bool ConceptsImported { get; set; } = false;
 
         /// <summary>
-        /// Number of concepts imported from this ontology
+        /// Number of concepts imported/available from this ontology
         /// </summary>
         public int ImportedConceptCount { get; set; } = 0;
 
+        /// <summary>
+        /// When the link was created
+        /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// When the link metadata was last updated
+        /// </summary>
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// When the linked ontology was last synchronized (for Internal links)
+        /// Used to detect if source ontology has changed
+        /// </summary>
+        public DateTime? LastSyncedAt { get; set; }
+
+        /// <summary>
+        /// Whether the linked ontology has updates available (for Internal links)
+        /// Set to true when source ontology UpdatedAt > LastSyncedAt
+        /// </summary>
+        public bool UpdateAvailable { get; set; } = false;
     }
 
     /// <summary>

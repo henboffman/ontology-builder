@@ -209,11 +209,11 @@ namespace Eidos.Models.ViewState
         /// <param name="concept">The concept to select.</param>
         public void SetSelectedConcept(Concept? concept)
         {
-            Console.WriteLine($"[OntologyViewState] SetSelectedConcept called with: {concept?.Name ?? "null"}, Stack: {Environment.StackTrace.Split('\n').Skip(1).Take(3).Aggregate((a, b) => a + " -> " + b)}");
+            // Console.WriteLine($"[OntologyViewState] SetSelectedConcept called with: {concept?.Name ?? "null"}, Stack: {Environment.StackTrace.Split('\n').Skip(1).Take(3).Aggregate((a, b) => a + " -> " + b)}");
             SelectedConcept = concept;
             SelectedRelationship = null;
             SelectedIndividual = null;
-            Console.WriteLine($"[OntologyViewState] After setting - Concept: {SelectedConcept?.Name ?? "null"}, Relationship: {SelectedRelationship?.RelationType ?? "null"}, Individual: {SelectedIndividual?.Name ?? "null"}");
+            // Console.WriteLine($"[OntologyViewState] After setting - Concept: {SelectedConcept?.Name ?? "null"}, Relationship: {SelectedRelationship?.RelationType ?? "null"}, Individual: {SelectedIndividual?.Name ?? "null"}");
             NotifyStateChanged();
         }
 
@@ -223,11 +223,11 @@ namespace Eidos.Models.ViewState
         /// <param name="relationship">The relationship to select.</param>
         public void SetSelectedRelationship(Relationship? relationship)
         {
-            Console.WriteLine($"[OntologyViewState] SetSelectedRelationship called with: {relationship?.RelationType ?? "null"}, Stack: {Environment.StackTrace.Split('\n').Skip(1).Take(3).Aggregate((a, b) => a + " -> " + b)}");
+            // Console.WriteLine($"[OntologyViewState] SetSelectedRelationship called with: {relationship?.RelationType ?? "null"}, Stack: {Environment.StackTrace.Split('\n').Skip(1).Take(3).Aggregate((a, b) => a + " -> " + b)}");
             SelectedRelationship = relationship;
             SelectedConcept = null;
             SelectedIndividual = null;
-            Console.WriteLine($"[OntologyViewState] After setting - Concept: {SelectedConcept?.Name ?? "null"}, Relationship: {SelectedRelationship?.RelationType ?? "null"}, Individual: {SelectedIndividual?.Name ?? "null"}");
+            // Console.WriteLine($"[OntologyViewState] After setting - Concept: {SelectedConcept?.Name ?? "null"}, Relationship: {SelectedRelationship?.RelationType ?? "null"}, Individual: {SelectedIndividual?.Name ?? "null"}");
             NotifyStateChanged();
         }
 
@@ -341,7 +341,7 @@ namespace Eidos.Models.ViewState
         /// </summary>
         public void NotifyStateChanged()
         {
-            Console.WriteLine($"[OntologyViewState] NotifyStateChanged called - Concept: {SelectedConcept?.Name ?? "null"}, Relationship: {SelectedRelationship?.RelationType ?? "null"}, Individual: {SelectedIndividual?.Name ?? "null"}");
+            // Console.WriteLine($"[OntologyViewState] NotifyStateChanged called - Concept: {SelectedConcept?.Name ?? "null"}, Relationship: {SelectedRelationship?.RelationType ?? "null"}, Individual: {SelectedIndividual?.Name ?? "null"}");
             OnStateChanged?.Invoke();
         }
 

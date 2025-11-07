@@ -1,4 +1,5 @@
 @using Eidos.Models
+@using Eidos.Models.Enums
 @using Eidos.Components.Pages
 
 <div class="card">
@@ -14,15 +15,15 @@
                 Drag nodes to rearrange • Scroll to zoom • Click to select • Ctrl+Click to add relationship • Cmd+Shift+Click to add concept
             </small>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
             @if ((FilteredOntology?.Concepts?.Count ?? 0) > 0)
             {
-                <div class="btn-group" title="Color nodes by custom colors or by source ontology">
-                    <button class="btn btn-sm btn-outline-secondary" @onclick='() => OnColorModeChanged.InvokeAsync("concept")'
+                <div class="btn-group btn-group-sm" title="Color nodes by custom colors or by source ontology">
+                    <button class="btn btn-outline-secondary" @onclick='() => OnColorModeChanged.InvokeAsync("concept")'
                             disabled="@(ColorMode == "concept")" title="Use custom concept colors">
                         <i class="bi bi-palette"></i> By Concept
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" @onclick='() => OnColorModeChanged.InvokeAsync("source")'
+                    <button class="btn btn-outline-secondary" @onclick='() => OnColorModeChanged.InvokeAsync("source")'
                             disabled="@(ColorMode == "source")" title="Color by source ontology (useful for merged ontologies)">
                         <i class="bi bi-folder"></i> By Source
                     </button>
@@ -84,12 +85,15 @@
         {
             <div class="row">
                 <div class="@(ColorMode == "source" ? "col-md-10" : "col-md-12")">
-                    <GraphVisualization Ontology="@FilteredOntology" Height="700px" ColorMode="@ColorMode"
+                    <GraphVisualization Ontology="@FilteredOntology" Height="calc(100vh - 280px)" ColorMode="@ColorMode"
                                       ShowIndividuals="@showIndividuals"
                                       OnNodeCtrlClicked="@OnNodeCtrlClicked"
                                       OnNodeClicked="@OnNodeClicked"
                                       OnEdgeClicked="@OnEdgeClicked"
                                       OnIndividualClicked="@OnIndividualClicked"
+                                      OnOntologyLinkClicked="@OnOntologyLinkClicked"
+                                      OnVirtualConceptClicked="@OnVirtualConceptClicked"
+                                      OnVirtualConceptCtrlClicked="@OnVirtualConceptCtrlClicked"
                                       OnBackgroundCmdShiftClicked="@OnAddConceptClick"
                                       @ref="graphVisualization" />
                 </div>
@@ -150,6 +154,30 @@
 
     [Parameter]
     public EventCallback<int> OnIndividualClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnOntologyLinkClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<(string nodeId, string label)> OnVirtualConceptClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<(string nodeId, string label)> OnVirtualConceptCtrlClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<ViewMode> OnViewModeChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnUndoClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnRedoClick { get; set; }
+
+    [Parameter]
+    public bool CanUndo { get; set; }
+
+    [Parameter]
+    public bool CanRedo { get; set; }
 
     [Parameter]
     public bool CanAdd { get; set; } = true;

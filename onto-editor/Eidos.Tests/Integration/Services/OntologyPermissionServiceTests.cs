@@ -3,22 +3,22 @@ using Xunit;
 using Eidos.Data;
 using Eidos.Models;
 using Eidos.Services;
+using Eidos.Tests.Helpers;
 
 namespace Eidos.Tests.Integration.Services;
 
 public class OntologyPermissionServiceTests : IDisposable
 {
+    private readonly IDbContextFactory<OntologyDbContext> _contextFactory;
     private readonly OntologyDbContext _context;
     private readonly OntologyPermissionService _service;
 
     public OntologyPermissionServiceTests()
     {
-        var options = new DbContextOptionsBuilder<OntologyDbContext>()
-            .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
-            .Options;
-
-        _context = new OntologyDbContext(options);
-        _service = new OntologyPermissionService(_context);
+        var dbName = $"TestDb_{Guid.NewGuid()}";
+        _contextFactory = new TestDbContextFactory(dbName);
+        _context = _contextFactory.CreateDbContext();
+        _service = new OntologyPermissionService(_contextFactory);
     }
 
     public void Dispose()
@@ -522,8 +522,9 @@ public class OntologyPermissionServiceTests : IDisposable
         // Act
         await _service.GrantGroupAccessAsync(ontology.Id, group.Id, PermissionLevels.Admin, "owner");
 
-        // Assert
-        var updatedPermission = await _context.OntologyGroupPermissions
+        // Assert - Create fresh context to see changes made by service
+        using var freshContext = _contextFactory.CreateDbContext();
+        var updatedPermission = await freshContext.OntologyGroupPermissions
             .FirstOrDefaultAsync(p => p.OntologyId == ontology.Id && p.UserGroupId == group.Id);
 
         Assert.NotNull(updatedPermission);
@@ -644,8 +645,9 @@ public class OntologyPermissionServiceTests : IDisposable
         await Task.Delay(10); // Ensure time difference
         await _service.UpdateVisibilityAsync(ontology.Id, OntologyVisibility.Public, true);
 
-        // Assert
-        var updated = await _context.Ontologies.FindAsync(ontology.Id);
+        // Assert - Create fresh context to see changes made by service
+        using var freshContext = _contextFactory.CreateDbContext();
+        var updated = await freshContext.Ontologies.FindAsync(ontology.Id);
         Assert.NotNull(updated);
         Assert.Equal(OntologyVisibility.Public, updated.Visibility);
         Assert.True(updated.AllowPublicEdit);

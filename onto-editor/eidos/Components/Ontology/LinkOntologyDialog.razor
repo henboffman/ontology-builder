@@ -1,0 +1,268 @@
+@using Eidos.Models
+@using Eidos.Services.Interfaces
+@using Eidos.Services
+@inject IOntologyLinkService LinkService
+@inject IOntologyService OntologyService
+@inject IUserService UserService
+@inject ToastService ToastService
+
+@if (IsVisible)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-diagram-3"></i> Link Ontology
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="Hide" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading available ontologies...</p>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle"></i> @errorMessage
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Search Ontologies</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text"
+                                       class="form-control"
+                                       placeholder="Search by name or description..."
+                                       @bind="searchQuery"
+                                       @bind:event="oninput"
+                                       @onkeyup="FilterOntologies" />
+                            </div>
+                        </div>
+
+                        @if (!availableOntologies.Any())
+                        {
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> No ontologies available to link.
+                                You need view permission on other ontologies to link them.
+                            </div>
+                        }
+                        else if (!filteredOntologies.Any())
+                        {
+                            <div class="alert alert-warning">
+                                <i class="bi bi-search"></i> No ontologies match your search.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    Available Ontologies (@filteredOntologies.Count)
+                                </label>
+                                <div class="list-group" style="max-height: 400px; overflow-y: auto;">
+                                    @foreach (var ontology in filteredOntologies)
+                                    {
+                                        <button type="button"
+                                                class="list-group-item list-group-item-action @(selectedOntology?.Id == ontology.Id ? "active" : "")"
+                                                @onclick="() => SelectOntology(ontology)">
+                                            <div class="d-flex w-100 justify-content-between align-items-start">
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-1">
+                                                        <i class="bi bi-diagram-3"></i> @ontology.Name
+                                                    </h6>
+                                                    @if (!string.IsNullOrEmpty(ontology.Description))
+                                                    {
+                                                        <p class="mb-1 small">@ontology.Description</p>
+                                                    }
+                                                    <small class="text-muted">
+                                                        @ontology.ConceptCount concept@(ontology.ConceptCount != 1 ? "s" : ""),
+                                                        @ontology.RelationshipCount relationship@(ontology.RelationshipCount != 1 ? "s" : "")
+                                                    </small>
+                                                </div>
+                                                @if (selectedOntology?.Id == ontology.Id)
+                                                {
+                                                    <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                                                }
+                                            </div>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+
+                            @if (selectedOntology != null)
+                            {
+                                <div class="alert alert-info">
+                                    <strong>Selected:</strong> @selectedOntology.Name
+                                    <br />
+                                    <small>This will create a virtualized node that syncs with the source ontology.</small>
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Hide">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </button>
+                    <button type="button"
+                            class="btn btn-primary"
+                            @onclick="LinkSelectedOntology"
+                            disabled="@(selectedOntology == null || isLinking)">
+                        @if (isLinking)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Linking...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-link-45deg"></i>
+                            <span>Link Ontology</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter]
+    public int CurrentOntologyId { get; set; }
+
+    [Parameter]
+    public EventCallback OnOntologyLinked { get; set; }
+
+    private bool IsVisible = false;
+    private bool isLoading = false;
+    private bool isLinking = false;
+    private string searchQuery = string.Empty;
+    private string? errorMessage = null;
+
+    private List<Ontology> availableOntologies = new();
+    private List<Ontology> filteredOntologies = new();
+    private Ontology? selectedOntology = null;
+
+    public async Task ShowAsync()
+    {
+        IsVisible = true;
+        errorMessage = null;
+        searchQuery = string.Empty;
+        selectedOntology = null;
+        isLoading = true;
+
+        StateHasChanged();
+
+        try
+        {
+            var currentUser = await UserService.GetCurrentUserAsync();
+            if (currentUser == null)
+            {
+                errorMessage = "You must be logged in to link ontologies";
+                return;
+            }
+
+            // Get available ontologies (excludes current, already linked, and those that would create cycles)
+            availableOntologies = (await LinkService.GetAvailableOntologiesForLinkingAsync(
+                CurrentOntologyId,
+                currentUser.Id)).ToList();
+
+            filteredOntologies = availableOntologies;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading ontologies: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    public void Hide()
+    {
+        IsVisible = false;
+        selectedOntology = null;
+        searchQuery = string.Empty;
+        StateHasChanged();
+    }
+
+    private void SelectOntology(Ontology ontology)
+    {
+        selectedOntology = ontology;
+        StateHasChanged();
+    }
+
+    private void FilterOntologies()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredOntologies = availableOntologies;
+        }
+        else
+        {
+            var query = searchQuery.ToLower();
+            filteredOntologies = availableOntologies
+                .Where(o =>
+                    o.Name.ToLower().Contains(query) ||
+                    (o.Description != null && o.Description.ToLower().Contains(query)))
+                .ToList();
+        }
+        StateHasChanged();
+    }
+
+    private async Task LinkSelectedOntology()
+    {
+        if (selectedOntology == null || isLinking)
+            return;
+
+        isLinking = true;
+        StateHasChanged();
+
+        try
+        {
+            var currentUser = await UserService.GetCurrentUserAsync();
+            if (currentUser == null)
+            {
+                ToastService.ShowError("You must be logged in");
+                return;
+            }
+
+            var result = await LinkService.CreateInternalLinkAsync(
+                CurrentOntologyId,
+                selectedOntology.Id,
+                currentUser.Id);
+
+            if (result.Success)
+            {
+                ToastService.ShowSuccess($"Successfully linked {selectedOntology.Name}");
+                Hide();
+                await OnOntologyLinked.InvokeAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result.ErrorMessage ?? "Failed to link ontology");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            isLinking = false;
+            StateHasChanged();
+        }
+    }
+}
