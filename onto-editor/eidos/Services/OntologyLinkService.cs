@@ -502,4 +502,26 @@ public class OntologyLinkService : IOntologyLinkService
             return Enumerable.Empty<Ontology>();
         }
     }
+
+    /// <summary>
+    /// Updates the position of an ontology link node in the graph.
+    /// This method is lightweight and doesn't trigger activity tracking.
+    /// </summary>
+    /// <param name="linkId">The ontology link ID</param>
+    /// <param name="x">X coordinate</param>
+    /// <param name="y">Y coordinate</param>
+    public async Task UpdatePositionAsync(int linkId, double x, double y)
+    {
+        var link = await _linkRepository.GetByIdAsync(linkId);
+        if (link == null)
+        {
+            _logger.LogWarning("OntologyLink {LinkId} not found for position update", linkId);
+            throw new InvalidOperationException($"OntologyLink {linkId} not found");
+        }
+
+        link.PositionX = x;
+        link.PositionY = y;
+
+        await _linkRepository.UpdateAsync(link);
+    }
 }

@@ -1,0 +1,332 @@
+@using Eidos.Models
+@using Eidos.Services
+@inject GlobalSearchService SearchService
+@inject NavigationManager Navigation
+
+@if (IsVisible)
+{
+    <div class="global-search-backdrop" @onclick="Hide">
+        <div class="global-search-container" @onclick:stopPropagation="true" @onkeydown="HandleKeyDown">
+            <div class="global-search-input-container">
+                <i class="bi bi-search"></i>
+                <input type="text"
+                       class="global-search-input"
+                       placeholder="Search or type a command..."
+                       @bind="searchQuery"
+                       @bind:event="oninput"
+                       @bind:after="OnSearchQueryChanged"
+                       @ref="searchInput"
+                       autofocus />
+                @if (!string.IsNullOrWhiteSpace(searchQuery))
+                {
+                    <button class="global-search-clear" @onclick="ClearSearch" title="Clear">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                }
+            </div>
+
+            @if (results != null && results.TotalCount > 0)
+            {
+                <div class="global-search-results">
+                    @if (results.Actions.Any())
+                    {
+                        <div class="global-search-group">
+                            <div class="global-search-group-header">
+                                <i class="bi bi-lightning-charge"></i> Actions (@results.Actions.Count)
+                            </div>
+                            @foreach (var result in results.Actions)
+                            {
+                                var index = allResults.IndexOf(result);
+                                <div class="global-search-result @(selectedIndex == index ? "selected" : "")"
+                                     @onclick="() => ExecuteAction(result)"
+                                     @onmouseenter="() => selectedIndex = index">
+                                    <div class="global-search-result-icon">
+                                        <i class="@result.Icon"></i>
+                                    </div>
+                                    <div class="global-search-result-content">
+                                        <div class="global-search-result-title">@result.Title</div>
+                                        <div class="global-search-result-subtitle">@result.Subtitle</div>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(result.Shortcut))
+                                    {
+                                        <div class="global-search-result-shortcut">
+                                            <kbd>@result.Shortcut</kbd>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (results.Concepts.Any())
+                    {
+                        <div class="global-search-group">
+                            <div class="global-search-group-header">
+                                <i class="bi bi-diagram-3"></i> Concepts (@results.Concepts.Count)
+                            </div>
+                            @foreach (var result in results.Concepts)
+                            {
+                                var index = allResults.IndexOf(result);
+                                <div class="global-search-result @(selectedIndex == index ? "selected" : "")"
+                                     @onclick="() => NavigateToResult(result)"
+                                     @onmouseenter="() => selectedIndex = index">
+                                    <div class="global-search-result-icon">
+                                        <i class="@result.Icon"></i>
+                                    </div>
+                                    <div class="global-search-result-content">
+                                        <div class="global-search-result-title">@result.Title</div>
+                                        <div class="global-search-result-subtitle">@result.Subtitle</div>
+                                    </div>
+                                    <div class="global-search-result-badge">@result.MatchedText</div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (results.Relationships.Any())
+                    {
+                        <div class="global-search-group">
+                            <div class="global-search-group-header">
+                                <i class="bi bi-arrow-left-right"></i> Relationships (@results.Relationships.Count)
+                            </div>
+                            @foreach (var result in results.Relationships)
+                            {
+                                var index = allResults.IndexOf(result);
+                                <div class="global-search-result @(selectedIndex == index ? "selected" : "")"
+                                     @onclick="() => NavigateToResult(result)"
+                                     @onmouseenter="() => selectedIndex = index">
+                                    <div class="global-search-result-icon">
+                                        <i class="@result.Icon"></i>
+                                    </div>
+                                    <div class="global-search-result-content">
+                                        <div class="global-search-result-title">@result.Title</div>
+                                        <div class="global-search-result-subtitle">@result.Subtitle</div>
+                                    </div>
+                                    <div class="global-search-result-badge">@result.MatchedText</div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (results.Individuals.Any())
+                    {
+                        <div class="global-search-group">
+                            <div class="global-search-group-header">
+                                <i class="bi bi-person-fill"></i> Individuals (@results.Individuals.Count)
+                            </div>
+                            @foreach (var result in results.Individuals)
+                            {
+                                var index = allResults.IndexOf(result);
+                                <div class="global-search-result @(selectedIndex == index ? "selected" : "")"
+                                     @onclick="() => NavigateToResult(result)"
+                                     @onmouseenter="() => selectedIndex = index">
+                                    <div class="global-search-result-icon">
+                                        <i class="@result.Icon"></i>
+                                    </div>
+                                    <div class="global-search-result-content">
+                                        <div class="global-search-result-title">@result.Title</div>
+                                        <div class="global-search-result-subtitle">@result.Subtitle</div>
+                                    </div>
+                                    <div class="global-search-result-badge">@result.MatchedText</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                <div class="global-search-no-results">
+                    <i class="bi bi-inbox"></i>
+                    <p>No results found for "@searchQuery"</p>
+                </div>
+            }
+            else
+            {
+                <div class="global-search-no-results">
+                    <i class="bi bi-lightning-charge"></i>
+                    <p class="mb-3"><strong>Command Palette</strong></p>
+                    <div class="global-search-help">
+                        <p class="small text-start mb-2">Type to search or execute:</p>
+                        <ul class="list-unstyled small text-start text-muted">
+                            <li><i class="bi bi-diagram-3"></i> Concepts & Relationships</li>
+                            <li><i class="bi bi-person-fill"></i> Individuals</li>
+                            <li><i class="bi bi-lightning-charge"></i> Actions (add, export, import, settings...)</li>
+                        </ul>
+                        <p class="small text-muted mt-3 mb-0">
+                            Try: <kbd class="small">create</kbd> <kbd class="small">export</kbd> <kbd class="small">theme</kbd>
+                        </p>
+                    </div>
+                </div>
+            }
+
+            <div class="global-search-footer">
+                <div class="global-search-shortcuts">
+                    <kbd>↑↓</kbd> Navigate
+                    <kbd>Enter</kbd> Select
+                    <kbd>Esc</kbd> Close
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter(Name = "Ontology")]
+    public Models.Ontology? Ontology { get; set; }
+
+    [Parameter]
+    public EventCallback<SearchResult> OnResultSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnActionExecuted { get; set; }
+
+    private bool IsVisible { get; set; }
+    private string searchQuery = string.Empty;
+    private SearchResults? results;
+    private List<SearchResult> allResults = new();
+    private int selectedIndex = 0;
+    private ElementReference searchInput;
+    private System.Timers.Timer? debounceTimer;
+
+    public void Show()
+    {
+        IsVisible = true;
+        searchQuery = string.Empty;
+        results = null;
+        allResults = new();
+        selectedIndex = 0;
+        StateHasChanged();
+
+        // Focus input after render
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(100);
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    await searchInput.FocusAsync();
+                }
+                catch { /* Ignore focus errors */ }
+            });
+        });
+    }
+
+    public void Hide()
+    {
+        IsVisible = false;
+        searchQuery = string.Empty;
+        results = null;
+        StateHasChanged();
+
+        // Notify parent to restore focus
+        OnHide.InvokeAsync();
+    }
+
+    [Parameter]
+    public EventCallback OnHide { get; set; }
+
+    private void OnSearchQueryChanged()
+    {
+        // Debounce search
+        debounceTimer?.Stop();
+        debounceTimer?.Dispose();
+
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            results = null;
+            allResults = new();
+            selectedIndex = 0;
+            return;
+        }
+
+        debounceTimer = new System.Timers.Timer(300); // 300ms debounce
+        debounceTimer.Elapsed += async (sender, e) =>
+        {
+            await InvokeAsync(PerformSearch);
+            debounceTimer?.Dispose();
+        };
+        debounceTimer.AutoReset = false;
+        debounceTimer.Start();
+    }
+
+    private void PerformSearch()
+    {
+        if (Ontology == null || string.IsNullOrWhiteSpace(searchQuery))
+        {
+            results = null;
+            allResults = new();
+            selectedIndex = 0;
+            return;
+        }
+
+        results = SearchService.Search(Ontology, searchQuery);
+        allResults = results.All();
+        selectedIndex = 0;
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = string.Empty;
+        results = null;
+        allResults = new();
+        selectedIndex = 0;
+    }
+
+    private async Task NavigateToResult(SearchResult result)
+    {
+        await OnResultSelected.InvokeAsync(result);
+        Hide();
+    }
+
+    private async Task ExecuteAction(SearchResult result)
+    {
+        if (!string.IsNullOrWhiteSpace(result.ActionId))
+        {
+            await OnActionExecuted.InvokeAsync(result.ActionId);
+            Hide();
+        }
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Hide();
+            return;
+        }
+
+        if (allResults.Count == 0)
+            return;
+
+        if (e.Key == "ArrowDown")
+        {
+            selectedIndex = (selectedIndex + 1) % allResults.Count;
+            StateHasChanged();
+        }
+        else if (e.Key == "ArrowUp")
+        {
+            selectedIndex = (selectedIndex - 1 + allResults.Count) % allResults.Count;
+            StateHasChanged();
+        }
+        else if (e.Key == "Enter" && selectedIndex >= 0 && selectedIndex < allResults.Count)
+        {
+            var selected = allResults[selectedIndex];
+            if (selected.Type == "Action")
+            {
+                _ = ExecuteAction(selected);
+            }
+            else
+            {
+                _ = NavigateToResult(selected);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        debounceTimer?.Dispose();
+    }
+}

@@ -12,6 +12,7 @@ public interface IOntologyService
     Task<Ontology> CreateOntologyAsync(Ontology ontology);
     Task<Ontology> UpdateOntologyAsync(Ontology ontology);
     Task DeleteOntologyAsync(int id);
+    Task PropagateNamespaceChangeAsync(int ontologyId, string oldNamespace, string newNamespace);
 
     // Concept operations
     Task<Concept> CreateConceptAsync(Concept concept, bool recordUndo = true);

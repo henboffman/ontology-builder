@@ -435,6 +435,8 @@ builder.Services.AddScoped<SecurityEventLogger>();
 // Register UI Services (scoped per circuit to prevent cross-client issues)
 builder.Services.AddScoped<ConfirmService>();
 builder.Services.AddScoped<ToastService>();
+builder.Services.AddScoped<GlobalSearchService>();
+builder.Services.AddScoped<RecentItemsService>();
 
 // Keep legacy services for backward compatibility (will be removed in Phase 2)
 builder.Services.AddScoped<JsonExportService>();

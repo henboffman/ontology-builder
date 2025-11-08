@@ -4,7 +4,7 @@
 
 <PageTitle>Features - Eidos</PageTitle>
 <HeadContent>
-    <meta name="description" content="Eidos features professional ontology management with secure authentication, real-time collaboration, multiple view modes, and comprehensive import/export capabilities for knowledge modeling." />
+    <meta name="description" content="Eidos features professional ontology management with OWL 2 compliance, global search, automatic validation, secure authentication, real-time collaboration, persistent layouts, and comprehensive import/export for semantic knowledge modeling." />
 </HeadContent>
 
 <div class="container-fluid py-4">
@@ -23,7 +23,7 @@
                     <div class="card border-primary h-100">
                         <div class="card-body text-center">
                             <i class="bi bi-diagram-3 fs-1 text-primary mb-2"></i>
-                            <h3 class="h5 mb-1">11 View Modes</h3>
+                            <h3 class="h5 mb-1">Multiple Views</h3>
                             <p class="text-muted small mb-0">Visualize your way</p>
                         </div>
                     </div>
@@ -90,11 +90,12 @@
                                     </h5>
                                     <ul class="list-unstyled ms-4">
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>Comprehensive metadata</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Visual graph positioning</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Visual graph positioning with persistence</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Custom color selection (persistent)</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>Custom templates</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>BFO-aligned templates</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>Quick duplication</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Advanced search</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>OWL Property schemas (DataProperty & ObjectProperty)</li>
                                     </ul>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -114,11 +115,36 @@
                                         <i class="bi bi-eye me-2"></i>Multiple View Modes
                                     </h5>
                                     <ul class="list-unstyled ms-4">
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Graph View (D3.js force-directed)</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>List View (tabular with search)</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Graph View (Interactive Cytoscape.js)</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>List View (Tabbed with validation)</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>TTL View (Turtle export)</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>Notes View (Markdown)</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>Templates View</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>View state persistence</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <h5 class="text-primary">
+                                        <i class="bi bi-person-fill me-2"></i>Individuals & Instances
+                                    </h5>
+                                    <ul class="list-unstyled ms-4">
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Create instances of concepts</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Property values on individuals</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Relationships between individuals</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Visual display in graph view</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Toggle show/hide individuals</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <h5 class="text-primary">
+                                        <i class="bi bi-shield-exclamation me-2"></i>Restrictions & Constraints
+                                    </h5>
+                                    <ul class="list-unstyled ms-4">
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>OWL restriction support</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Property cardinality constraints</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Value restrictions</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Existential and universal quantifiers</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>TTL export with restrictions</li>
                                     </ul>
                                 </div>
                             </div>
@@ -279,6 +305,47 @@
                     </div>
                 </div>
 
+                <!-- Search & Discovery -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#searchDiscovery">
+                            <i class="bi bi-search me-2 text-info"></i>
+                            <strong>Search & Discovery</strong>
+                        </button>
+                    </h2>
+                    <div id="searchDiscovery" class="accordion-collapse collapse" data-bs-parent="#featuresAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <h5 class="text-info">
+                                        <i class="bi bi-lightning me-2"></i>Global Search (Spotlight-Style)
+                                    </h5>
+                                    <ul class="list-unstyled ms-4">
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Universal search across all entity types</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Keyboard shortcut (Cmd+Shift+Space)</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Real-time results with 300ms debounce</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Full keyboard navigation</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Grouped results by entity type</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Smart navigation to selected items</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <h5 class="text-info">
+                                        <i class="bi bi-check2-square me-2"></i>Automatic Validation
+                                    </h5>
+                                    <ul class="list-unstyled ms-4">
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Real-time ontology issue detection</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Validation panel with categorized issues</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Empty concepts and relationships alerts</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Data quality warnings</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>One-click navigation to issues</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Data Management -->
                 <div class="accordion-item">
                     <h2 class="accordion-header">
@@ -307,11 +374,52 @@
                                         <i class="bi bi-download me-2"></i>Import/Export (5 Formats)
                                     </h5>
                                     <ul class="list-unstyled ms-4">
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>TTL (Turtle) - Standard RDF</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>JSON - Structured data</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>TTL (Turtle) - Full OWL 2 compliance</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>JSON - Complete property schemas</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>CSV - Concepts</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>CSV - Relationships</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>CSV - Full ontology</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Property definitions in exports</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Experience -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#userExperience">
+                            <i class="bi bi-palette me-2 text-purple"></i>
+                            <strong>User Experience & Customization</strong>
+                        </button>
+                    </h2>
+                    <div id="userExperience" class="accordion-collapse collapse" data-bs-parent="#featuresAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <h5 class="text-purple">
+                                        <i class="bi bi-gear me-2"></i>User Preferences
+                                    </h5>
+                                    <ul class="list-unstyled ms-4">
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Persistent user settings</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Dark mode support</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Theme customization</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Default view preferences</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Notification settings</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <h5 class="text-purple">
+                                        <i class="bi bi-display me-2"></i>Visual Customization
+                                    </h5>
+                                    <ul class="list-unstyled ms-4">
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Persistent concept colors</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Saved node positions in graph</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>View state preservation</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Customizable graph layouts</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Smooth transitions and animations</li>
                                     </ul>
                                 </div>
                             </div>
@@ -337,9 +445,10 @@
                                     <ul class="list-unstyled ms-4">
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>RDF - Resource Description Framework</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>RDFS - RDF Schema</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>OWL - Web Ontology Language</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>OWL 2 - Web Ontology Language</li>
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>Turtle (TTL) - RDF serialization</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Standard URIs</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>DataProperty & ObjectProperty support</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Standard URIs and namespaces</li>
                                     </ul>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -375,16 +484,20 @@
             <!-- Why Choose Eidos -->
             <div class="alert alert-primary mt-5" role="alert">
                 <h4 class="alert-heading">
-                    <i class="bi bi-rocket-takeoff me-2"></i>Reliable & Secure
+                    <i class="bi bi-rocket-takeoff me-2"></i>Professional & Feature-Rich
                 </h4>
-                <p>Eidos is designed for professional use with attention to quality and user experience:</p>
+                <p>Eidos is designed for professional ontology development with attention to quality, usability, and semantic standards:</p>
                 <hr>
                 <ul class="mb-0">
                     <li><strong>Secure by default</strong> - Industry-standard OAuth 2.0 authentication with multiple providers, role-based access control, and comprehensive security auditing</li>
+                    <li><strong>OWL 2 compliant</strong> - Full support for DataProperty, ObjectProperty, restrictions, and Protégé-compatible exports</li>
+                    <li><strong>Powerful search</strong> - Spotlight-style global search with keyboard shortcuts for instant entity discovery</li>
+                    <li><strong>Smart validation</strong> - Real-time ontology issue detection with automatic validation panel</li>
+                    <li><strong>Persistent customization</strong> - Save node positions, concept colors, and view preferences for consistency</li>
                     <li><strong>Accessible to everyone</strong> - WCAG 2.1 compliant with full keyboard navigation and screen reader support</li>
-                    <li><strong>Flexible visualization</strong> - Multiple view modes, real-time collaboration, and responsive design for any device</li>
-                    <li><strong>Standards compliant</strong> - Follows W3C, OWASP security recommendations, and established ontology standards</li>
-                    <li><strong>Thoroughly tested</strong> - Comprehensive quality assurance ensures reliable performance</li>
+                    <li><strong>Real-time collaboration</strong> - Multiple users can edit simultaneously with presence tracking</li>
+                    <li><strong>Standards compliant</strong> - Follows W3C, OWASP, BFO, and RO ontology standards</li>
+                    <li><strong>Thoroughly tested</strong> - 157+ passing tests ensure reliable performance</li>
                 </ul>
             </div>
 

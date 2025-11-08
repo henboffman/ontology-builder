@@ -15,7 +15,10 @@
     <div id="@PanelId"
          class="floating-panel size-@Size.ToString().ToLower() @(IsVisible ? "visible" : "")"
          @ref="panelElement"
-         @onkeydown="HandleKeyDown">
+         tabindex="-1"
+         @onkeydown="HandleKeyDown"
+         @onkeydown:preventDefault="false"
+         @onkeydown:stopPropagation="false">
 
         @* Header (Drag Handle) *@
         <div class="floating-panel-header">
@@ -63,6 +66,7 @@
     private ElementReference panelElement;
     private string PanelId { get; set; } = "";
     private bool isInitialized = false;
+    private bool hasFocused = false;
 
     public enum PanelSize { Compact, Standard, Expanded }
 
@@ -74,9 +78,23 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (IsVisible && IsDraggable)
+        if (IsVisible)
         {
-            if (!isInitialized)
+            // Focus the panel so it can receive keyboard events (only once when first shown)
+            if (!hasFocused)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("eval", $"document.getElementById('{PanelId}')?.focus()");
+                    hasFocused = true;
+                }
+                catch (Exception)
+                {
+                    // Focus failed, panel may not be rendered yet
+                }
+            }
+
+            if (IsDraggable && !isInitialized)
             {
                 try
                 {
@@ -96,6 +114,7 @@
             {
                 await JS.InvokeVoidAsync("destroyFloatingPanel", PanelId);
                 isInitialized = false;
+                hasFocused = false; // Reset so it will focus again when reopened
             }
             catch (Exception)
             {

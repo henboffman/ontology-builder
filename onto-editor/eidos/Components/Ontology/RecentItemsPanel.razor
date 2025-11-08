@@ -1,0 +1,97 @@
+@using Eidos.Services
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-light">
+        <h6 class="mb-0 d-flex align-items-center">
+            <i class="bi bi-clock-history me-2"></i>
+            Recent Items
+        </h6>
+    </div>
+    <div class="card-body p-2">
+        @if (RecentItems == null || !RecentItems.Any())
+        {
+            <div class="text-muted small fst-italic text-center p-2">
+                No recent items
+            </div>
+        }
+        else
+        {
+            <div class="recent-items-list">
+                @foreach (var item in RecentItems)
+                {
+                    <button class="btn btn-sm btn-outline-secondary text-start w-100 mb-1 recent-item-button"
+                            @onclick="() => OnItemSelected.InvokeAsync(item)"
+                            title="@item.Subtitle">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="@item.Icon mt-1" style="font-size: 0.875rem;"></i>
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="text-truncate fw-semibold" style="font-size: 0.813rem;">
+                                    @item.Name
+                                </div>
+                                <div class="text-muted text-truncate" style="font-size: 0.688rem;">
+                                    @item.Subtitle
+                                </div>
+                            </div>
+                        </div>
+                    </button>
+                }
+            </div>
+
+            @if (RecentItems.Count > 3)
+            {
+                <button class="btn btn-sm btn-link text-muted w-100 mt-1 p-0"
+                        @onclick="OnClearRecent"
+                        style="font-size: 0.688rem;">
+                    <i class="bi bi-x-circle me-1"></i>Clear recent items
+                </button>
+            }
+        }
+    </div>
+</div>
+
+<style>
+    .recent-item-button {
+        transition: all 0.15s ease-in-out;
+        border-color: var(--bs-border-color);
+    }
+
+    .recent-item-button:hover {
+        background-color: var(--bs-secondary-bg);
+        border-color: var(--bs-secondary);
+        transform: translateX(2px);
+    }
+
+    .recent-items-list {
+        max-height: 250px;
+        overflow-y: auto;
+    }
+
+    /* Scrollbar styling for recent items */
+    .recent-items-list::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .recent-items-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .recent-items-list::-webkit-scrollbar-thumb {
+        background: var(--bs-border-color);
+        border-radius: 2px;
+    }
+
+    .recent-items-list::-webkit-scrollbar-thumb:hover {
+        background: var(--bs-secondary);
+    }
+</style>
+
+@code {
+    [Parameter]
+    public List<RecentItem>? RecentItems { get; set; }
+
+    [Parameter]
+    public EventCallback<RecentItem> OnItemSelected { get; set; }
+
+    [Parameter]
+    public EventCallback OnClearRecent { get; set; }
+}

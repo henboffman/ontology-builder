@@ -1,0 +1,167 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<div class="inline-editable @(isEditing ? "editing" : "") @CssClass"
+     @ondblclick="StartEdit"
+     @onclick:stopPropagation="true">
+    @if (isEditing)
+    {
+        <div class="inline-edit-container">
+            <input type="text"
+                   class="inline-editable-input"
+                   @ref="inputElement"
+                   @bind="editValue"
+                   @bind:event="oninput"
+                   @onkeydown="HandleKeyDown"
+                   @onblur="HandleBlur"
+                   placeholder="@Placeholder"
+                   maxlength="@MaxLength"
+                   disabled="@isSaving" />
+
+            @if (isSaving)
+            {
+                <span class="inline-edit-spinner spinner-border spinner-border-sm ms-2" role="status"></span>
+            }
+        </div>
+    }
+    else
+    {
+        <span class="inline-editable-text">
+            @if (string.IsNullOrWhiteSpace(Value))
+            {
+                <em class="text-muted">@Placeholder</em>
+            }
+            else
+            {
+                @Value
+            }
+        </span>
+        @if (CanEdit && !string.IsNullOrWhiteSpace(Value))
+        {
+            <i class="bi bi-pencil-fill inline-edit-icon"></i>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> OnSave { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Enter text...";
+    [Parameter] public int MaxLength { get; set; } = 200;
+    [Parameter] public bool CanEdit { get; set; } = true;
+    [Parameter] public string CssClass { get; set; } = "";
+
+    private bool isEditing = false;
+    private bool isSaving = false;
+    private string editValue = "";
+    private string originalValue = "";
+    private ElementReference inputElement;
+
+    protected override void OnParametersSet()
+    {
+        if (!isEditing)
+        {
+            originalValue = Value ?? "";
+            editValue = Value ?? "";
+        }
+    }
+
+    private async Task StartEdit()
+    {
+        if (!CanEdit || isEditing || isSaving)
+            return;
+
+        isEditing = true;
+        editValue = Value ?? "";
+        originalValue = Value ?? "";
+        StateHasChanged();
+
+        // Focus and select the input
+        await Task.Delay(50); // Small delay to ensure DOM is updated
+        try
+        {
+            await JS.InvokeVoidAsync("eval", $"document.querySelector('.inline-editable.editing input')?.select()");
+        }
+        catch
+        {
+            // Focus failed, not critical
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveEdit();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelEdit();
+        }
+    }
+
+    private async Task HandleBlur()
+    {
+        // Small delay to allow click events on buttons to fire first
+        await Task.Delay(150);
+
+        if (isEditing && !isSaving)
+        {
+            await SaveEdit();
+        }
+    }
+
+    private async Task SaveEdit()
+    {
+        if (isSaving)
+            return;
+
+        // Trim whitespace
+        editValue = editValue?.Trim() ?? "";
+
+        // No change, just cancel
+        if (editValue == originalValue)
+        {
+            CancelEdit();
+            return;
+        }
+
+        // Validation
+        if (string.IsNullOrWhiteSpace(editValue))
+        {
+            // Revert to original if empty
+            editValue = originalValue;
+            CancelEdit();
+            return;
+        }
+
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            await OnSave.InvokeAsync(editValue);
+
+            // Success - update original value and exit edit mode
+            originalValue = editValue;
+            isEditing = false;
+        }
+        catch
+        {
+            // On error, revert to original value
+            editValue = originalValue;
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CancelEdit()
+    {
+        editValue = originalValue;
+        isEditing = false;
+        StateHasChanged();
+    }
+}

@@ -258,6 +258,20 @@
     }
 
     /// <summary>
+    /// Zooms to and highlights a specific concept in the graph.
+    /// </summary>
+    /// <param name="conceptId">The ID of the concept to zoom to</param>
+    /// <returns>True if the concept was found and zoomed to, false otherwise</returns>
+    public async Task<bool> ZoomToConcept(int conceptId)
+    {
+        if (graphView != null)
+        {
+            return await graphView.ZoomToConcept(conceptId);
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Lifecycle hook that subscribes to state change events.
     /// </summary>
     protected override void OnInitialized()

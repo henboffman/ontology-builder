@@ -10,10 +10,11 @@ Complete guide to using the Ontology Builder application.
 4. [Working with Concepts](#working-with-concepts)
 5. [Managing Relationships](#managing-relationships)
 6. [View Modes](#view-modes)
-7. [Importing and Exporting](#importing-and-exporting)
-8. [Keyboard Shortcuts](#keyboard-shortcuts)
-9. [Tips and Best Practices](#tips-and-best-practices)
-10. [Troubleshooting](#troubleshooting)
+7. [Global Search](#global-search)
+8. [Importing and Exporting](#importing-and-exporting)
+9. [Keyboard Shortcuts](#keyboard-shortcuts)
+10. [Tips and Best Practices](#tips-and-best-practices)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -267,6 +268,66 @@ Features:
 
 ---
 
+## Global Search
+
+**Quickly find anything in your ontology with the Global Search feature.**
+
+### Opening Global Search
+
+Press **`Cmd+Shift+Space`** (Mac) or **`Ctrl+Shift+Space`** (Windows/Linux) from any view to open the search dialog.
+
+### What Can You Search?
+
+Global Search searches across **all entities** in your ontology:
+
+- **Concepts**: Name, definition, explanation, examples, category
+- **Relationships**: Relationship type, description
+- **Individuals**: Name, label, description
+
+### Using Global Search
+
+1. **Open the search**: Press `Cmd+Shift+Space` (or `Ctrl+Shift+Space`)
+2. **Start typing**: Results appear instantly as you type
+3. **Navigate results**: Use `↑` and `↓` arrow keys to move between results
+4. **Select a result**: Press `Enter` or click to jump to the item
+5. **Close the search**: Press `Esc` or click outside the dialog
+
+### Features
+
+- **Real-time search**: Results update as you type (with 300ms debounce)
+- **Grouped results**: Results are organized by type (Concepts, Relationships, Individuals)
+- **Visual icons**: Each result type has a distinct icon
+- **Context preview**: See definitions and descriptions in the results
+- **Match indicators**: Shows which field matched your search
+- **Keyboard navigation**: Full keyboard support for quick access
+- **Spotlight-style UI**: Clean, modern interface inspired by macOS Spotlight
+
+### Search Tips
+
+- **Be specific**: More specific search terms yield better results
+- **Partial matches work**: Type "auth" to find "Authentication"
+- **Case-insensitive**: Search is not case-sensitive
+- **Use keyboard**: Navigate with arrow keys for faster searching
+- **Quick access**: The search dialog automatically regains focus after closing, so you can immediately search again
+
+### After Selecting a Result
+
+When you select a search result:
+- The view switches to **List View** automatically
+- The selected item is highlighted
+- A confirmation toast appears showing what you navigated to
+
+### Example Workflow
+
+1. Press `Cmd+Shift+Space`
+2. Type "user"
+3. See all concepts, relationships, and individuals containing "user"
+4. Arrow down to "User Authentication" concept
+5. Press `Enter`
+6. View switches to List View with "User Authentication" selected
+
+---
+
 ## Importing and Exporting
 
 ### Importing TTL Files
@@ -356,6 +417,10 @@ Press `?` (question mark) anytime to see the keyboard shortcuts dialog.
 
 | Shortcut | Action |
 |----------|--------|
+| `Cmd+Shift+Space` (Mac)<br>`Ctrl+Shift+Space` (Windows/Linux) | Open Global Search |
+| `↑` / `↓` | Navigate search results |
+| `Enter` | Select search result |
+| `Esc` | Close search dialog |
 | `Ctrl+F` | Focus search (in List view) |
 
 ### Tips for Power Users

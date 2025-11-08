@@ -4,6 +4,204 @@ This document tracks major development milestones, features, and changes to the 
 
 ---
 
+## 2025-11-07 - Global Search Feature
+
+### Features Added
+
+#### 🔍 Global Search with Spotlight-Style Interface
+A powerful universal search feature that enables users to quickly find any entity in their ontology using a macOS Spotlight-inspired interface, accessible from anywhere in the application.
+
+**Key Capabilities:**
+- **Universal Search**: Search across Concepts, Relationships, and Individuals simultaneously
+- **Instant Access**: Keyboard shortcut `Cmd+Shift+Space` (Mac) or `Ctrl+Shift+Space` (Windows/Linux)
+- **Real-time Results**: 300ms debounced search with instant result updates as you type
+- **Smart Navigation**: Automatic view switching to List view and item highlighting on selection
+- **Keyboard-First Design**: Full keyboard navigation with arrow keys, Enter, and Esc
+- **Grouped Results**: Results organized by entity type (Concepts, Relationships, Individuals)
+- **Visual Feedback**: Icons, badges, and hover states for intuitive navigation
+- **Focus Management**: Automatic focus restoration prevents "touchy" keyboard shortcut behavior
+
+#### 🎨 UI Components
+
+**GlobalSearch.razor** (`Components/Shared/GlobalSearch.razor`):
+- Spotlight-style modal overlay with backdrop blur
+- Search input with icon and clear button
+- Grouped result sections with headers and counts
+- Keyboard navigation (arrow keys, Enter, Esc)
+- Mouse hover selection
+- Empty states for no results and no query
+- Footer with keyboard shortcut hints
+- Smooth animations (fadeIn, slideDown)
+- Full dark mode support
+
+**global-search.css** (`wwwroot/css/components/global-search.css`):
+- macOS Spotlight-inspired styling
+- Responsive design (mobile and desktop)
+- Custom scrollbar styling
+- Hover and selected states
+- Badge and icon styling
+- Animation keyframes
+- Theme-aware colors using CSS variables
+
+#### 🔧 Service Layer
+
+**GlobalSearchService** (`Services/GlobalSearchService.cs`):
+- `Search(Ontology, string query)`: Main search method returning SearchResults
+- **Multi-field matching**: Searches across all relevant entity fields
+  - Concepts: Name, Definition, SimpleExplanation, Examples, Category, Type
+  - Relationships: RelationshipType, Description
+  - Individuals: Name, Label, Description
+- **Case-insensitive search**: User-friendly querying
+- **Partial matching**: Find "auth" in "Authentication"
+- **Result ranking**: Orders results by entity type
+- **Matched text tracking**: Shows which field matched the query
+
+**Search Models** (`Models/SearchResult.cs`, `Models/SearchResults.cs`):
+- `SearchResult`: Individual result with Title, Subtitle, Icon, MatchedText, EntityId, EntityType
+- `SearchResults`: Container with Concepts, Relationships, Individuals collections
+- `TotalCount` property for quick result counting
+- `All()` method for flattened result list
+
+#### ⌨️ Keyboard Integration
+
+**OntologyView.razor** (`Components/Pages/OntologyView.razor`):
+- Integrated GlobalSearch component
+- Keyboard handler for Cmd+Shift+Space / Ctrl+Shift+Space
+- `HandleGlobalSearch()` method to show/hide search
+- `HandleSearchResultSelected()` method for navigation
+- Focus restoration after search closes
+- Toast notification on result selection
+
+**keyboardShortcuts.js** (`wwwroot/js/keyboardShortcuts.js`):
+- JavaScript handler for global keyboard shortcut
+- Prevents default browser behavior
+- Calls Blazor component method via DotNet reference
+- Cross-platform support (Mac Cmd key, Windows/Linux Ctrl key)
+
+### Files Modified
+
+#### Services
+- `Services/GlobalSearchService.cs` (NEW) - Search logic and result ranking (~150 lines)
+
+#### Models
+- `Models/SearchResult.cs` (NEW) - Individual search result model
+- `Models/SearchResults.cs` (NEW) - Search results container
+
+#### UI Components
+- `Components/Shared/GlobalSearch.razor` (NEW) - Search UI component (~270 lines)
+- `Components/Pages/OntologyView.razor` - Integrated search, keyboard handler (~30 lines added)
+
+#### Styles
+- `wwwroot/css/components/global-search.css` (NEW) - Spotlight-style CSS (~240 lines)
+- `Components/App.razor` - Added global-search.css reference (1 line)
+
+#### JavaScript
+- `wwwroot/js/keyboardShortcuts.js` - Global search keyboard shortcut (~10 lines)
+
+### Technical Details
+
+#### Search Algorithm
+1. **Query Processing**: Trim and validate search query (minimum 1 character)
+2. **Multi-Field Matching**: Search across all relevant fields for each entity type
+3. **Case-Insensitive**: Use `StringComparison.OrdinalIgnoreCase` for all comparisons
+4. **Result Building**: Create SearchResult objects with Title, Subtitle, Icon, MatchedText
+5. **Grouping**: Organize results by entity type (Concepts, Relationships, Individuals)
+6. **Return**: Wrapped in SearchResults container with TotalCount
+
+#### Keyboard Shortcut Implementation
+- **JavaScript**: Listens for `Cmd+Shift+Space` (Mac) or `Ctrl+Shift+Space` (Windows/Linux)
+- **Blazor Interop**: Calls C# method via DotNet reference
+- **Focus Management**: Automatically focuses search input when shown, restores focus when closed
+- **Debounce**: 300ms delay on search input to reduce unnecessary processing
+
+#### Focus Restoration Fix
+Previous implementation had a "touchy" keyboard shortcut that would close immediately after opening. Fixed by:
+1. Removing automatic focus restoration in `Hide()` method
+2. Adding `OnHide` event callback from GlobalSearch to parent
+3. Parent component manages focus restoration timing
+4. Prevents keyboard shortcut from immediately closing the dialog
+
+#### Navigation Flow
+1. User presses keyboard shortcut → Search dialog appears
+2. User types query → Results update in real-time (300ms debounce)
+3. User navigates with arrow keys or mouse → Selection highlights
+4. User presses Enter or clicks result → Navigation begins
+5. View switches to List view → Item is highlighted
+6. Toast notification confirms navigation → Search dialog closes
+7. Focus restored to main view → User can continue working
+
+### Performance Considerations
+
+- **In-Memory Search**: All search operations use LINQ on already-loaded ontology data
+- **No Backend Calls**: Search doesn't trigger database queries or API calls
+- **Debounced Input**: 300ms delay reduces unnecessary search executions
+- **Efficient Matching**: Early termination when first match is found for MatchedText
+- **Minimal DOM**: Results virtualized via Blazor's efficient rendering
+- **CSS Animations**: Lightweight transitions (opacity, transform) using GPU acceleration
+
+### User Experience Enhancements
+
+- **Spotlight-Style UI**: Familiar interface for macOS users, intuitive for all users
+- **Visual Icons**: Each entity type has distinct icon (bi-diagram-3, bi-arrow-left-right, bi-person-fill)
+- **Context Preview**: Subtitle shows definition/description for context
+- **Match Indicators**: Badge shows which field matched (e.g., "NAME", "DEFINITION")
+- **Keyboard Shortcuts Legend**: Footer displays available keyboard actions
+- **Smooth Animations**: fadeIn for backdrop, slideDown for dialog
+- **Responsive Design**: Works on mobile, tablet, and desktop
+
+### Accessibility
+
+- **Keyboard-First**: Fully navigable without mouse
+- **Semantic HTML**: Proper HTML elements for screen readers
+- **Focus Management**: Clear focus indicators and logical focus order
+- **High Contrast**: Dark mode support with theme-aware colors
+- **ARIA Attributes**: Proper labeling for assistive technologies
+- **Escape Key**: Consistent close behavior across all contexts
+
+### Documentation Updates
+
+#### User Guide
+- Added comprehensive "Global Search" section to USER_GUIDE.md
+- Updated Table of Contents with new section
+- Added search keyboard shortcuts to shortcuts table
+- Included search tips and example workflows
+
+#### Release Notes
+- Created RELEASE_SUMMARY_2025-11-07.md with full deployment guide
+- Documented features, testing status, deployment steps
+- Added troubleshooting section for common issues
+- Included user training demo script
+
+### Testing Performed
+
+- ✅ Keyboard shortcut works from all view modes (Graph, List, TTL, Notes, Templates)
+- ✅ Search returns correct results for concepts, relationships, individuals
+- ✅ Case-insensitive search works correctly
+- ✅ Partial matching works as expected
+- ✅ Real-time search with 300ms debounce
+- ✅ Keyboard navigation (arrow keys, Enter, Esc)
+- ✅ Mouse navigation and hover states
+- ✅ Result selection navigates to correct item in List view
+- ✅ Toast notification displays selected item
+- ✅ Focus restoration prevents "touchy" keyboard shortcut
+- ✅ Dark mode styling works correctly
+- ✅ Mobile responsive design verified
+- ✅ Cross-browser testing (Chrome, Firefox, Safari)
+
+### Future Enhancements
+
+Potential improvements for future iterations:
+- **Search History**: Remember recent searches for quick access
+- **Fuzzy Matching**: Tolerate typos and spelling variations
+- **Advanced Filters**: Filter by entity type, category, or date
+- **Search Highlighting**: Highlight matched text in results
+- **Recent Items**: Show recently viewed items when query is empty
+- **Search Analytics**: Track popular searches and optimize results
+- **Keyboard Shortcuts in Results**: Show entity-specific actions (edit, delete)
+- **Multi-Select**: Select multiple results for batch operations
+
+---
+
 ## 2025-11-05 - Concept Property Definitions (OWL Properties)
 
 ### Features Added

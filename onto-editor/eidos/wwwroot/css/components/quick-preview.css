@@ -1,0 +1,223 @@
+/* Quick Preview Tooltip Component */
+
+.quick-preview-tooltip {
+    position: fixed;
+    z-index: 10000;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    min-width: 280px;
+    max-width: 400px;
+    pointer-events: auto;
+    animation: quickPreviewFadeIn 0.2s ease-out;
+}
+
+[data-bs-theme="dark"] .quick-preview-tooltip {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    border-color: var(--border-dark);
+}
+
+/* Animation */
+@keyframes quickPreviewFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Positioning classes */
+.quick-preview-tooltip.position-right::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 24px;
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 8px solid var(--border-color);
+}
+
+.quick-preview-tooltip.position-left::before {
+    content: '';
+    position: absolute;
+    right: -8px;
+    top: 24px;
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 8px solid var(--border-color);
+}
+
+/* Header */
+.quick-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.quick-preview-header h6 {
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.concept-color-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-bs-theme="dark"] .concept-color-indicator {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Description */
+.quick-preview-description {
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.quick-preview-description::-webkit-scrollbar {
+    width: 4px;
+}
+
+.quick-preview-description::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+/* Examples */
+.quick-preview-examples {
+    margin-bottom: 12px;
+    padding: 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.quick-preview-examples i {
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+/* Stats */
+.quick-preview-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.stat-item i {
+    color: var(--primary-color);
+    font-size: 0.9rem;
+}
+
+/* Actions */
+.quick-preview-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 8px;
+}
+
+.quick-preview-actions .btn {
+    flex: 1;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.quick-preview-actions .btn i {
+    font-size: 0.85rem;
+}
+
+/* Hover effect */
+.quick-preview-trigger {
+    position: relative;
+    cursor: help;
+}
+
+.quick-preview-trigger:hover {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: var(--primary-color);
+    text-underline-offset: 3px;
+}
+
+/* Integration with badges */
+.badge.has-preview {
+    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.badge.has-preview:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+[data-bs-theme="dark"] .badge.has-preview:hover {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .quick-preview-tooltip {
+        min-width: 240px;
+        max-width: 300px;
+        padding: 12px;
+    }
+
+    .quick-preview-actions {
+        flex-direction: column;
+    }
+
+    .quick-preview-actions .btn {
+        width: 100%;
+    }
+}
+
+/* Prevent text selection while hovering */
+.quick-preview-tooltip {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Smooth transitions */
+.quick-preview-tooltip * {
+    transition: none; /* Disable transitions within tooltip for performance */
+}

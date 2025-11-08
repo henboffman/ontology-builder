@@ -116,6 +116,77 @@ namespace Eidos.Services
             return ontology;
         }
 
+        /// <summary>
+        /// Propagates namespace changes to all ConceptProperties and Relationships that use the default namespace.
+        /// Only updates URIs that were auto-generated from the old namespace; preserves imported/custom URIs.
+        /// </summary>
+        /// <param name="ontologyId">The ontology ID</param>
+        /// <param name="oldNamespace">The previous namespace</param>
+        /// <param name="newNamespace">The new namespace</param>
+        public async Task PropagateNamespaceChangeAsync(int ontologyId, string oldNamespace, string newNamespace)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            // Normalize namespaces to ensure they end with / or #
+            var oldNormalizedNs = NormalizeNamespace(oldNamespace);
+            var newNormalizedNs = NormalizeNamespace(newNamespace);
+
+            // If namespaces are the same after normalization, nothing to do
+            if (oldNormalizedNs == newNormalizedNs)
+                return;
+
+            // Get all ConceptProperties for this ontology that have URIs matching the old namespace
+            var conceptProperties = await context.ConceptProperties
+                .Include(cp => cp.Concept)
+                .Where(cp => cp.Concept.OntologyId == ontologyId &&
+                            cp.Uri != null &&
+                            cp.Uri.StartsWith(oldNormalizedNs))
+                .ToListAsync();
+
+            // Update ConceptProperty URIs
+            foreach (var property in conceptProperties)
+            {
+                // Only update if the property belongs to this ontology (not imported)
+                if (property.Concept.SourceOntology == null || property.Concept.SourceOntology == string.Empty)
+                {
+                    // Replace the old namespace with the new one
+                    property.Uri = property.Uri!.Replace(oldNormalizedNs, newNormalizedNs);
+                    property.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            // Get all Relationships for this ontology that have OntologyUri matching the old namespace
+            var relationships = await context.Relationships
+                .Where(r => r.OntologyId == ontologyId &&
+                           r.OntologyUri != null &&
+                           r.OntologyUri.StartsWith(oldNormalizedNs))
+                .ToListAsync();
+
+            // Update Relationship URIs
+            foreach (var relationship in relationships)
+            {
+                // Replace the old namespace with the new one
+                relationship.OntologyUri = relationship.OntologyUri!.Replace(oldNormalizedNs, newNormalizedNs);
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Normalizes a namespace to ensure it ends with / or #
+        /// </summary>
+        private string NormalizeNamespace(string ns)
+        {
+            if (string.IsNullOrWhiteSpace(ns))
+                return ns;
+
+            ns = ns.Trim();
+            if (!ns.EndsWith("/") && !ns.EndsWith("#"))
+                ns += "#";
+
+            return ns;
+        }
+
         public async Task DeleteOntologyAsync(int id)
         {
             // Check ownership before deleting

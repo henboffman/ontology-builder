@@ -1,0 +1,23 @@
+{
+    "permissions": {},
+    "Stop": [
+        {
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "say 'Claude is waiting for you'"
+                }
+            ]
+        }
+    ],
+    "Notification": [
+        {
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "say 'Claude needs your input'"
+                }
+            ]
+        }
+    ]
+}

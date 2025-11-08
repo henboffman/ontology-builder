@@ -141,4 +141,13 @@ public interface IOntologyLinkService
     /// <param name="userId">The user requesting (for permission filtering)</param>
     /// <returns>Collection of ontologies available for linking</returns>
     Task<IEnumerable<Ontology>> GetAvailableOntologiesForLinkingAsync(int ontologyId, string userId);
+
+    /// <summary>
+    /// Updates the position of an ontology link node in the graph
+    /// Lightweight method without permission checking (for graph interaction)
+    /// </summary>
+    /// <param name="linkId">The link ID</param>
+    /// <param name="x">X coordinate</param>
+    /// <param name="y">Y coordinate</param>
+    Task UpdatePositionAsync(int linkId, double x, double y);
 }

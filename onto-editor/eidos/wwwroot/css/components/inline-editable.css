@@ -1,0 +1,144 @@
+/* Inline Editable Text Component */
+
+.inline-editable {
+    position: relative;
+    display: inline-block;
+    min-width: 100px;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+}
+
+/* Hover state - show it's editable */
+.inline-editable:not(.editing):hover {
+    background-color: var(--bg-hover);
+    padding: 2px 6px;
+    margin: -2px -6px;
+    cursor: pointer;
+}
+
+/* Edit icon - only show on hover */
+.inline-edit-icon {
+    opacity: 0;
+    margin-left: 6px;
+    font-size: 0.7em;
+    color: var(--text-muted);
+    transition: opacity 0.2s ease;
+}
+
+.inline-editable:hover .inline-edit-icon {
+    opacity: 0.6;
+}
+
+/* Editing state */
+.inline-editable.editing {
+    background-color: var(--input-bg);
+    border: 2px solid var(--primary-color);
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin: -6px -10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    min-width: 200px;
+}
+
+[data-bs-theme="dark"] .inline-editable.editing {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Input field */
+.inline-edit-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.inline-editable-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    outline: none;
+    padding: 0;
+    margin: 0;
+}
+
+.inline-editable-input::placeholder {
+    color: var(--input-placeholder);
+    opacity: 0.7;
+}
+
+.inline-editable-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Spinner during save */
+.inline-edit-spinner {
+    width: 14px;
+    height: 14px;
+    border-width: 2px;
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+/* Empty/placeholder state */
+.inline-editable .text-muted {
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+/* Disabled state (no edit permission) */
+.inline-editable:not(.editing)[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.inline-editable:not(.editing)[aria-disabled="true"]:hover {
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+}
+
+/* Animation for entering edit mode */
+@keyframes editFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.inline-editable.editing {
+    animation: editFadeIn 0.15s ease-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .inline-editable.editing {
+        min-width: 150px;
+    }
+}
+
+/* Integration with concept names */
+.concept-name .inline-editable {
+    font-weight: 600;
+}
+
+.concept-name .inline-editable-input {
+    font-weight: 600;
+}
+
+/* Integration with list view items */
+.list-view-item .inline-editable {
+    width: auto;
+    max-width: 100%;
+}
+
+.list-view-item .inline-editable.editing {
+    width: 100%;
+}

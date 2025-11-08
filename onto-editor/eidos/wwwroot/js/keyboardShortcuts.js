@@ -85,28 +85,6 @@ window.keyboardShortcuts = {
         // Editing shortcuts (Ctrl/Cmd + key)
         if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
             switch (e.key.toLowerCase()) {
-                case 'k':
-                    e.preventDefault();
-                    this.triggerAction('addConcept');
-                    break;
-                case 'r':
-                    e.preventDefault();
-                    this.triggerAction('addRelationship');
-                    break;
-                case 'i':
-                    e.preventDefault();
-                    this.triggerAction('importTtl');
-                    break;
-                case ',':
-                    e.preventDefault();
-                    this.triggerAction('openSettings');
-                    break;
-                case 'f':
-                    if (!isInputField) {
-                        e.preventDefault();
-                        this.triggerAction('focusSearch');
-                    }
-                    break;
                 case 'z':
                     e.preventDefault();
                     this.triggerAction('undo');
@@ -126,6 +104,44 @@ window.keyboardShortcuts = {
             }
         }
 
+        // Editing shortcuts with Shift (Ctrl/Cmd + Shift + key) to avoid browser conflicts
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey) {
+            switch (e.key.toLowerCase()) {
+                case 'g':
+                    e.preventDefault();
+                    this.triggerViewMode('Graph');
+                    break;
+                case 'l':
+                    e.preventDefault();
+                    this.triggerViewMode('List');
+                    break;
+                case 't':
+                    e.preventDefault();
+                    this.triggerViewMode('Ttl');
+                    break;
+                case 'h':
+                    e.preventDefault();
+                    this.triggerViewMode('Hierarchy');
+                    break;
+                case 'c':
+                    e.preventDefault();
+                    this.triggerAction('addConcept');
+                    break;
+                case 'r':
+                    e.preventDefault();
+                    this.triggerAction('addRelationship');
+                    break;
+                case 'i':
+                    e.preventDefault();
+                    this.triggerAction('importTtl');
+                    break;
+                case ',':
+                    e.preventDefault();
+                    this.triggerAction('openSettings');
+                    break;
+            }
+        }
+
         // Call registered handlers
         this.handlers.forEach((callback, context) => {
             callback(e);
@@ -133,13 +149,10 @@ window.keyboardShortcuts = {
     },
 
     triggerViewMode: function (mode) {
-        // Find and click the view mode button
-        const buttons = document.querySelectorAll('.btn-group button');
-        buttons.forEach(btn => {
-            if (btn.textContent.includes(mode)) {
-                btn.click();
-            }
-        });
+        // Dispatch custom event for Blazor components to handle
+        document.dispatchEvent(new CustomEvent('viewModeChange', {
+            detail: { mode: mode }
+        }));
     },
 
     triggerAction: function (action) {

@@ -1,6 +1,22 @@
 @using Eidos.Models
 @using Eidos.Models.Enums
 @using Enums = Eidos.Models.Enums
+@using Eidos.Components.Shared
+@using Microsoft.JSInterop
+@implements IDisposable
+
+<!-- Quick Preview Tooltip -->
+<QuickPreviewTooltip @ref="quickPreviewTooltip"
+                     Concept="@previewConcept"
+                     PropertyCount="@previewPropertyCount"
+                     RelationshipCount="@previewRelationshipCount"
+                     ShowActions="@previewShowActions"
+                     CanEdit="@CanEdit()"
+                     OnEdit="@(() => HandlePreviewAction(() => OnConceptEdit.InvokeAsync(previewConcept)))"
+                     OnDuplicate="@(() => HandlePreviewAction(() => OnConceptDuplicate.InvokeAsync(previewConcept)))"
+                     OnDelete="@(() => HandlePreviewAction(() => OnConceptDelete.InvokeAsync(previewConcept?.Id ?? 0)))"
+                     OnMouseEnter="@CancelHidePreview"
+                     OnMouseLeave="@StartHidePreviewTimer" />
 
 <!-- List View Tabs -->
 <div class="list-view-tabs-container">
@@ -120,7 +136,14 @@
                                         <i class="@GetValidationIconClass(conceptIssue.Severity) me-1"
                                            title="@conceptIssue.Message"></i>
                                     }
-                                    <h6 class="concept-name">@concept.Name</h6>
+                                    <h6 class="concept-name mb-0">
+                                        <InlineEditableText
+                                            Value="@concept.Name"
+                                            OnSave="@(async (newName) => await UpdateConceptNameInline(concept.Id, newName))"
+                                            Placeholder="Concept name..."
+                                            CanEdit="@(!item.IsVirtual && CanEdit())"
+                                            MaxLength="200" />
+                                    </h6>
                                     @if (item.IsVirtual)
                                     {
                                         <span class="badge bg-primary badge-sm">@item.SourceOntologyName</span>
@@ -151,13 +174,19 @@
                                     <div class="concept-relationships mt-2 small">
                                         @foreach (var rel in outgoing)
                                         {
-                                            <span class="badge bg-info me-1 mb-1">
+                                            <span class="badge bg-info me-1 mb-1 has-preview"
+                                                  style="cursor: help;"
+                                                  @onmouseenter="@((args) => ShowConceptPreview(rel.TargetConcept, args))"
+                                                  @onmouseleave="@StartHidePreviewTimer">
                                                 @rel.RelationType → @rel.TargetConcept.Name
                                             </span>
                                         }
                                         @foreach (var rel in incoming)
                                         {
-                                            <span class="badge bg-success me-1 mb-1">
+                                            <span class="badge bg-success me-1 mb-1 has-preview"
+                                                  style="cursor: help;"
+                                                  @onmouseenter="@((args) => ShowConceptPreview(rel.SourceConcept, args))"
+                                                  @onmouseleave="@StartHidePreviewTimer">
                                                 @rel.SourceConcept.Name → @rel.RelationType
                                             </span>
                                         }
@@ -329,7 +358,10 @@
                                     }
                                     @if (rel.SourceConcept != null)
                                     {
-                                        <span class="badge" style="background-color: @(rel.SourceConcept.Color ?? "#6c757d")">
+                                        <span class="badge has-preview"
+                                              style="background-color: @(rel.SourceConcept.Color ?? "#6c757d"); cursor: help;"
+                                              @onmouseenter="@((args) => ShowConceptPreview(rel.SourceConcept, args))"
+                                              @onmouseleave="@StartHidePreviewTimer">
                                             @rel.SourceConcept.Name
                                         </span>
                                     }
@@ -337,7 +369,10 @@
                                     <i class="bi bi-arrow-right"></i>
                                     @if (rel.TargetConcept != null)
                                     {
-                                        <span class="badge" style="background-color: @(rel.TargetConcept.Color ?? "#6c757d")">
+                                        <span class="badge has-preview"
+                                              style="background-color: @(rel.TargetConcept.Color ?? "#6c757d"); cursor: help;"
+                                              @onmouseenter="@((args) => ShowConceptPreview(rel.TargetConcept, args))"
+                                              @onmouseleave="@StartHidePreviewTimer">
                                             @rel.TargetConcept.Name
                                         </span>
                                     }
@@ -827,6 +862,77 @@
             ValidationSeverity.Info => "validation-info-border",
             _ => ""
         };
+    }
+
+    [Parameter]
+    public EventCallback<(int conceptId, string newName)> OnConceptNameUpdate { get; set; }
+
+    [Parameter]
+    public Func<bool> CanEdit { get; set; } = () => true;
+
+    private async Task UpdateConceptNameInline(int conceptId, string newName)
+    {
+        // Invoke the callback to parent component
+        await OnConceptNameUpdate.InvokeAsync((conceptId, newName));
+    }
+
+    // Quick Preview functionality
+    private QuickPreviewTooltip? quickPreviewTooltip;
+    private Concept? previewConcept;
+    private int previewPropertyCount;
+    private int previewRelationshipCount;
+    private bool previewShowActions = true;
+    private System.Threading.Timer? hidePreviewTimer;
+
+    private async void ShowConceptPreview(Concept concept, MouseEventArgs e)
+    {
+        // Cancel any pending hide
+        CancelHidePreview();
+
+        // Set preview data
+        previewConcept = concept;
+        previewPropertyCount = concept.Properties?.Count ?? 0;
+
+        // Count relationships for this concept
+        var outgoingCount = Relationships.Count(r => r.SourceConceptId == concept.Id);
+        var incomingCount = Relationships.Count(r => r.TargetConceptId == concept.Id);
+        previewRelationshipCount = outgoingCount + incomingCount;
+
+        // Show tooltip at mouse position
+        if (quickPreviewTooltip != null)
+        {
+            await quickPreviewTooltip.ShowAt(e.ClientX, e.ClientY);
+        }
+    }
+
+    private void StartHidePreviewTimer()
+    {
+        // Hide preview after a short delay (allows user to move mouse into tooltip)
+        hidePreviewTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                quickPreviewTooltip?.Hide();
+                StateHasChanged();
+            });
+        }, null, 300, Timeout.Infinite);
+    }
+
+    private void CancelHidePreview()
+    {
+        // Cancel the hide timer
+        hidePreviewTimer?.Dispose();
+        hidePreviewTimer = null;
+    }
+
+    private async Task HandlePreviewAction(Func<Task> action)
+    {
+        await action();
+    }
+
+    public void Dispose()
+    {
+        hidePreviewTimer?.Dispose();
     }
 }
 

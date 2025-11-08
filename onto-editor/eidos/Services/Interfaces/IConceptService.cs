@@ -53,4 +53,19 @@ public interface IConceptService
     /// Get all child concepts for a given concept (following subclass-of relationships)
     /// </summary>
     Task<IEnumerable<Concept>> GetChildConceptsAsync(int conceptId);
+
+    /// <summary>
+    /// Updates the position of a concept node in the graph
+    /// </summary>
+    Task UpdatePositionAsync(int conceptId, double x, double y);
+
+    /// <summary>
+    /// Batch update positions for multiple concepts
+    /// </summary>
+    Task UpdatePositionsBatchAsync(Dictionary<int, (double X, double Y)> positions);
+
+    /// <summary>
+    /// Quick update for concept name - for inline editing
+    /// </summary>
+    Task<bool> UpdateConceptNameAsync(int conceptId, string newName, string userId);
 }

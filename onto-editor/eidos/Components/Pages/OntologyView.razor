@@ -32,6 +32,7 @@
 @inject ToastService ToastService
 @inject ILogger<OntologyView> Logger
 @inject IOntologyValidationService ValidationService
+@inject RecentItemsService RecentItemsService
 @rendermode InteractiveServer
 
 <PageTitle>@(ontology?.Name ?? "Ontology")</PageTitle>
@@ -72,7 +73,7 @@ else if (ontology == null)
 }
 else
 {
-    <div class="container-fluid mt-2">
+    <div class="container-fluid mt-2" tabindex="-1" @onkeydown="HandleKeyDown" @ref="mainContainer">
         <!-- Permission Level Banner -->
         <PermissionBanner UserPermissionLevel="@userPermissionLevel" />
 
@@ -91,7 +92,8 @@ else
                        ProvenanceType="@ontology.ProvenanceType"
                        ConceptCount="@ontology.Concepts.Count"
                        RelationshipCount="@ontology.Relationships.Count"
-                       OnBackClick="@GoBack" />
+                       OnBackClick="@GoBack"
+                       OnSearchClick="@HandleGlobalSearch" />
 
         <!-- TTL Import Dialog -->
         <TtlImportDialog IsVisible="@showImportDialog"
@@ -107,35 +109,6 @@ else
                         OnFileSelected="@HandleFileSelected"
                         OnCancelClick="@CancelImport"
                         OnExecuteImport="@ExecuteImport" />
-
-        <!-- Ontology Settings Dialog -->
-        <OntologySettingsDialog IsVisible="@showSettingsDialog"
-                               OntologyId="@(ontology?.Id ?? 0)"
-                               CurrentUserId="@currentUserId"
-                               Name="@editingOntologyName"
-                               NameChanged="@((value) => editingOntologyName = value)"
-                               Description="@editingOntologyDescription"
-                               DescriptionChanged="@((value) => editingOntologyDescription = value)"
-                               Author="@editingOntologyAuthor"
-                               AuthorChanged="@((value) => editingOntologyAuthor = value)"
-                               Version="@editingOntologyVersion"
-                               VersionChanged="@((value) => editingOntologyVersion = value)"
-                               NamespaceUri="@editingOntologyNamespace"
-                               NamespaceUriChanged="@((value) => editingOntologyNamespace = value)"
-                               Tags="@editingOntologyTags"
-                               TagsChanged="@((value) => editingOntologyTags = value)"
-                               License="@editingOntologyLicense"
-                               LicenseChanged="@((value) => editingOntologyLicense = value)"
-                               UsesBFO="@editingOntologyUsesBFO"
-                               UsesBFOChanged="@((value) => editingOntologyUsesBFO = value)"
-                               UsesProvO="@editingOntologyUsesProvO"
-                               UsesProvOChanged="@((value) => editingOntologyUsesProvO = value)"
-                               Visibility="@editingOntologyVisibility"
-                               VisibilityChanged="@((value) => editingOntologyVisibility = value)"
-                               AllowPublicEdit="@editingOntologyAllowPublicEdit"
-                               AllowPublicEditChanged="@((value) => editingOntologyAllowPublicEdit = value)"
-                               OnSaveClick="@SaveSettings"
-                               OnCancelClick="@CancelSettings" />
 
         <!-- Export Dialog -->
         <ExportDialog @ref="exportDialog" Ontology="@ontology" />
@@ -244,7 +217,9 @@ else
                                    OnRelationshipEdit="@GetConditionalCallback(CanEdit(), EditRelationship)"
                                    OnRelationshipDuplicate="@DuplicateRelationship"
                                    OnRelationshipDelete="@GetConditionalCallback(CanEdit(), DeleteRelationship)"
-                                   OnVirtualConceptImport="@HandleVirtualConceptImportFromList" />
+                                   OnVirtualConceptImport="@HandleVirtualConceptImportFromList"
+                                   OnConceptNameUpdate="@HandleConceptNameUpdate"
+                                   CanEdit="@CanEdit" />
                 }
                 else if (viewMode == ViewMode.Hierarchy)
                 {
@@ -308,6 +283,16 @@ else
             @if (viewMode != ViewMode.Graph)
             {
                 <div class="ontology-details-sidebar">
+                    <!-- Recent Items Section -->
+                    @if (recentItems != null && recentItems.Any())
+                    {
+                        <div class="mb-3">
+                            <RecentItemsPanel RecentItems="@recentItems"
+                                             OnItemSelected="@HandleRecentItemSelected"
+                                             OnClearRecent="@HandleClearRecentItems" />
+                        </div>
+                    }
+
                     <SelectedNodeDetailsPanel SelectedConcept="@selectedConcept"
                                              SelectedRelationship="@selectedRelationship"
                                              SelectedIndividual="@selectedIndividual"
@@ -573,6 +558,7 @@ else
         {
             <AddConceptFloatingPanel @ref="addConceptFloatingPanel"
                                      IsVisible="@showAddConcept"
+                                     OnClose="@CancelConceptDialog"
                                      IsEditing="@(editingConcept != null)"
                                      ShouldPulse="@shouldPulseSidebar"
                                      CustomTemplates="@ontology.CustomTemplates"
@@ -595,6 +581,7 @@ else
         @if (showAddRelationship)
         {
             <AddRelationshipFloatingPanel IsVisible="@showAddRelationship"
+                                          OnClose="@CancelRelationshipDialog"
                                           IsEditing="@(editingRelationship != null)"
                                           ShouldPulse="@shouldPulseSidebar"
                                           Concepts="@ontology.Concepts"
@@ -615,6 +602,13 @@ else
                                           OnCancelClick="@CancelRelationshipDialog" />
         }
 
+    <!-- Global Search -->
+    <CascadingValue Name="Ontology" Value="@ontology">
+        <GlobalSearch @ref="globalSearch"
+                     OnResultSelected="@HandleSearchResultSelected"
+                     OnActionExecuted="@HandleActionExecuted"
+                     OnHide="@RestoreFocusAfterSearch" />
+    </CascadingValue>
 }
 
 @code {
@@ -648,6 +642,8 @@ else
     private GraphViewContainer? graphViewContainer;
     private AddConceptFloatingPanel? addConceptFloatingPanel;
     private AdminConceptDialog? adminConceptDialog;
+    private GlobalSearch? globalSearch;
+    private ElementReference mainContainer;
 
     // Concept dialog state (moved from ConceptManagementPanel)
     private bool showAddConcept = false;
@@ -760,6 +756,9 @@ else
     // Presence tracking
     private List<PresenceInfo> presenceUsers = new();
     private System.Timers.Timer? heartbeatTimer;
+
+    // Recent items tracking
+    private List<RecentItem> recentItems = new();
     private bool editingOntologyUsesBFO;
     private bool editingOntologyUsesProvO;
     private string editingOntologyVisibility = OntologyVisibility.Private;
@@ -860,6 +859,9 @@ else
 
             // Load validation results
             await LoadValidation();
+
+            // Load recent items
+            LoadRecentItems();
         }
         catch (Exception ex)
         {
@@ -881,6 +883,196 @@ else
     private void GoBack()
     {
         Navigation.NavigateTo("");
+    }
+
+    // Global Search Handlers
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        // Cmd+Shift+Space (Mac) or Ctrl+Shift+Space (Windows/Linux)
+        if ((e.MetaKey || e.CtrlKey) && e.ShiftKey && e.Code == "Space")
+        {
+            globalSearch?.Show();
+        }
+    }
+
+    private void HandleGlobalSearch()
+    {
+        globalSearch?.Show();
+    }
+
+    private async Task RestoreFocusAfterSearch()
+    {
+        // Restore focus to main container so keyboard shortcut works again
+        try
+        {
+            await Task.Delay(100); // Small delay to ensure dialog is closed
+            await mainContainer.FocusAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Failed to restore focus after search");
+        }
+    }
+
+    private async Task HandleSearchResultSelected(SearchResult result)
+    {
+        if (result == null) return;
+
+        try
+        {
+            switch (result.Type)
+            {
+                case "Concept":
+                    // Context-aware navigation based on current view mode
+                    if (viewMode == ViewMode.Graph)
+                    {
+                        // Stay in graph view and zoom to the concept
+                        selectedConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == result.Id);
+                        StateHasChanged();
+                        await Task.Delay(50); // Allow state to propagate
+
+                        if (graphViewContainer != null)
+                        {
+                            var zoomed = await graphViewContainer.ZoomToConcept(result.Id);
+                            if (zoomed)
+                            {
+                                ToastService.ShowSuccess($"Zoomed to concept: {result.Title}");
+                            }
+                            else
+                            {
+                                ToastService.ShowWarning($"Concept not found in graph: {result.Title}");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Switch to list view and select the concept
+                        viewMode = ViewMode.List;
+                        selectedConcept = ontology?.Concepts.FirstOrDefault(c => c.Id == result.Id);
+                        ToastService.ShowSuccess($"Navigated to concept: {result.Title}");
+                    }
+                    break;
+
+                case "Relationship":
+                    // Switch to list view and select the relationship
+                    viewMode = ViewMode.List;
+                    selectedRelationship = ontology?.Relationships.FirstOrDefault(r => r.Id == result.Id);
+                    ToastService.ShowSuccess($"Navigated to relationship: {result.Title}");
+                    break;
+
+                case "Individual":
+                    // Switch to list view and select the individual
+                    viewMode = ViewMode.List;
+                    selectedIndividual = ontology?.Individuals.FirstOrDefault(i => i.Id == result.Id);
+                    ToastService.ShowSuccess($"Navigated to individual: {result.Title}");
+                    break;
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error navigating to search result: {Type} {Id}", result.Type, result.Id);
+            ToastService.ShowError("Failed to navigate to result");
+        }
+    }
+
+    private async Task HandleActionExecuted(string actionId)
+    {
+        try
+        {
+            switch (actionId)
+            {
+                case "add-concept":
+                    ShowAddConceptDialog();
+                    break;
+
+                case "add-relationship":
+                    ShowAddRelationshipDialog();
+                    break;
+
+                case "export-ttl":
+                case "export-json":
+                    // Both export actions open the export dialog which allows choosing format
+                    ShowExportDialog();
+                    break;
+
+                case "import-ttl":
+                    ShowImportDialog();
+                    break;
+
+                case "toggle-theme":
+                    await ToggleThemeAsync();
+                    break;
+
+                case "view-graph":
+                    viewMode = ViewMode.Graph;
+                    StateHasChanged();
+                    ToastService.ShowSuccess("Switched to Graph View");
+                    break;
+
+                case "view-list":
+                    viewMode = ViewMode.List;
+                    StateHasChanged();
+                    ToastService.ShowSuccess("Switched to List View");
+                    break;
+
+                case "view-hierarchy":
+                    viewMode = ViewMode.Hierarchy;
+                    StateHasChanged();
+                    ToastService.ShowSuccess("Switched to Hierarchy View");
+                    break;
+
+                case "settings":
+                    ShowSettingsDialog();
+                    break;
+
+                default:
+                    Logger.LogWarning("Unknown action: {ActionId}", actionId);
+                    ToastService.ShowWarning($"Action not implemented: {actionId}");
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error executing action: {ActionId}", actionId);
+            ToastService.ShowError($"Failed to execute action: {actionId}");
+        }
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        try
+        {
+            // Get current theme preference
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                // For non-authenticated users, toggle via JS
+                await JS.InvokeVoidAsync("ThemeHandler.toggleTheme");
+                ToastService.ShowSuccess("Theme toggled");
+                return;
+            }
+
+            // Get current preferences
+            var prefs = await PreferencesService.GetPreferencesAsync(userId);
+            var newTheme = prefs.Theme == "dark" ? "light" : "dark";
+
+            // Update theme preference in database
+            await PreferencesService.UpdateThemeAsync(newTheme);
+
+            // Apply theme via JS
+            await JS.InvokeVoidAsync("ThemeHandler.setTheme", newTheme);
+
+            ToastService.ShowSuccess($"Switched to {newTheme} mode");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error toggling theme");
+            ToastService.ShowError("Failed to toggle theme");
+        }
     }
 
     private async Task HandleUndo()
@@ -1126,6 +1318,48 @@ else
         showBulkCreate = false;
         await LoadOntology();
         ToastService.ShowSuccess("Bulk creation completed successfully!");
+    }
+
+    private async Task HandleConceptNameUpdate((int conceptId, string newName) update)
+    {
+        try
+        {
+            // Get current user ID
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                ToastService.ShowError("You must be logged in");
+                return;
+            }
+
+            var success = await ConceptService.UpdateConceptNameAsync(update.conceptId, update.newName, userId);
+
+            if (success)
+            {
+                // Update local state
+                var concept = ontology.Concepts.FirstOrDefault(c => c.Id == update.conceptId);
+                if (concept != null)
+                {
+                    concept.Name = update.newName;
+                    StateHasChanged();
+                }
+
+                ToastService.ShowSuccess("Concept name updated");
+            }
+            else
+            {
+                ToastService.ShowError("Failed to update concept name");
+                // Reload to ensure consistency
+                await LoadOntology();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error updating concept: {ex.Message}");
+            await LoadOntology();
+        }
     }
 
     private void EditConcept(Concept concept)
@@ -1682,11 +1916,25 @@ else
         // Set selected concept - ViewState.SetSelectedConcept will automatically clear relationship and individual
         selectedConcept = concept;
 
+        // Track in recent items
+        if (concept != null && ontology != null && !string.IsNullOrEmpty(currentUserId))
+        {
+            RecentItemsService.AddRecentConcept(currentUserId, ontology.Id, concept);
+            LoadRecentItems();
+        }
+
         CancelConceptDialog();
         CancelRelationshipDialog();
 
         // Force UI update for the details sidebar
         StateHasChanged();
+
+        // If in Graph view, zoom to the selected concept
+        if (concept != null && viewMode == ViewMode.Graph && graphViewContainer != null)
+        {
+            await Task.Delay(50); // Allow state to propagate
+            await graphViewContainer.ZoomToConcept(concept.Id);
+        }
     }
 
     private void SelectRelationship(Relationship relationship)
@@ -1694,11 +1942,56 @@ else
         // Set selected relationship - ViewState.SetSelectedRelationship will automatically clear concept and individual
         selectedRelationship = relationship;
 
+        // Track in recent items
+        if (relationship != null && ontology != null && !string.IsNullOrEmpty(currentUserId))
+        {
+            RecentItemsService.AddRecentRelationship(currentUserId, ontology.Id, relationship);
+            LoadRecentItems();
+        }
+
         CancelConceptDialog();
         CancelRelationshipDialog();
 
         // Force UI update for the details sidebar
         StateHasChanged();
+    }
+
+    private async Task HandleRecentItemSelected(RecentItem item)
+    {
+        if (item.Type == RecentItemType.Concept)
+        {
+            var concept = ontology?.Concepts.FirstOrDefault(c => c.Id == item.Id);
+            if (concept != null)
+            {
+                await SelectConcept(concept);
+            }
+        }
+        else if (item.Type == RecentItemType.Relationship)
+        {
+            var relationship = ontology?.Relationships.FirstOrDefault(r => r.Id == item.Id);
+            if (relationship != null)
+            {
+                SelectRelationship(relationship);
+            }
+        }
+    }
+
+    private void HandleClearRecentItems()
+    {
+        if (ontology != null && !string.IsNullOrEmpty(currentUserId))
+        {
+            RecentItemsService.ClearRecentItems(currentUserId, ontology.Id);
+            LoadRecentItems();
+        }
+    }
+
+    private void LoadRecentItems()
+    {
+        if (ontology != null && !string.IsNullOrEmpty(currentUserId))
+        {
+            recentItems = RecentItemsService.GetRecentItems(currentUserId, ontology.Id);
+            StateHasChanged();
+        }
     }
 
     private async Task HandleNodeClick(int conceptId)
@@ -2019,19 +2312,8 @@ else
     {
         if (ontology == null) return;
 
-        editingOntologyName = ontology.Name;
-        editingOntologyDescription = ontology.Description;
-        editingOntologyAuthor = ontology.Author;
-        editingOntologyVersion = ontology.Version;
-        editingOntologyNamespace = ontology.Namespace;
-        editingOntologyTags = ontology.Tags;
-        editingOntologyLicense = ontology.License;
-        editingOntologyUsesBFO = ontology.UsesBFO;
-        editingOntologyUsesProvO = ontology.UsesProvO;
-        editingOntologyVisibility = ontology.Visibility ?? OntologyVisibility.Private;
-        editingOntologyAllowPublicEdit = ontology.AllowPublicEdit;
-
-        showSettingsDialog = true;
+        // Navigate to standalone settings page instead of showing dialog
+        Navigation.NavigateTo($"/ontology/{ontology.Id}/settings");
     }
 
     private void ShowExportDialog()
@@ -2426,6 +2708,57 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            // Set up keyboard shortcut event listeners
+            await JS.InvokeVoidAsync("eval", @"
+                // Handle action shortcuts (add concept, etc.)
+                document.addEventListener('keyboardShortcut', (e) => {
+                    if (e.detail.action === 'openCommandPalette') {
+                        // Trigger the global search via Cmd+Shift+Space
+                        const event = new KeyboardEvent('keydown', {
+                            key: ' ',
+                            code: 'Space',
+                            metaKey: true,
+                            shiftKey: true,
+                            bubbles: true
+                        });
+                        document.dispatchEvent(event);
+                    } else if (e.detail.action === 'addConcept') {
+                        // Find and click the Add Concept button
+                        const addBtn = document.querySelector('button[title*=""Add Concept""], button:has(i.bi-plus-circle)');
+                        if (addBtn) addBtn.click();
+                    } else if (e.detail.action === 'addRelationship') {
+                        // Find and click the Add Relationship button
+                        const addBtn = document.querySelector('button[title*=""Add Relationship""], button:has(i.bi-arrow-left-right)');
+                        if (addBtn) addBtn.click();
+                    } else if (e.detail.action === 'importTtl') {
+                        // Find and click the Import button
+                        const importBtn = document.querySelector('button[title*=""Import""]');
+                        if (importBtn) importBtn.click();
+                    } else if (e.detail.action === 'openSettings') {
+                        // Find and click the Settings button
+                        const settingsBtn = document.querySelector('button[title*=""Settings""], a[href*=""settings""]');
+                        if (settingsBtn) settingsBtn.click();
+                    }
+                });
+
+                // Handle view mode change shortcuts
+                document.addEventListener('viewModeChange', (e) => {
+                    const mode = e.detail.mode;
+                    // Find the corresponding view mode button and click it
+                    const buttons = document.querySelectorAll('.view-mode-nav button');
+                    buttons.forEach(btn => {
+                        const text = btn.textContent.trim();
+                        if (text.toLowerCase() === mode.toLowerCase() ||
+                            (mode === 'Ttl' && text.toUpperCase() === 'TTL')) {
+                            btn.click();
+                        }
+                    });
+                });
+            ");
+        }
+
         // Initialize SignalR once the ontology is loaded (may not happen on firstRender if data is loading async)
         if (ontology != null && !hasRendered)
         {

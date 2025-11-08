@@ -1,0 +1,170 @@
+@using Eidos.Models
+@inject IJSRuntime JS
+
+@if (IsVisible && Concept != null)
+{
+    <div class="quick-preview-tooltip @PositionClass"
+         style="top: @(TopPosition)px; left: @(LeftPosition)px;"
+         @onmouseenter="HandleMouseEnter"
+         @onmouseleave="HandleMouseLeave">
+
+        <div class="quick-preview-header">
+            <div class="d-flex align-items-center gap-2">
+                @if (!string.IsNullOrWhiteSpace(Concept.Color))
+                {
+                    <span class="concept-color-indicator" style="background-color: @Concept.Color;"></span>
+                }
+                <h6 class="mb-0 fw-bold">@Concept.Name</h6>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Concept.Category))
+            {
+                <span class="badge bg-secondary">@Concept.Category</span>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Concept.SimpleExplanation))
+        {
+            <div class="quick-preview-description">
+                @Concept.SimpleExplanation
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Concept.Examples))
+        {
+            <div class="quick-preview-examples">
+                <i class="bi bi-lightbulb text-warning"></i>
+                <em>@Concept.Examples</em>
+            </div>
+        }
+
+        <div class="quick-preview-stats">
+            <div class="stat-item">
+                <i class="bi bi-diagram-3"></i>
+                <span>@PropertyCount properties</span>
+            </div>
+            <div class="stat-item">
+                <i class="bi bi-arrow-left-right"></i>
+                <span>@RelationshipCount relationships</span>
+            </div>
+        </div>
+
+        @if (ShowActions && CanEdit)
+        {
+            <div class="quick-preview-actions">
+                <button class="btn btn-sm btn-outline-primary" @onclick="HandleEdit" @onclick:stopPropagation="true">
+                    <i class="bi bi-pencil"></i> Edit
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="HandleDuplicate" @onclick:stopPropagation="true">
+                    <i class="bi bi-files"></i> Duplicate
+                </button>
+                <button class="btn btn-sm btn-outline-danger" @onclick="HandleDelete" @onclick:stopPropagation="true">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public Concept? Concept { get; set; }
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public int PropertyCount { get; set; }
+    [Parameter] public int RelationshipCount { get; set; }
+    [Parameter] public bool ShowActions { get; set; } = false;
+    [Parameter] public bool CanEdit { get; set; } = false;
+    [Parameter] public EventCallback OnEdit { get; set; }
+    [Parameter] public EventCallback OnDuplicate { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback OnMouseEnter { get; set; }
+    [Parameter] public EventCallback OnMouseLeave { get; set; }
+
+    private double TopPosition { get; set; }
+    private double LeftPosition { get; set; }
+    private string PositionClass { get; set; } = "";
+
+    public async Task ShowAt(double x, double y, string targetElement = "")
+    {
+        IsVisible = true;
+
+        // Calculate position to avoid going off-screen
+        try
+        {
+            var windowWidth = await JS.InvokeAsync<double>("eval", "window.innerWidth");
+            var windowHeight = await JS.InvokeAsync<double>("eval", "window.innerHeight");
+
+            // Tooltip dimensions (approximate)
+            const double tooltipWidth = 320;
+            const double tooltipHeight = 200;
+
+            // Position to the right of cursor by default
+            LeftPosition = x + 10;
+            TopPosition = y - 20;
+
+            // Check if tooltip would go off right edge
+            if (LeftPosition + tooltipWidth > windowWidth)
+            {
+                LeftPosition = x - tooltipWidth - 10;
+                PositionClass = "position-left";
+            }
+            else
+            {
+                PositionClass = "position-right";
+            }
+
+            // Check if tooltip would go off bottom
+            if (TopPosition + tooltipHeight > windowHeight)
+            {
+                TopPosition = windowHeight - tooltipHeight - 20;
+            }
+
+            // Check if tooltip would go off top
+            if (TopPosition < 10)
+            {
+                TopPosition = 10;
+            }
+        }
+        catch
+        {
+            // Fallback positioning if JS fails
+            LeftPosition = x + 10;
+            TopPosition = y - 20;
+            PositionClass = "position-right";
+        }
+
+        StateHasChanged();
+    }
+
+    public void Hide()
+    {
+        IsVisible = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleMouseEnter()
+    {
+        await OnMouseEnter.InvokeAsync();
+    }
+
+    private async Task HandleMouseLeave()
+    {
+        await OnMouseLeave.InvokeAsync();
+    }
+
+    private async Task HandleEdit()
+    {
+        Hide();
+        await OnEdit.InvokeAsync();
+    }
+
+    private async Task HandleDuplicate()
+    {
+        Hide();
+        await OnDuplicate.InvokeAsync();
+    }
+
+    private async Task HandleDelete()
+    {
+        Hide();
+        await OnDelete.InvokeAsync();
+    }
+}

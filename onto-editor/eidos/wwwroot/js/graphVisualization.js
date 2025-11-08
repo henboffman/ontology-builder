@@ -31,6 +31,15 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
 
     // Function to initialize the graph
     const initializeGraph = () => {
+        // Check if ALL nodes have saved positions
+        const allNodesHavePositions = elements.nodes &&
+            elements.nodes.length > 0 &&
+            elements.nodes.every(n => n.position != null && n.position.x != null && n.position.y != null);
+
+        console.log('📊 Position check - Total nodes:', elements.nodes?.length, 'All have positions:', allNodesHavePositions);
+        console.log('📋 Sample node data:', elements.nodes?.[0]);
+
+
         // Initialize Cytoscape
         const cy = cytoscape({
         container: container,
@@ -119,15 +128,26 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
                     'line-color': '#999',
                     'target-arrow-color': '#999',
                     'target-arrow-shape': 'triangle',
-                    'curve-style': 'bezier',
+                    'curve-style': 'bezier',  // Simple bezier curves (original style)
+
+                    // Enhanced label styling with text outline
                     'label': options.showEdgeLabels ? 'data(label)' : '',
                     'font-size': edgeFontSize + 'px',
+                    'font-weight': '600',  // Bolder for better readability
                     'text-rotation': 'autorotate',
                     'text-margin-y': -10,
-                    'color': '#666',
-                    'text-background-color': '#fff',
-                    'text-background-opacity': 0.8,
-                    'text-background-padding': '2px'
+                    'color': '#333',  // Darker text
+
+                    // White outline for readability over any background
+                    'text-outline-color': '#ffffff',
+                    'text-outline-width': '2.5px',
+
+                    // Remove background (cleaner look)
+                    'text-background-opacity': 0,
+
+                    // Text wrapping
+                    'text-wrap': 'wrap',
+                    'text-max-width': '100px'
                 }
             },
             // ====================================================================
@@ -265,7 +285,14 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
                 }
             }
         ],
-        layout: {
+        layout: allNodesHavePositions ? {
+            // Use preset layout when all nodes have saved positions
+            name: 'preset',
+            fit: true,
+            padding: 50,
+            animate: false
+        } : {
+            // Use COSE layout for initial layout or when some nodes lack positions
             name: 'cose',
             animate: true,
             animationDuration: 500,
@@ -277,7 +304,44 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
             numIter: 1000,
             initialTemp: 200,
             coolingFactor: 0.95,
-            minTemp: 1.0
+            minTemp: 1.0,
+            randomize: true,
+            fit: true,
+            padding: 50,
+            // Save all positions after COSE layout finishes
+            stop: function() {
+                if (!allNodesHavePositions && dotNetHelper) {
+                    console.log('💾 COSE layout finished - saving all node positions...');
+                    const updates = [];
+                    cy.nodes().forEach(node => {
+                        const nodeData = node.data();
+                        const pos = node.position();
+                        const nodeType = nodeData.type || 'concept';
+                        let nodeId;
+
+                        if (nodeType === 'ontologyLink') {
+                            nodeId = nodeData.linkId || nodeData.nodeId;
+                        } else {
+                            nodeId = nodeData.nodeId;
+                        }
+
+                        if (nodeId) {
+                            updates.push({
+                                id: parseInt(nodeId),
+                                type: nodeType,
+                                x: Math.round(pos.x * 100) / 100,
+                                y: Math.round(pos.y * 100) / 100
+                            });
+                        }
+                    });
+
+                    if (updates.length > 0) {
+                        dotNetHelper.invokeMethodAsync('SaveNodePositionsBatch', updates)
+                            .then(() => console.log(`✓ Saved ${updates.length} node positions after layout`))
+                            .catch(err => console.error('❌ Error saving positions after layout:', err));
+                    }
+                }
+            }
         },
         userZoomingEnabled: true,
         userPanningEnabled: true,
@@ -359,6 +423,80 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
             cy.elements().removeClass('faded highlighted');
         } catch (e) {
             // Silently ignore errors during graph transitions
+        }
+    });
+
+    // ====================================================================
+    // Position Persistence - Save node positions when user drags them
+    // ====================================================================
+    // Batch position updates to reduce server calls
+    let positionUpdates = [];
+    let batchSaveTimeout = null;
+
+    /**
+     * Saves batched position updates to the server
+     */
+    const saveBatchedPositions = async () => {
+        console.log('💾 saveBatchedPositions called - Updates:', positionUpdates.length, 'dotNetHelper:', !!dotNetHelper);
+
+        if (positionUpdates.length > 0 && dotNetHelper) {
+            try {
+                console.log(`Saving ${positionUpdates.length} node positions...`, positionUpdates);
+                await dotNetHelper.invokeMethodAsync('SaveNodePositionsBatch', positionUpdates);
+                console.log('✓ Node positions saved successfully');
+                positionUpdates = [];
+            } catch (error) {
+                console.error('❌ Error saving node positions:', error);
+            }
+        } else if (positionUpdates.length === 0) {
+            console.log('⚠️ No position updates to save');
+        } else if (!dotNetHelper) {
+            console.error('❌ dotNetHelper is not available!');
+        }
+    };
+
+    // Listen for dragfree event (fired when user releases node after dragging)
+    cy.on('dragfree', 'node', function(event) {
+        const node = event.target;
+        const nodeData = node.data();
+        const pos = node.position();
+
+        console.log('🎯 Node dragged:', nodeData);
+
+        // Determine node type and ID
+        const nodeType = nodeData.type || 'concept';  // 'concept' or 'ontologyLink'
+        let nodeId;
+
+        if (nodeType === 'ontologyLink') {
+            nodeId = nodeData.linkId || nodeData.nodeId;
+        } else {
+            nodeId = nodeData.nodeId;
+        }
+
+        console.log('📍 Node info - Type:', nodeType, 'ID:', nodeId, 'Position:', pos);
+
+        // Only save if we have a valid ID
+        if (nodeId) {
+            // Add to batch
+            const update = {
+                id: parseInt(nodeId),
+                type: nodeType,
+                x: Math.round(pos.x * 100) / 100,  // Round to 2 decimal places
+                y: Math.round(pos.y * 100) / 100
+            };
+            positionUpdates.push(update);
+            console.log('✅ Added to batch:', update, 'Total queued:', positionUpdates.length);
+
+            // Clear existing timeout
+            if (batchSaveTimeout) {
+                clearTimeout(batchSaveTimeout);
+            }
+
+            // Schedule batch save after 1 second of inactivity
+            batchSaveTimeout = setTimeout(saveBatchedPositions, 1000);
+            console.log('⏱️ Scheduled save in 1 second');
+        } else {
+            console.warn('⚠️ No valid nodeId found, cannot save position');
         }
     });
 
@@ -474,6 +612,42 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
             });
         }
 
+        // ====================================================================
+        // Multi-Edge Label Positioning
+        // ====================================================================
+        // Separate overlapping labels when multiple edges connect same nodes
+        cy.ready(function() {
+            const edgeGroups = new Map();
+
+            // Group edges by source-target pair
+            cy.edges().forEach(edge => {
+                const source = edge.source().id();
+                const target = edge.target().id();
+                // Create bidirectional key (so A->B and B->A are in same group)
+                const key = [source, target].sort().join('-');
+
+                if (!edgeGroups.has(key)) {
+                    edgeGroups.set(key, []);
+                }
+                edgeGroups.get(key).push(edge);
+            });
+
+            // Apply offset positioning to multi-edges
+            edgeGroups.forEach(edges => {
+                if (edges.length > 1) {
+                    edges.forEach((edge, index) => {
+                        // Calculate vertical offset from center
+                        // Spreads labels evenly: for 3 edges -> offsets of -15, 0, 15
+                        const offset = (index - (edges.length - 1) / 2) * 15;
+
+                        edge.style({
+                            'text-margin-y': offset
+                        });
+                    });
+                }
+            });
+        });
+
         // Handle window resize to keep graph responsive
         const resizeObserver = new ResizeObserver(() => {
             if (cy && container.cytoscapeInstance) {
@@ -544,6 +718,54 @@ window.copyToClipboard = async function (text) {
         console.error('Failed to copy to clipboard:', err);
         return false;
     }
+};
+
+// Zoom to a specific concept in the graph view
+window.zoomToConcept = function (containerId, conceptId) {
+    const container = document.getElementById(containerId);
+    if (!container || !container.cytoscapeInstance) {
+        console.warn(`Graph not found or not initialized: ${containerId}`);
+        return false;
+    }
+
+    const cy = container.cytoscapeInstance;
+    const node = cy.$(`#${conceptId}`);
+
+    if (node.length === 0) {
+        console.warn(`Concept node not found: ${conceptId}`);
+        return false;
+    }
+
+    // Center on the node with animation and zoom
+    cy.animate({
+        center: {
+            eles: node
+        },
+        zoom: 1.5,
+        duration: 500,
+        easing: 'ease-in-out-cubic'
+    });
+
+    // Add a temporary highlight effect to the node
+    const originalBorderWidth = node.style('border-width');
+    const originalBorderColor = node.style('border-color');
+
+    node.animate({
+        style: {
+            'border-width': '8px',
+            'border-color': '#FFD700'
+        },
+        duration: 300
+    }).animate({
+        style: {
+            'border-width': originalBorderWidth,
+            'border-color': originalBorderColor
+        },
+        duration: 300,
+        delay: 500
+    });
+
+    return true;
 };
 
 // Scroll to an individual card in the list and highlight it

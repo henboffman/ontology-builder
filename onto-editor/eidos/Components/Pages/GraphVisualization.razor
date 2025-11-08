@@ -4,6 +4,9 @@
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
 @inject IUserPreferencesService PreferencesService
+@inject IConceptService ConceptService
+@inject IOntologyLinkService OntologyLinkService
+@inject ILogger<GraphVisualization> Logger
 
 <div style="position: relative; width: 100%; height: @Height;">
     <div id="@GraphId" style="width: 100%; height: 100%; border: 1px solid var(--border-color); border-radius: 0.375rem; background-color: var(--canvas-bg);"></div>
@@ -190,27 +193,54 @@
         var nodes = new List<object>();
         var edges = new List<object>();
 
+        // Log position data for debugging
+        var conceptsWithPositions = Ontology.Concepts.Count(c => c.PositionX.HasValue && c.PositionY.HasValue);
+        Console.WriteLine($"🔍 Building graph: {Ontology.Concepts.Count} concepts, {conceptsWithPositions} have positions");
+
+        // Log first few concepts to see their positions
+        foreach (var c in Ontology.Concepts.Take(5))
+        {
+            Console.WriteLine($"  - Concept {c.Id} ({c.Name}): PositionX={c.PositionX}, PositionY={c.PositionY}");
+        }
+
         nodes.AddRange(Ontology.Concepts.Select(c =>
         {
             var nodeColor = ColorMode == "source"
                 ? sourceColorMap[c.SourceOntology ?? "Original"]
                 : (c.Color ?? "#4A90E2"); // Fallback to default concept color
 
-            return new
+            var nodeData = new
             {
-                data = new
-                {
-                    id = $"concept-{c.Id}",
-                    label = c.Name,
-                    color = nodeColor,
-                    nodeType = "concept",
-                    definition = c.Definition ?? "",
-                    explanation = c.SimpleExplanation ?? "",
-                    examples = c.Examples ?? "",
-                    category = c.Category ?? "",
-                    sourceOntology = c.SourceOntology ?? "Original"
-                }
+                id = $"concept-{c.Id}",
+                nodeId = c.Id,
+                type = "concept",
+                label = c.Name,
+                color = nodeColor,
+                nodeType = "concept",
+                definition = c.Definition ?? "",
+                explanation = c.SimpleExplanation ?? "",
+                examples = c.Examples ?? "",
+                category = c.Category ?? "",
+                sourceOntology = c.SourceOntology ?? "Original"
             };
+
+            // Always include position property - either saved position or null
+            if (c.PositionX.HasValue && c.PositionY.HasValue)
+            {
+                return (object)new
+                {
+                    data = nodeData,
+                    position = new { x = c.PositionX.Value, y = c.PositionY.Value }
+                };
+            }
+            else
+            {
+                return (object)new
+                {
+                    data = nodeData,
+                    position = (object?)null
+                };
+            }
         }));
 
         // ====================================================================================
@@ -232,22 +262,40 @@
                     var expandIndicator = isExpanded ? "[-]" : "[+]";
                     var conceptCount = link.LinkedOntology?.Concepts?.Count ?? 0;
 
-                    return new
+                    var linkData = new
                     {
-                        data = new
-                        {
-                            id = $"ontologylink-{link.Id}",
-                            label = $"{expandIndicator} {link.Name}",
-                            color = linkColor,
-                            nodeType = "ontologyLink",
-                            definition = link.Description ?? "",
-                            explanation = $"Virtualized reference to {link.Name} ({conceptCount} concepts)",
-                            examples = link.UpdateAvailable ? "Updates available! Click to expand." : $"Click to {(isExpanded ? "collapse" : "expand")}",
-                            category = "Linked Ontology",
-                            sourceOntology = "Virtual Link",
-                            isExpanded = isExpanded
-                        }
+                        id = $"ontologylink-{link.Id}",
+                        nodeId = link.Id,
+                        type = "ontologyLink",
+                        linkId = link.Id,
+                        label = $"{expandIndicator} {link.Name}",
+                        color = linkColor,
+                        nodeType = "ontologyLink",
+                        definition = link.Description ?? "",
+                        explanation = $"Virtualized reference to {link.Name} ({conceptCount} concepts)",
+                        examples = link.UpdateAvailable ? "Updates available! Click to expand." : $"Click to {(isExpanded ? "collapse" : "expand")}",
+                        category = "Linked Ontology",
+                        sourceOntology = "Virtual Link",
+                        isExpanded = isExpanded
                     };
+
+                    // Always include position property - either saved position or null
+                    if (link.PositionX.HasValue && link.PositionY.HasValue)
+                    {
+                        return (object)new
+                        {
+                            data = linkData,
+                            position = new { x = link.PositionX.Value, y = link.PositionY.Value }
+                        };
+                    }
+                    else
+                    {
+                        return (object)new
+                        {
+                            data = linkData,
+                            position = (object?)null
+                        };
+                    }
                 });
 
             nodes.AddRange(linkNodes);
@@ -622,5 +670,74 @@
 
             await RenderGraph();
         }
+    }
+
+    /// <summary>
+    /// Saves node positions in batch when users drag nodes in the graph.
+    /// Called from JavaScript via JSInvokable.
+    /// </summary>
+    [JSInvokable]
+    public async Task SaveNodePositionsBatch(List<NodePositionUpdate> updates)
+    {
+        if (updates == null || updates.Count == 0)
+            return;
+
+        try
+        {
+            // Separate concepts and ontology links
+            var conceptUpdates = updates
+                .Where(u => u.Type == "concept")
+                .ToDictionary(u => u.Id, u => (u.X, u.Y));
+
+            var linkUpdates = updates.Where(u => u.Type == "ontologyLink").ToList();
+
+            // Batch update concepts (more efficient)
+            if (conceptUpdates.Any())
+            {
+                await ConceptService.UpdatePositionsBatchAsync(conceptUpdates);
+            }
+
+            // Update ontology links individually (usually fewer)
+            foreach (var update in linkUpdates)
+            {
+                await OntologyLinkService.UpdatePositionAsync(update.Id, update.X, update.Y);
+            }
+
+            Logger.LogInformation("Saved positions for {Count} nodes in ontology {OntologyId}",
+                updates.Count, Ontology?.Id ?? 0);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving node positions for ontology {OntologyId}", Ontology?.Id ?? 0);
+        }
+    }
+
+    /// <summary>
+    /// Zooms to and highlights a specific concept in the graph.
+    /// </summary>
+    /// <param name="conceptId">The ID of the concept to zoom to</param>
+    /// <returns>True if the concept was found and zoomed to, false otherwise</returns>
+    public async Task<bool> ZoomToConcept(int conceptId)
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("zoomToConcept", GraphId, conceptId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error zooming to concept {ConceptId}", conceptId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// DTO for node position updates from JavaScript
+    /// </summary>
+    public class NodePositionUpdate
+    {
+        public int Id { get; set; }
+        public string Type { get; set; } = string.Empty; // "concept" or "ontologyLink"
+        public double X { get; set; }
+        public double Y { get; set; }
     }
 }

@@ -228,4 +228,17 @@
             await graphVisualization.RefreshGraph();
         }
     }
+
+    /// <summary>
+    /// Zooms to and highlights a specific concept in the graph view.
+    /// </summary>
+    /// <param name="conceptId">The ID of the concept to zoom to</param>
+    public async Task<bool> ZoomToConcept(int conceptId)
+    {
+        if (graphVisualization != null)
+        {
+            return await graphVisualization.ZoomToConcept(conceptId);
+        }
+        return false;
+    }
 }

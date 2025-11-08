@@ -393,4 +393,101 @@ public class ConceptService : IConceptService
 
         return JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = false });
     }
+
+    /// <summary>
+    /// Updates the position of a concept node in the graph.
+    /// This method is lightweight and doesn't trigger undo/redo or activity tracking.
+    /// </summary>
+    /// <param name="conceptId">The concept ID</param>
+    /// <param name="x">X coordinate</param>
+    /// <param name="y">Y coordinate</param>
+    public async Task UpdatePositionAsync(int conceptId, double x, double y)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        var concept = await context.Concepts.FindAsync(conceptId);
+        if (concept == null)
+            throw new InvalidOperationException($"Concept {conceptId} not found");
+
+        concept.PositionX = x;
+        concept.PositionY = y;
+
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Batch update positions for multiple concepts.
+    /// More efficient than calling UpdatePositionAsync multiple times.
+    /// </summary>
+    /// <param name="positions">Dictionary of concept ID to (X, Y) coordinates</param>
+    public async Task UpdatePositionsBatchAsync(Dictionary<int, (double X, double Y)> positions)
+    {
+        if (positions == null || positions.Count == 0)
+            return;
+
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        var conceptIds = positions.Keys.ToList();
+        var concepts = await context.Concepts
+            .Where(c => conceptIds.Contains(c.Id))
+            .ToListAsync();
+
+        foreach (var concept in concepts)
+        {
+            if (positions.TryGetValue(concept.Id, out var pos))
+            {
+                concept.PositionX = pos.X;
+                concept.PositionY = pos.Y;
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Quick update for concept name - for inline editing
+    /// </summary>
+    public async Task<bool> UpdateConceptNameAsync(int conceptId, string newName, string userId)
+    {
+        try
+        {
+            var concept = await _conceptRepository.GetByIdAsync(conceptId);
+            if (concept == null)
+                return false;
+
+            // Validate permissions
+            var hasPermission = await _shareService.HasPermissionAsync(
+                concept.OntologyId,
+                userId,
+                sessionToken: null,
+                requiredLevel: PermissionLevel.ViewAddEdit);
+
+            if (!hasPermission)
+                return false;
+
+            // Validate name
+            if (string.IsNullOrWhiteSpace(newName))
+                return false;
+
+            // Update name
+            var oldName = concept.Name;
+            var beforeConcept = new Concept { Id = concept.Id, Name = oldName };
+
+            concept.Name = newName.Trim();
+            await _conceptRepository.UpdateAsync(concept);
+            await _ontologyRepository.UpdateTimestampAsync(concept.OntologyId);
+
+            // Record activity for version control
+            await RecordConceptActivity(concept, ActivityTypes.Update, beforeConcept, concept);
+
+            // Broadcast update via SignalR
+            await BroadcastConceptChange(concept.OntologyId, ChangeType.Updated, concept);
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

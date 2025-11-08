@@ -7,13 +7,20 @@
             <i class="bi bi-arrow-left"></i> Back
         </button>
         <h2 class="mb-0">@Name</h2>
-        <div class="d-flex gap-3 text-muted small ms-auto">
-            <span><i class="bi bi-circle-fill"></i> @ConceptCount</span>
-            <span><i class="bi bi-arrow-left-right"></i> @RelationshipCount</span>
-            @if (!string.IsNullOrWhiteSpace(Version))
-            {
-                <span><i class="bi bi-tag"></i> v@Version</span>
-            }
+        <div class="d-flex gap-3 align-items-center ms-auto">
+            <button class="btn btn-sm btn-outline-primary"
+                    @onclick="OnSearchClick"
+                    title="Command Palette (⌘⇧Space) - Search concepts, relationships, individuals, and execute actions">
+                <i class="bi bi-search"></i> Search
+            </button>
+            <div class="d-flex gap-3 text-muted small">
+                <span><i class="bi bi-circle-fill"></i> @ConceptCount</span>
+                <span><i class="bi bi-arrow-left-right"></i> @RelationshipCount</span>
+                @if (!string.IsNullOrWhiteSpace(Version))
+                {
+                    <span><i class="bi bi-tag"></i> v@Version</span>
+                }
+            </div>
         </div>
     </div>
     @if (!string.IsNullOrWhiteSpace(Description))
@@ -74,4 +81,7 @@
 
     [Parameter]
     public EventCallback OnBackClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnSearchClick { get; set; }
 }

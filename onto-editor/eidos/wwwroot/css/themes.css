@@ -115,6 +115,9 @@
     --header-bg: #1e2127;
     --footer-bg: #1e2127;
 
+    /* Bootstrap close button - invert for dark mode */
+    --bs-btn-close-filter: invert(1) grayscale(100%) brightness(200%);
+
     /* Input colors */
     --input-bg: #2d3139;
     --input-border: #3a3f4a;
@@ -208,7 +211,12 @@ body {
 
 .modal-header,
 .modal-footer {
+    background-color: var(--bg-secondary);
     border-color: var(--border-color);
+}
+
+.modal-header .btn-close {
+    filter: var(--bs-btn-close-filter, none);
 }
 
 /* Forms */

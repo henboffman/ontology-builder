@@ -1,22 +1,29 @@
 @using Eidos.Models
+@using Eidos.Services
 
 <div class="view-mode-nav">
     <h6 class="text-muted small mb-3">VIEW MODE</h6>
 
     <div class="nav flex-column gap-1">
         <button class="btn btn-sm @(CurrentViewMode == ViewMode.Graph ? "btn-primary" : "btn-outline-primary") text-start"
-                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Graph)">
+                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Graph)"
+                title="Switch to Graph view (⌘⇧G)">
             <i class="bi bi-diagram-3 me-2"></i> Graph
+            <span class="ms-auto text-muted small">⌘⇧G</span>
         </button>
 
         <button class="btn btn-sm @(CurrentViewMode == ViewMode.List ? "btn-primary" : "btn-outline-primary") text-start"
-                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.List)">
+                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.List)"
+                title="Switch to List view (⌘⇧L)">
             <i class="bi bi-list-ul me-2"></i> List
+            <span class="ms-auto text-muted small">⌘⇧L</span>
         </button>
 
         <button class="btn btn-sm @(CurrentViewMode == ViewMode.Hierarchy ? "btn-primary" : "btn-outline-primary") text-start"
-                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Hierarchy)">
+                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Hierarchy)"
+                title="Switch to Hierarchy view (⌘⇧H)">
             <i class="bi bi-diagram-2 me-2"></i> Hierarchy
+            <span class="ms-auto text-muted small">⌘⇧H</span>
         </button>
 
         <button class="btn btn-sm @(CurrentViewMode == ViewMode.Instances ? "btn-primary" : "btn-outline-primary") text-start"
@@ -25,8 +32,10 @@
         </button>
 
         <button class="btn btn-sm @(CurrentViewMode == ViewMode.Ttl ? "btn-primary" : "btn-outline-primary") text-start"
-                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Ttl)">
+                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Ttl)"
+                title="Switch to TTL view (⌘⇧T)">
             <i class="bi bi-file-code me-2"></i> TTL
+            <span class="ms-auto text-muted small">⌘⇧T</span>
         </button>
 
         <button class="btn btn-sm @(CurrentViewMode == ViewMode.Notes ? "btn-primary" : "btn-outline-primary") text-start"
@@ -79,6 +88,14 @@
         </div>
     </div>
 
+    <!-- Recent Items Section -->
+    @if (RecentItems != null && RecentItems.Any())
+    {
+        <RecentItemsPanel RecentItems="@RecentItems"
+                          OnItemSelected="@OnRecentItemSelected"
+                          OnClearRecent="@OnClearRecentItems" />
+    }
+
     <!-- Presence Users Section -->
     @if (PresenceUsers != null && PresenceUsers.Any())
     {
@@ -115,6 +132,9 @@
     [Parameter] public EventCallback OnUndoClick { get; set; }
     [Parameter] public EventCallback OnRedoClick { get; set; }
     [Parameter] public List<PresenceUserInfo>? PresenceUsers { get; set; }
+    [Parameter] public List<RecentItem>? RecentItems { get; set; }
+    [Parameter] public EventCallback<RecentItem> OnRecentItemSelected { get; set; }
+    [Parameter] public EventCallback OnClearRecentItems { get; set; }
 
     public class PresenceUserInfo
     {
