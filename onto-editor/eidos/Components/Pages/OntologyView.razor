@@ -1,5 +1,6 @@
 @page "/ontology/{id:int}"
 @using Eidos.Models
+@using Eidos.Models.DTOs
 @using Eidos.Models.Enums
 @using Eidos.Models.Events
 @using Eidos.Models.ViewState
@@ -25,6 +26,7 @@
 @inject ITtlImportService TtlImportService
 @inject ITtlExportService TtlExportService
 @inject OntologyPermissionService PermissionService
+@inject IMergeRequestService MergeRequestService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -33,6 +35,7 @@
 @inject ILogger<OntologyView> Logger
 @inject IOntologyValidationService ValidationService
 @inject RecentItemsService RecentItemsService
+@inject IOntologyViewHistoryService ViewHistoryService
 @rendermode InteractiveServer
 
 <PageTitle>@(ontology?.Name ?? "Ontology")</PageTitle>
@@ -147,6 +150,32 @@ else
                            CurrentUserId="@currentUserId"
                            OnChanged="@HandleAdminDialogChanged" />
 
+        <!-- Merge Request Dialog -->
+        <MergeRequestDialog @ref="mergeRequestDialog"
+                           OntologyId="@Id"
+                           CurrentUserId="@currentUserId"
+                           OnMergeRequestCreated="@HandleMergeRequestCreated" />
+
+        <!-- Approval Workflow Banner (for contributors) -->
+        @if (ontology != null && ontology.RequiresApproval && !CanFullAccess())
+        {
+            <div class="alert alert-info d-flex justify-content-between align-items-center mb-2" role="alert">
+                <div>
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <strong>Approval Required:</strong> This ontology requires merge requests for changes.
+                    Make your changes, then create a merge request to submit them for review.
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary" @onclick="@(() => viewMode = ViewMode.VersionHistory)">
+                        <i class="bi bi-clock-history"></i> View My Changes
+                    </button>
+                    <button class="btn btn-sm btn-primary" @onclick="@ShowMergeRequestDialog">
+                        <i class="bi bi-git"></i> Create Merge Request
+                    </button>
+                </div>
+            </div>
+        }
+
         <!-- Ontology Control Bar -->
         <OntologyControlBar CanFullAccess="@CanFullAccess()"
                            CanEdit="@CanEdit()"
@@ -170,7 +199,9 @@ else
                            OnRedoClick="@HandleRedo"
                            CanUndo="@OntologyService.CanUndo()"
                            CanRedo="@OntologyService.CanRedo()"
-                           OnNavigateToUserView="@NavigateToUserView" />
+                           OnNavigateToUserView="@NavigateToUserView"
+                           PendingMergeRequestCount="@pendingMergeRequestCount"
+                           OnViewMergeRequestsClick="@HandleViewMergeRequests" />
 
         <!-- Main Content Layout Wrapper (Desktop: side-by-side, Mobile: stacked) -->
         <div class="ontology-main-layout">
@@ -270,7 +301,21 @@ else
                 else if (viewMode == ViewMode.VersionHistory)
                 {
                     <VersionHistoryPanel OntologyId="@ontology.Id"
+                                        CurrentUserId="@currentUserId"
                                         OnRevertRequested="@HandleRevertRequested" />
+                }
+                else if (viewMode == ViewMode.MergeRequests)
+                {
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0"><i class="bi bi-git"></i> Merge Requests</h5>
+                        </div>
+                        <div class="card-body">
+                            <MergeRequestListPanel @ref="mergeRequestListPanel"
+                                                  OntologyId="@Id"
+                                                  CurrentUserId="@currentUserId" />
+                        </div>
+                    </div>
                 }
                 else if (viewMode == ViewMode.Help)
                 {
@@ -290,6 +335,16 @@ else
                             <RecentItemsPanel RecentItems="@recentItems"
                                              OnItemSelected="@HandleRecentItemSelected"
                                              OnClearRecent="@HandleClearRecentItems" />
+                        </div>
+                    }
+
+                    <!-- Merge Requests Section -->
+                    @if (ontology.RequiresApproval || hasPendingMergeRequests)
+                    {
+                        <div class="mb-3">
+                            <MergeRequestListPanel @ref="mergeRequestListPanel"
+                                                  OntologyId="@Id"
+                                                  CurrentUserId="@currentUserId" />
                         </div>
                     }
 
@@ -609,6 +664,9 @@ else
                      OnActionExecuted="@HandleActionExecuted"
                      OnHide="@RestoreFocusAfterSearch" />
     </CascadingValue>
+
+    <!-- What's New Panel (positioned fixed) -->
+    <WhatsNewPanel WhatsNew="@whatsNew" OnDismiss="@HandleWhatsNewDismiss" StartExpanded="true" />
 }
 
 @code {
@@ -642,8 +700,12 @@ else
     private GraphViewContainer? graphViewContainer;
     private AddConceptFloatingPanel? addConceptFloatingPanel;
     private AdminConceptDialog? adminConceptDialog;
+    private MergeRequestDialog? mergeRequestDialog;
+    private MergeRequestListPanel? mergeRequestListPanel;
     private GlobalSearch? globalSearch;
     private ElementReference mainContainer;
+    private bool hasPendingMergeRequests = false;
+    private int pendingMergeRequestCount = 0;
 
     // Concept dialog state (moved from ConceptManagementPanel)
     private bool showAddConcept = false;
@@ -790,6 +852,10 @@ else
     // Keyboard shortcuts banner
     private bool showKeyboardShortcutsBanner = true;
 
+    // What's New feature
+    private WhatsNewDto? whatsNew = null;
+    private string currentSessionId = Guid.NewGuid().ToString(); // Generate unique session ID for this browser session
+
     protected override async Task OnInitializedAsync()
     {
         // Subscribe to state change events
@@ -862,6 +928,12 @@ else
 
             // Load recent items
             LoadRecentItems();
+
+            // Load pending merge requests count (for managers/owners)
+            await LoadPendingMergeRequestCount();
+
+            // Load "What's New" data and record view
+            await LoadWhatsNewAsync();
         }
         catch (Exception ex)
         {
@@ -869,14 +941,102 @@ else
         }
     }
 
+    private async Task LoadPendingMergeRequestCount()
+    {
+        // Check if there are pending merge requests (for admins)
+        Console.WriteLine($"[MR Check] CanManage: {viewState.CanManage}, UserId: {currentUserId}");
+        if (viewState.CanManage && !string.IsNullOrEmpty(currentUserId))
+        {
+            var mergeRequests = await MergeRequestService.GetMergeRequestsForOntologyAsync(Id);
+            Console.WriteLine($"[MR Check] Total MRs: {mergeRequests.Count()}");
+            var pendingRequests = mergeRequests.Where(mr =>
+                mr.Status == Models.Enums.MergeRequestStatus.PendingReview ||
+                mr.Status == Models.Enums.MergeRequestStatus.ChangesRequested).ToList();
+            Console.WriteLine($"[MR Check] Pending MRs: {pendingRequests.Count}");
+            hasPendingMergeRequests = pendingRequests.Any();
+            pendingMergeRequestCount = pendingRequests.Count;
+        }
+        else
+        {
+            Console.WriteLine($"[MR Check] Skipping - not authorized");
+            hasPendingMergeRequests = false;
+            pendingMergeRequestCount = 0;
+        }
+    }
+
     private async Task LoadOntology()
     {
         ontology = await OntologyService.GetOntologyAsync(Id);
+
+        // Reload merge request count
+        await LoadPendingMergeRequestCount();
+
+        // Note: We don't reload "What's New" here because that's only for initial page load
+        // to show what OTHER users changed since the last visit. During the current session,
+        // we don't want to reset the panel.
 
         if (graphViewContainer != null && viewMode == ViewMode.Graph)
         {
             await Task.Delay(100);
             await graphViewContainer.RefreshGraph();
+        }
+    }
+
+    private async Task LoadWhatsNewAsync()
+    {
+        Console.WriteLine($"[OntologyView] LoadWhatsNewAsync called with session {currentSessionId}");
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            Console.WriteLine($"[OntologyView] User authenticated: {user?.Identity?.IsAuthenticated}");
+
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                Console.WriteLine($"[OntologyView] UserId: {userId}, SessionId: {currentSessionId}");
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    // Record the view with current session ID
+                    await ViewHistoryService.RecordViewAsync(Id, userId, currentSessionId);
+                    Console.WriteLine($"[OntologyView] Recorded view for session {currentSessionId}");
+
+                    // Get what's new data (changes from OTHER users since last session)
+                    whatsNew = await ViewHistoryService.GetWhatsNewAsync(Id, userId, currentSessionId);
+                    Console.WriteLine($"[OntologyView] WhatsNew result: {(whatsNew != null ? $"{whatsNew.TotalChanges} changes" : "null")}");
+
+                    // Trigger re-render to show the panel
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load what's new for ontology {OntologyId}", Id);
+            // Don't fail the page load if this fails
+        }
+    }
+
+    private async Task HandleWhatsNewDismiss()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    await ViewHistoryService.DismissWhatsNewAsync(Id, userId, currentSessionId);
+                    Console.WriteLine($"[OntologyView] Dismissed what's new for session {currentSessionId}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to dismiss what's new for ontology {OntologyId}", Id);
         }
     }
 
@@ -1310,6 +1470,36 @@ else
     {
         // Reload ontology data after admin dialog makes changes
         await LoadOntology();
+        StateHasChanged();
+    }
+
+    private async Task ShowMergeRequestDialog()
+    {
+        if (mergeRequestDialog != null)
+        {
+            await mergeRequestDialog.Show();
+        }
+    }
+
+    private async Task HandleMergeRequestCreated()
+    {
+        ToastService.ShowSuccess("Merge request created successfully! An administrator will review your changes.");
+        await LoadOntology();
+
+        // Refresh the merge request list panel if it exists
+        if (mergeRequestListPanel != null)
+        {
+            await mergeRequestListPanel.Refresh();
+        }
+
+        StateHasChanged();
+    }
+
+    private void HandleViewMergeRequests()
+    {
+        // Switch to merge requests view
+        viewMode = ViewMode.MergeRequests;
+        ToastService.ShowInfo($"Showing {pendingMergeRequestCount} pending merge request(s)");
         StateHasChanged();
     }
 
@@ -1963,7 +2153,25 @@ else
             var concept = ontology?.Concepts.FirstOrDefault(c => c.Id == item.Id);
             if (concept != null)
             {
+                // Switch to List view and Concepts tab
+                if (viewMode != ViewMode.List)
+                {
+                    await SwitchViewMode(ViewMode.List);
+                }
+                activeListTab = "concepts";
+
                 await SelectConcept(concept);
+
+                // Scroll to the selected concept in the list
+                await Task.Delay(100); // Small delay to ensure DOM is updated
+                await JS.InvokeVoidAsync("eval", $@"
+                    const element = document.getElementById('concept-{concept.Id}');
+                    if (element) {{
+                        element.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                        element.classList.add('highlight-flash');
+                        setTimeout(() => element.classList.remove('highlight-flash'), 2000);
+                    }}
+                ");
             }
         }
         else if (item.Type == RecentItemType.Relationship)
@@ -1971,7 +2179,25 @@ else
             var relationship = ontology?.Relationships.FirstOrDefault(r => r.Id == item.Id);
             if (relationship != null)
             {
+                // Switch to List view and Relationships tab
+                if (viewMode != ViewMode.List)
+                {
+                    await SwitchViewMode(ViewMode.List);
+                }
+                activeListTab = "relationships";
+
                 SelectRelationship(relationship);
+
+                // Scroll to the selected relationship in the list
+                await Task.Delay(100); // Small delay to ensure DOM is updated
+                await JS.InvokeVoidAsync("eval", $@"
+                    const element = document.getElementById('relationship-{relationship.Id}');
+                    if (element) {{
+                        element.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                        element.classList.add('highlight-flash');
+                        setTimeout(() => element.classList.remove('highlight-flash'), 2000);
+                    }}
+                ");
             }
         }
     }

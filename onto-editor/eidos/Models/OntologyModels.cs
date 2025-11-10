@@ -96,6 +96,13 @@ namespace Eidos.Models
         /// </summary>
         public bool AllowPublicEdit { get; set; } = false;
 
+        /// <summary>
+        /// Whether this ontology requires approval for changes.
+        /// When enabled, users with Edit permissions create merge requests instead of direct edits.
+        /// Only users with FullAccess can approve/reject merge requests.
+        /// </summary>
+        public bool RequiresApproval { get; set; } = false;
+
         // Navigation properties
         public ICollection<Concept> Concepts { get; set; } = new List<Concept>();
         public ICollection<Relationship> Relationships { get; set; } = new List<Relationship>();

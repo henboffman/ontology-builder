@@ -1,0 +1,373 @@
+@using Eidos.Models
+@using Eidos.Models.DTOs
+@using Eidos.Models.Enums
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@inject IMergeRequestService MergeRequestService
+@inject IChangeDetectionService ChangeDetectionService
+@inject IOntologyActivityService ActivityService
+@inject ToastService ToastService
+@rendermode InteractiveServer
+
+@if (isVisible)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">
+                        <i class="bi bi-git"></i> Create Merge Request
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="Hide" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if (isProcessing)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-warning mb-3" role="status">
+                                <span class="visually-hidden">Creating merge request...</span>
+                            </div>
+                            <p class="text-muted">Analyzing changes and creating merge request...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Merge Request:</strong> Your changes will be submitted for review. An administrator will review and approve or reject your proposed changes before they are merged into the ontology.
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @(string.IsNullOrWhiteSpace(title) && attempted ? "is-invalid" : "")"
+                                   @bind="title"
+                                   @bind:event="oninput"
+                                   placeholder="Brief description of your changes"
+                                   autocomplete="off" />
+                            @if (string.IsNullOrWhiteSpace(title) && attempted)
+                            {
+                                <div class="invalid-feedback">Title is required</div>
+                            }
+                            <small class="text-muted">Give your merge request a clear, descriptive title</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" rows="4" @bind="description"
+                                      placeholder="Explain what changes you've made and why..."></textarea>
+                            <small class="text-muted">Provide context to help reviewers understand your changes</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Priority</label>
+                            <select class="form-select" @bind="priority">
+                                <option value="@MergeRequestPriority.Low">Low - Can be reviewed when convenient</option>
+                                <option value="@MergeRequestPriority.Normal">Normal - Standard review timeline</option>
+                                <option value="@MergeRequestPriority.High">High - Needs faster review</option>
+                                <option value="@MergeRequestPriority.Urgent">Urgent - Needs immediate attention</option>
+                            </select>
+                        </div>
+
+                        @if (changePreview != null)
+                        {
+                            <div class="card bg-light">
+                                <div class="card-header">
+                                    <strong>Change Summary</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row text-center mb-3">
+                                        @if (changePreview.ConceptsAdded > 0)
+                                        {
+                                            <div class="col">
+                                                <div class="text-success">
+                                                    <i class="bi bi-plus-circle fs-4"></i>
+                                                    <div class="fw-bold">@changePreview.ConceptsAdded</div>
+                                                    <small>Concepts Added</small>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (changePreview.ConceptsModified > 0)
+                                        {
+                                            <div class="col">
+                                                <div class="text-warning">
+                                                    <i class="bi bi-pencil fs-4"></i>
+                                                    <div class="fw-bold">@changePreview.ConceptsModified</div>
+                                                    <small>Concepts Modified</small>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (changePreview.ConceptsDeleted > 0)
+                                        {
+                                            <div class="col">
+                                                <div class="text-danger">
+                                                    <i class="bi bi-trash fs-4"></i>
+                                                    <div class="fw-bold">@changePreview.ConceptsDeleted</div>
+                                                    <small>Concepts Deleted</small>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (changePreview.RelationshipsAdded > 0)
+                                        {
+                                            <div class="col">
+                                                <div class="text-success">
+                                                    <i class="bi bi-plus-circle fs-4"></i>
+                                                    <div class="fw-bold">@changePreview.RelationshipsAdded</div>
+                                                    <small>Relationships Added</small>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (changePreview.RelationshipsModified > 0)
+                                        {
+                                            <div class="col">
+                                                <div class="text-warning">
+                                                    <i class="bi bi-pencil fs-4"></i>
+                                                    <div class="fw-bold">@changePreview.RelationshipsModified</div>
+                                                    <small>Relationships Modified</small>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (changePreview.RelationshipsDeleted > 0)
+                                        {
+                                            <div class="col">
+                                                <div class="text-danger">
+                                                    <i class="bi bi-trash fs-4"></i>
+                                                    <div class="fw-bold">@changePreview.RelationshipsDeleted</div>
+                                                    <small>Relationships Deleted</small>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                    @if (TotalChanges == 0)
+                                    {
+                                        <div class="text-center text-muted">
+                                            <i class="bi bi-info-circle"></i> No changes detected yet
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="mt-3">
+                                            <button class="btn btn-sm btn-outline-secondary w-100" type="button" @onclick="ToggleChangeDetails">
+                                                @if (showChangeDetails)
+                                                {
+                                                    <i class="bi bi-chevron-up"></i>
+                                                    <span>Hide Details</span>
+                                                }
+                                                else
+                                                {
+                                                    <i class="bi bi-chevron-down"></i>
+                                                    <span>Show Details</span>
+                                                }
+                                            </button>
+                                        </div>
+
+                                        @if (showChangeDetails && changeDetailsList != null)
+                                        {
+                                            <div class="mt-3" style="max-height: 300px; overflow-y: auto;">
+                                                @foreach (var detail in changeDetailsList)
+                                                {
+                                                    <div class="border-bottom py-2">
+                                                        <div class="d-flex align-items-start">
+                                                            @if (detail.ActivityType == ActivityTypes.Create)
+                                                            {
+                                                                <i class="bi bi-plus-circle text-success me-2"></i>
+                                                            }
+                                                            else if (detail.ActivityType == ActivityTypes.Update)
+                                                            {
+                                                                <i class="bi bi-pencil text-warning me-2"></i>
+                                                            }
+                                                            else if (detail.ActivityType == ActivityTypes.Delete)
+                                                            {
+                                                                <i class="bi bi-trash text-danger me-2"></i>
+                                                            }
+                                                            <div class="flex-grow-1">
+                                                                <strong>@detail.EntityName</strong>
+                                                                <small class="text-muted d-block">
+                                                                    @detail.Description
+                                                                </small>
+                                                                <small class="text-muted">
+                                                                    @detail.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                                                                </small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    @if (!isProcessing)
+                    {
+                        <button type="button" class="btn btn-secondary" @onclick="Hide">Cancel</button>
+                        <button type="button"
+                                class="btn btn-warning"
+                                @onclick="CreateMergeRequest"
+                                disabled="@(string.IsNullOrWhiteSpace(title))">
+                            <i class="bi bi-check-circle"></i> Create Merge Request
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter]
+    public int OntologyId { get; set; }
+
+    [Parameter]
+    public string? CurrentUserId { get; set; }
+
+    [Parameter]
+    public EventCallback OnMergeRequestCreated { get; set; }
+
+    private bool isVisible = false;
+    private bool isProcessing = false;
+    private bool attempted = false;
+    private bool showChangeDetails = false;
+
+    private string title = string.Empty;
+    private string description = string.Empty;
+    private MergeRequestPriority priority = MergeRequestPriority.Normal;
+    private MergeRequest? changePreview;
+    private List<OntologyActivityDto>? changeDetailsList;
+
+    private int TotalChanges =>
+        (changePreview?.ConceptsAdded ?? 0) +
+        (changePreview?.ConceptsModified ?? 0) +
+        (changePreview?.ConceptsDeleted ?? 0) +
+        (changePreview?.RelationshipsAdded ?? 0) +
+        (changePreview?.RelationshipsModified ?? 0) +
+        (changePreview?.RelationshipsDeleted ?? 0);
+
+    public async Task Show()
+    {
+        isVisible = true;
+        title = string.Empty;
+        description = string.Empty;
+        priority = MergeRequestPriority.Normal;
+        attempted = false;
+        isProcessing = false;
+
+        // Analyze user's activities to preview changes
+        await LoadChangePreviewAsync();
+
+        StateHasChanged();
+    }
+
+    private async Task LoadChangePreviewAsync()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(CurrentUserId))
+                return;
+
+            // Get all activities by this user for this ontology (get max limit to count all changes)
+            var activities = await ActivityService.GetActivityByUserAsync(OntologyId, CurrentUserId, skip: 0, take: 10000);
+
+            // Store the details list for the expandable view
+            changeDetailsList = activities.OrderByDescending(a => a.CreatedAt).ToList();
+
+            // Group by entity to count unique adds/updates/deletes
+            var conceptActivities = activities.Where(a => a.EntityType == EntityTypes.Concept).ToList();
+            var relationshipActivities = activities.Where(a => a.EntityType == EntityTypes.Relationship).ToList();
+
+            // Count concepts by activity type
+            var conceptsAdded = conceptActivities.Count(a => a.ActivityType == ActivityTypes.Create);
+            var conceptsModified = conceptActivities.Count(a => a.ActivityType == ActivityTypes.Update);
+            var conceptsDeleted = conceptActivities.Count(a => a.ActivityType == ActivityTypes.Delete);
+
+            // Count relationships by activity type
+            var relationshipsAdded = relationshipActivities.Count(a => a.ActivityType == ActivityTypes.Create);
+            var relationshipsModified = relationshipActivities.Count(a => a.ActivityType == ActivityTypes.Update);
+            var relationshipsDeleted = relationshipActivities.Count(a => a.ActivityType == ActivityTypes.Delete);
+
+            // Initialize change preview with statistics
+            changePreview = new MergeRequest
+            {
+                OntologyId = OntologyId,
+                ConceptsAdded = conceptsAdded,
+                ConceptsModified = conceptsModified,
+                ConceptsDeleted = conceptsDeleted,
+                RelationshipsAdded = relationshipsAdded,
+                RelationshipsModified = relationshipsModified,
+                RelationshipsDeleted = relationshipsDeleted
+            };
+        }
+        catch (Exception)
+        {
+            // Initialize empty if error occurs
+            changePreview = new MergeRequest
+            {
+                OntologyId = OntologyId
+            };
+            changeDetailsList = null;
+        }
+    }
+
+    public void Hide()
+    {
+        isVisible = false;
+        StateHasChanged();
+    }
+
+    private void ToggleChangeDetails()
+    {
+        showChangeDetails = !showChangeDetails;
+        StateHasChanged();
+    }
+
+    private async Task CreateMergeRequest()
+    {
+        attempted = true;
+
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            ToastService.ShowError("Please provide a title for the merge request");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(CurrentUserId))
+        {
+            ToastService.ShowError("User not authenticated");
+            return;
+        }
+
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            // Create the merge request
+            var mergeRequest = await MergeRequestService.CreateMergeRequestAsync(
+                OntologyId,
+                title,
+                description,
+                CurrentUserId,
+                priority
+            );
+
+            // Automatically submit for review
+            await MergeRequestService.SubmitForReviewAsync(mergeRequest.Id);
+
+            ToastService.ShowSuccess($"Merge request '{title}' created and submitted for review");
+
+            // Notify parent
+            await OnMergeRequestCreated.InvokeAsync();
+
+            Hide();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to create merge request: {ex.Message}");
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+}

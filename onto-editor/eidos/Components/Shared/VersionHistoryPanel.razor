@@ -258,6 +258,9 @@
     public int OntologyId { get; set; }
 
     [Parameter]
+    public string? CurrentUserId { get; set; }
+
+    [Parameter]
     public EventCallback<int> OnRevertRequested { get; set; }
 
     private List<OntologyActivityDto>? Activities { get; set; }
@@ -319,13 +322,28 @@
         {
             CurrentSkip = 0;
 
-            if (!string.IsNullOrEmpty(FilterEntityType))
+            // Filter by current user to only show their own uncommitted activities
+            if (!string.IsNullOrEmpty(CurrentUserId))
             {
-                Activities = await ActivityService.GetActivityByEntityTypeAsync(OntologyId, FilterEntityType, CurrentSkip, PageSize);
+                Activities = await ActivityService.GetActivityByUserAsync(OntologyId, CurrentUserId, CurrentSkip, PageSize);
             }
             else
             {
-                Activities = await ActivityService.GetActivityHistoryAsync(OntologyId, CurrentSkip, PageSize);
+                // No user context, show all activities
+                if (!string.IsNullOrEmpty(FilterEntityType))
+                {
+                    Activities = await ActivityService.GetActivityByEntityTypeAsync(OntologyId, FilterEntityType, CurrentSkip, PageSize);
+                }
+                else
+                {
+                    Activities = await ActivityService.GetActivityHistoryAsync(OntologyId, CurrentSkip, PageSize);
+                }
+            }
+
+            // Apply entity type filter in memory if user filter is active
+            if (!string.IsNullOrEmpty(CurrentUserId) && !string.IsNullOrEmpty(FilterEntityType) && Activities != null)
+            {
+                Activities = Activities.Where(a => a.EntityType == FilterEntityType).ToList();
             }
 
             // Apply activity type filter in memory (can be optimized with a service method)
@@ -350,14 +368,28 @@
             CurrentSkip += PageSize;
             List<OntologyActivityDto> moreActivities;
 
-            if (!string.IsNullOrEmpty(FilterEntityType))
+            // Filter by current user to only show their own uncommitted activities
+            if (!string.IsNullOrEmpty(CurrentUserId))
             {
-                moreActivities = await ActivityService.GetActivityByEntityTypeAsync(OntologyId, FilterEntityType, CurrentSkip,
-                PageSize);
+                moreActivities = await ActivityService.GetActivityByUserAsync(OntologyId, CurrentUserId, CurrentSkip, PageSize);
             }
             else
             {
-                moreActivities = await ActivityService.GetActivityHistoryAsync(OntologyId, CurrentSkip, PageSize);
+                // No user context, show all activities
+                if (!string.IsNullOrEmpty(FilterEntityType))
+                {
+                    moreActivities = await ActivityService.GetActivityByEntityTypeAsync(OntologyId, FilterEntityType, CurrentSkip, PageSize);
+                }
+                else
+                {
+                    moreActivities = await ActivityService.GetActivityHistoryAsync(OntologyId, CurrentSkip, PageSize);
+                }
+            }
+
+            // Apply entity type filter in memory if user filter is active
+            if (!string.IsNullOrEmpty(CurrentUserId) && !string.IsNullOrEmpty(FilterEntityType))
+            {
+                moreActivities = moreActivities.Where(a => a.EntityType == FilterEntityType).ToList();
             }
 
             if (!string.IsNullOrEmpty(FilterActivityType))

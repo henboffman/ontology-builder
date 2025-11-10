@@ -142,6 +142,18 @@
                                             <small class="text-muted">If checked, anyone can edit this ontology (not just view)</small>
                                         </div>
                                     }
+
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="requiresApproval" @bind="requiresApproval" />
+                                            <label class="form-check-label" for="requiresApproval">
+                                                <strong>Require approval for changes</strong>
+                                            </label>
+                                        </div>
+                                        <small class="text-muted">
+                                            <i class="bi bi-info-circle"></i> When enabled, users with Edit permission must submit Merge Requests for review instead of making direct changes. Only users with Full Access can approve/reject changes.
+                                        </small>
+                                    </div>
                                 </div>
 
                                 @if (visibility == OntologyVisibility.Group)
@@ -289,6 +301,9 @@
     [Parameter]
     public bool AllowPublicEdit { get; set; }
 
+    [Parameter]
+    public bool RequiresApproval { get; set; }
+
     // Events
     [Parameter]
     public EventCallback OnSaveClick { get; set; }
@@ -328,6 +343,9 @@
 
     [Parameter]
     public EventCallback<bool> AllowPublicEditChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> RequiresApprovalChanged { get; set; }
 
     // Component state
     private string activeTab = "general";
@@ -566,6 +584,19 @@
             {
                 AllowPublicEdit = value;
                 AllowPublicEditChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private bool requiresApproval
+    {
+        get => RequiresApproval;
+        set
+        {
+            if (RequiresApproval != value)
+            {
+                RequiresApproval = value;
+                RequiresApprovalChanged.InvokeAsync(value);
             }
         }
     }

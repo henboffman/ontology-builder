@@ -99,6 +99,7 @@ else
                                                    CurrentUserId="@currentUserId"
                                                    Visibility="@ontology.Visibility"
                                                    AllowPublicEdit="@ontology.AllowPublicEdit"
+                                                   RequiresApproval="@ontology.RequiresApproval"
                                                    OnSave="@permissionSaveCallback" />
                         }
                         else if (ActiveTab == "sharing")
@@ -130,7 +131,7 @@ else
     private string? loadError;
     private string? currentUserId;
 
-    private EventCallback<(string, bool)> permissionSaveCallback => EventCallback.Factory.Create<(string, bool)>(this, tuple => SavePermissionSettings(tuple.Item1, tuple.Item2));
+    private EventCallback<(string, bool, bool)> permissionSaveCallback => EventCallback.Factory.Create<(string, bool, bool)>(this, tuple => SavePermissionSettings(tuple.Item1, tuple.Item2, tuple.Item3));
 
     protected override async Task OnInitializedAsync()
     {
@@ -210,12 +211,13 @@ else
         }
     }
 
-    private async Task SavePermissionSettings(string visibility, bool allowPublicEdit)
+    private async Task SavePermissionSettings(string visibility, bool allowPublicEdit, bool requiresApproval)
     {
         try
         {
             ontology!.Visibility = visibility;
             ontology.AllowPublicEdit = allowPublicEdit;
+            ontology.RequiresApproval = requiresApproval;
             ontology.UpdatedAt = DateTime.UtcNow;
 
             await OntologyService.UpdateOntologyAsync(ontology);

@@ -387,6 +387,7 @@ builder.Services.AddScoped<IIndividualRepository, IndividualRepository>();
 builder.Services.AddScoped<IRestrictionRepository, RestrictionRepository>();
 builder.Services.AddScoped<ICollaborationPostRepository, CollaborationPostRepository>();
 builder.Services.AddScoped<IOntologyLinkRepository, OntologyLinkRepository>();
+builder.Services.AddScoped<IMergeRequestRepository, MergeRequestRepository>();
 
 // Register Export Strategies (Strategy Pattern)
 builder.Services.AddScoped<IExportStrategy, JsonExportStrategy>();
@@ -416,6 +417,9 @@ builder.Services.AddScoped<IRestrictionService, RestrictionService>();
 builder.Services.AddScoped<IRelationshipSuggestionService, RelationshipSuggestionService>();
 builder.Services.AddScoped<IOntologyValidationService, OntologyValidationService>();
 builder.Services.AddScoped<IOntologyLinkService, OntologyLinkService>();
+builder.Services.AddScoped<IMergeRequestService, MergeRequestService>();
+builder.Services.AddScoped<IChangeDetectionService, ChangeDetectionService>();
+builder.Services.AddScoped<IOntologyViewHistoryService, OntologyViewHistoryService>();
 
 // Register Import Services (Single Responsibility Principle)
 builder.Services.AddScoped<IRdfParser, RdfParser>();

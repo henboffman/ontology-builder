@@ -2,6 +2,7 @@ using Eidos.Data.Repositories;
 using Eidos.Models;
 using Eidos.Models.Enums;
 using Eidos.Models.Events;
+using Eidos.Models.Exceptions;
 using Eidos.Services.Commands;
 using Eidos.Services.Interfaces;
 using Eidos.Hubs;
@@ -27,6 +28,7 @@ public class RelationshipService : IRelationshipService
     private readonly IUserService _userService;
     private readonly IOntologyShareService _shareService;
     private readonly IOntologyActivityService _activityService;
+    private readonly OntologyPermissionService _permissionService;
 
     public RelationshipService(
         IRelationshipRepository relationshipRepository,
@@ -36,7 +38,8 @@ public class RelationshipService : IRelationshipService
         IHubContext<OntologyHub> hubContext,
         IUserService userService,
         IOntologyShareService shareService,
-        IOntologyActivityService activityService)
+        IOntologyActivityService activityService,
+        OntologyPermissionService permissionService)
     {
         _relationshipRepository = relationshipRepository;
         _ontologyRepository = ontologyRepository;
@@ -46,23 +49,23 @@ public class RelationshipService : IRelationshipService
         _userService = userService;
         _shareService = shareService;
         _activityService = activityService;
+        _permissionService = permissionService;
     }
 
     public async Task<Relationship> CreateAsync(Relationship relationship, bool recordUndo = true)
     {
         // Verify user has permission to add relationships (defense in depth)
         var currentUser = await _userService.GetCurrentUserAsync();
-        var hasPermission = await _shareService.HasPermissionAsync(
-            relationship.OntologyId,
-            currentUser?.Id,
-            sessionToken: null,
-            requiredLevel: PermissionLevel.ViewAndAdd);
+        var canEdit = await _permissionService.CanEditAsync(relationship.OntologyId, currentUser?.Id);
 
-        if (!hasPermission)
+        if (!canEdit)
         {
             throw new UnauthorizedAccessException(
                 $"User does not have permission to add relationships to ontology {relationship.OntologyId}");
         }
+
+        // Check if approval workflow is required (throws ApprovalRequiredException if needed)
+        await CheckApprovalModeAsync(relationship.OntologyId, currentUser?.Id, "create relationship");
 
         if (recordUndo)
         {
@@ -90,17 +93,16 @@ public class RelationshipService : IRelationshipService
     {
         // Verify user has permission to edit relationships (defense in depth)
         var currentUser = await _userService.GetCurrentUserAsync();
-        var hasPermission = await _shareService.HasPermissionAsync(
-            relationship.OntologyId,
-            currentUser?.Id,
-            sessionToken: null,
-            requiredLevel: PermissionLevel.ViewAddEdit);
+        var canEdit = await _permissionService.CanEditAsync(relationship.OntologyId, currentUser?.Id);
 
-        if (!hasPermission)
+        if (!canEdit)
         {
             throw new UnauthorizedAccessException(
                 $"User does not have permission to edit relationships in ontology {relationship.OntologyId}");
         }
+
+        // Check if approval workflow is required (throws ApprovalRequiredException if needed)
+        await CheckApprovalModeAsync(relationship.OntologyId, currentUser?.Id, "update relationship");
 
         // Capture before state for activity tracking
         var beforeRelationship = await _relationshipRepository.GetByIdAsync(relationship.Id);
@@ -135,17 +137,16 @@ public class RelationshipService : IRelationshipService
 
         // Verify user has permission to delete relationships (defense in depth)
         var currentUser = await _userService.GetCurrentUserAsync();
-        var hasPermission = await _shareService.HasPermissionAsync(
-            ontologyId,
-            currentUser?.Id,
-            sessionToken: null,
-            requiredLevel: PermissionLevel.ViewAddEdit);
+        var canEdit = await _permissionService.CanEditAsync(ontologyId, currentUser?.Id);
 
-        if (!hasPermission)
+        if (!canEdit)
         {
             throw new UnauthorizedAccessException(
                 $"User does not have permission to delete relationships from ontology {ontologyId}");
         }
+
+        // Check if approval workflow is required (throws ApprovalRequiredException if needed)
+        await CheckApprovalModeAsync(ontologyId, currentUser?.Id, "delete relationship");
 
         if (recordUndo)
         {
@@ -263,5 +264,36 @@ public class RelationshipService : IRelationshipService
         };
 
         return JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = false });
+    }
+
+    /// <summary>
+    /// Checks if the ontology requires approval for changes and if the current user
+    /// has sufficient permissions to bypass the approval workflow.
+    /// Throws ApprovalRequiredException if approval is required and user only has edit permissions.
+    /// </summary>
+    /// <param name="ontologyId">The ontology ID to check</param>
+    /// <param name="userId">The current user ID</param>
+    /// <param name="operationType">The type of operation being attempted (e.g., "create", "update", "delete")</param>
+    private async Task CheckApprovalModeAsync(int ontologyId, string? userId, string operationType)
+    {
+        if (string.IsNullOrEmpty(userId))
+            return; // Permission checks will handle this
+
+        // Get the ontology to check if approval is required
+        var ontology = await _ontologyRepository.GetByIdAsync(ontologyId);
+        if (ontology == null || !ontology.RequiresApproval)
+            return; // No approval required
+
+        // Check if user has FullAccess (can bypass approval)
+        var canManage = await _permissionService.CanManageAsync(ontologyId, userId);
+        if (canManage)
+            return; // User has FullAccess, can bypass approval workflow
+
+        // User only has Edit permission but approval is required
+        throw new ApprovalRequiredException(
+            ontologyId,
+            operationType,
+            $"This ontology requires approval for {operationType} operations. Please create a merge request instead."
+        );
     }
 }

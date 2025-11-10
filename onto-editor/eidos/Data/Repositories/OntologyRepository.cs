@@ -265,6 +265,7 @@ public class OntologyRepository : BaseRepository<Ontology>, IOntologyRepository
         existingOntology.Notes = ontology.Notes;
         existingOntology.Visibility = ontology.Visibility;
         existingOntology.AllowPublicEdit = ontology.AllowPublicEdit;
+        existingOntology.RequiresApproval = ontology.RequiresApproval;
         existingOntology.UpdatedAt = DateTime.UtcNow;
 
         await context.SaveChangesAsync();

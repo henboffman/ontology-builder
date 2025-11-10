@@ -12,5 +12,6 @@ public enum ViewMode
     Links,
     Collaborators,
     VersionHistory,
+    MergeRequests,
     Help
 }

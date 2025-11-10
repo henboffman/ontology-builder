@@ -66,6 +66,21 @@
             </div>
         }
 
+        <!-- Approval Mode Settings -->
+        <div class="settings-item">
+            <label class="form-label fw-bold">Change Approval Workflow</label>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="requiresApproval" @bind="requiresApproval" />
+                <label class="form-check-label" for="requiresApproval">
+                    Require approval for all changes
+                </label>
+            </div>
+            <p class="text-muted small mt-2">
+                <i class="bi bi-info-circle me-1"></i>
+                When enabled, users with Edit permission must create Merge Requests for review. Only users with Full Access can approve and merge changes. This is recommended for mature, production ontologies.
+            </p>
+        </div>
+
         <!-- Group Access Management -->
         @if (visibility == OntologyVisibility.Group)
         {
@@ -147,16 +162,21 @@
     public bool AllowPublicEdit { get; set; }
 
     [Parameter]
-    public EventCallback<(string visibility, bool allowPublicEdit)> OnSave { get; set; }
+    public bool RequiresApproval { get; set; }
+
+    [Parameter]
+    public EventCallback<(string visibility, bool allowPublicEdit, bool requiresApproval)> OnSave { get; set; }
 
     private string visibility = OntologyVisibility.Private;
     private bool allowPublicEdit;
+    private bool requiresApproval;
     private List<GroupAccessInfo>? groupAccess;
 
     protected override async Task OnParametersSetAsync()
     {
         visibility = Visibility ?? OntologyVisibility.Private;
         allowPublicEdit = AllowPublicEdit;
+        requiresApproval = RequiresApproval;
 
         if (visibility == OntologyVisibility.Group)
         {
@@ -213,13 +233,14 @@
 
     private async Task HandleSave()
     {
-        await OnSave.InvokeAsync((visibility, allowPublicEdit));
+        await OnSave.InvokeAsync((visibility, allowPublicEdit, requiresApproval));
     }
 
     private void HandleCancel()
     {
         visibility = Visibility ?? OntologyVisibility.Private;
         allowPublicEdit = AllowPublicEdit;
+        requiresApproval = RequiresApproval;
     }
 
     private void ShowAddGroupDialog()

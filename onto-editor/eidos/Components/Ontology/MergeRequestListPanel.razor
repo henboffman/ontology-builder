@@ -1,0 +1,310 @@
+@using Eidos.Models
+@using Eidos.Models.Enums
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@inject IMergeRequestService MergeRequestService
+@inject OntologyPermissionService PermissionService
+@inject ToastService ToastService
+@rendermode InteractiveServer
+
+<div class="card">
+    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-git"></i> Merge Requests
+            @if (pendingCount > 0)
+            {
+                <span class="badge bg-danger ms-2">@pendingCount</span>
+            }
+        </h5>
+        <button class="btn btn-sm btn-outline-dark" @onclick="Refresh">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+    </div>
+    <div class="card-body">
+        @if (isLoading)
+        {
+            <div class="text-center py-4">
+                <div class="spinner-border text-warning" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (mergeRequests == null || !mergeRequests.Any())
+        {
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-inbox fs-1"></i>
+                <p class="mt-2">No merge requests</p>
+            </div>
+        }
+        else
+        {
+            <div class="list-group list-group-flush">
+                @foreach (var mr in mergeRequests)
+                {
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h6 class="mb-0">@mr.Title</h6>
+                                    <span class="badge @GetStatusBadgeClass(mr.Status)">
+                                        @mr.Status
+                                    </span>
+                                    @if (mr.Priority == MergeRequestPriority.High || mr.Priority == MergeRequestPriority.Urgent)
+                                    {
+                                        <span class="badge bg-danger">@mr.Priority</span>
+                                    }
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(mr.Description))
+                                {
+                                    <p class="text-muted small mb-2">@mr.Description</p>
+                                }
+
+                                <div class="small text-muted mb-2">
+                                    <i class="bi bi-person"></i> @(mr.CreatedByUser?.UserName ?? "Unknown")
+                                    <span class="mx-2">•</span>
+                                    <i class="bi bi-clock"></i> @mr.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                                </div>
+
+                                <div class="d-flex gap-3 small">
+                                    @if (mr.ConceptsAdded > 0)
+                                    {
+                                        <span class="text-success">
+                                            <i class="bi bi-plus-circle"></i> @mr.ConceptsAdded concepts
+                                        </span>
+                                    }
+                                    @if (mr.ConceptsModified > 0)
+                                    {
+                                        <span class="text-warning">
+                                            <i class="bi bi-pencil"></i> @mr.ConceptsModified concepts
+                                        </span>
+                                    }
+                                    @if (mr.ConceptsDeleted > 0)
+                                    {
+                                        <span class="text-danger">
+                                            <i class="bi bi-trash"></i> @mr.ConceptsDeleted concepts
+                                        </span>
+                                    }
+                                    @if (mr.RelationshipsAdded > 0)
+                                    {
+                                        <span class="text-success">
+                                            <i class="bi bi-plus-circle"></i> @mr.RelationshipsAdded relationships
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-column gap-1">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => ViewMergeRequestDetails(mr.Id)" title="View Details">
+                                    <i class="bi bi-eye"></i> View
+                                </button>
+
+                                @if (canManage && mr.Status == MergeRequestStatus.PendingReview)
+                                {
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-success" @onclick="() => ApproveMergeRequest(mr.Id)" title="Approve">
+                                            <i class="bi bi-check-circle"></i>
+                                        </button>
+                                        <button class="btn btn-warning" @onclick="() => RequestChanges(mr.Id)" title="Request Changes">
+                                            <i class="bi bi-arrow-return-left"></i>
+                                        </button>
+                                        <button class="btn btn-danger" @onclick="() => RejectMergeRequest(mr.Id)" title="Reject">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                    </div>
+                                }
+                                else if (canManage && mr.Status == MergeRequestStatus.ChangesRequested)
+                                {
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-success" @onclick="() => ApproveMergeRequest(mr.Id)" title="Approve">
+                                            <i class="bi bi-check-circle"></i>
+                                        </button>
+                                        <button class="btn btn-danger" @onclick="() => RejectMergeRequest(mr.Id)" title="Reject">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                    </div>
+                                }
+                                else if (canManage && mr.Status == MergeRequestStatus.Approved)
+                                {
+                                    <button class="btn btn-sm btn-primary" @onclick="() => MergeMergeRequest(mr.Id)" title="Merge">
+                                        <i class="bi bi-git"></i> Merge
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int OntologyId { get; set; }
+
+    [Parameter]
+    public string? CurrentUserId { get; set; }
+
+    private List<MergeRequest> mergeRequests = new();
+    private bool isLoading = true;
+    private bool canManage = false;
+    private int pendingCount = 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (OntologyId > 0)
+        {
+            await LoadMergeRequests();
+
+            if (!string.IsNullOrEmpty(CurrentUserId))
+            {
+                canManage = await PermissionService.CanManageAsync(OntologyId, CurrentUserId);
+            }
+        }
+    }
+
+    private async Task LoadMergeRequests()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var allRequests = await MergeRequestService.GetMergeRequestsForOntologyAsync(OntologyId);
+            mergeRequests = allRequests.OrderByDescending(mr => mr.CreatedAt).ToList();
+            pendingCount = mergeRequests.Count(mr =>
+                mr.Status == MergeRequestStatus.PendingReview ||
+                mr.Status == MergeRequestStatus.ChangesRequested);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load merge requests: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    public async Task Refresh()
+    {
+        await LoadMergeRequests();
+    }
+
+    private async Task ApproveMergeRequest(int mergeRequestId)
+    {
+        if (string.IsNullOrEmpty(CurrentUserId)) return;
+
+        try
+        {
+            await MergeRequestService.ApproveAsync(mergeRequestId, CurrentUserId);
+            ToastService.ShowSuccess("Merge request approved");
+            await LoadMergeRequests();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to approve: {ex.Message}");
+        }
+    }
+
+    private async Task RejectMergeRequest(int mergeRequestId)
+    {
+        if (string.IsNullOrEmpty(CurrentUserId)) return;
+
+        try
+        {
+            await MergeRequestService.RejectAsync(mergeRequestId, CurrentUserId, "Rejected by reviewer");
+            ToastService.ShowSuccess("Merge request rejected");
+            await LoadMergeRequests();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to reject: {ex.Message}");
+        }
+    }
+
+    private async Task RequestChanges(int mergeRequestId)
+    {
+        if (string.IsNullOrEmpty(CurrentUserId)) return;
+
+        try
+        {
+            await MergeRequestService.RequestChangesAsync(mergeRequestId, CurrentUserId, "Changes requested by reviewer");
+            ToastService.ShowSuccess("Changes requested");
+            await LoadMergeRequests();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to request changes: {ex.Message}");
+        }
+    }
+
+    private async Task MergeMergeRequest(int mergeRequestId)
+    {
+        if (string.IsNullOrEmpty(CurrentUserId)) return;
+
+        try
+        {
+            var success = await MergeRequestService.MergeAsync(mergeRequestId, CurrentUserId);
+            if (success)
+            {
+                ToastService.ShowSuccess("Merge request merged successfully");
+                await LoadMergeRequests();
+            }
+            else
+            {
+                ToastService.ShowWarning("Merge request has conflicts and cannot be merged");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to merge: {ex.Message}");
+        }
+    }
+
+    private async Task ViewMergeRequestDetails(int mergeRequestId)
+    {
+        try
+        {
+            var mr = mergeRequests.FirstOrDefault(m => m.Id == mergeRequestId);
+            if (mr == null) return;
+
+            var details = $"Title: {mr.Title}\n" +
+                         $"Status: {mr.Status}\n" +
+                         $"Created by: {mr.CreatedByUser?.UserName ?? "Unknown"}\n" +
+                         $"Created at: {mr.CreatedAt:MMM dd, yyyy HH:mm}\n\n" +
+                         $"Description:\n{mr.Description ?? "No description"}\n\n" +
+                         $"Changes:\n" +
+                         $"- Concepts Added: {mr.ConceptsAdded}\n" +
+                         $"- Concepts Modified: {mr.ConceptsModified}\n" +
+                         $"- Concepts Deleted: {mr.ConceptsDeleted}\n" +
+                         $"- Relationships Added: {mr.RelationshipsAdded}\n" +
+                         $"- Relationships Modified: {mr.RelationshipsModified}\n" +
+                         $"- Relationships Deleted: {mr.RelationshipsDeleted}";
+
+            // For now, show a toast. In the future, this could open a detailed modal
+            ToastService.ShowInfo(details, 10000);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load details: {ex.Message}");
+        }
+    }
+
+    private string GetStatusBadgeClass(MergeRequestStatus status)
+    {
+        return status switch
+        {
+            MergeRequestStatus.Draft => "bg-secondary",
+            MergeRequestStatus.PendingReview => "bg-warning text-dark",
+            MergeRequestStatus.Approved => "bg-success",
+            MergeRequestStatus.Rejected => "bg-danger",
+            MergeRequestStatus.Merged => "bg-primary",
+            MergeRequestStatus.Closed => "bg-dark",
+            MergeRequestStatus.ChangesRequested => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+}

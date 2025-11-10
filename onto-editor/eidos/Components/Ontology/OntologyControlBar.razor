@@ -56,8 +56,20 @@
             </div>
         </div>
 
-        <!-- Presence Indicator (Right Side) -->
-        <div class="ms-auto">
+        <!-- Merge Request Notification & Presence Indicator (Right Side) -->
+        <div class="ms-auto d-flex gap-2 align-items-center">
+            @if (PendingMergeRequestCount > 0)
+            {
+                <button class="btn btn-sm btn-warning position-relative pulse-animation"
+                        @onclick="OnViewMergeRequestsClick"
+                        title="View pending merge requests">
+                    <i class="bi bi-git"></i> Merge Requests
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        @PendingMergeRequestCount
+                        <span class="visually-hidden">pending merge requests</span>
+                    </span>
+                </button>
+            }
             <PresenceIndicator Users="@PresenceUsers" OnNavigateToUserView="@OnNavigateToUserView" />
         </div>
     </div>
@@ -156,6 +168,9 @@
                 <li><button class="dropdown-item @(CurrentViewMode == ViewMode.VersionHistory ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.VersionHistory)">
                     <i class="bi bi-clock-history me-2"></i> Version History
                 </button></li>
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.MergeRequests ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.MergeRequests)">
+                    <i class="bi bi-git me-2"></i> Merge Requests
+                </button></li>
                 <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Help ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Help)">
                     <i class="bi bi-question-circle me-2"></i> Help
                 </button></li>
@@ -234,4 +249,25 @@
 
     [Parameter]
     public EventCallback<string> OnNavigateToUserView { get; set; }
+
+    [Parameter]
+    public int PendingMergeRequestCount { get; set; }
+
+    [Parameter]
+    public EventCallback OnViewMergeRequestsClick { get; set; }
 }
+
+<style>
+    .pulse-animation {
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% {
+            box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+        }
+        50% {
+            box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+        }
+    }
+</style>

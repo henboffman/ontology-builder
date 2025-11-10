@@ -3,6 +3,7 @@ using System;
 using Eidos.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Eidos.Migrations
 {
     [DbContext(typeof(OntologyDbContext))]
-    partial class OntologyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251108221832_AddMergeRequestApprovalWorkflow")]
+    partial class AddMergeRequestApprovalWorkflow
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.10");
@@ -1231,52 +1234,6 @@ namespace Eidos.Migrations
                     b.ToTable("OntologyTags");
                 });
 
-            modelBuilder.Entity("Eidos.Models.OntologyViewHistory", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CurrentSessionId")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("LastDismissedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("LastDismissedSessionId")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("LastViewedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("OntologyId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("ViewCount")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("IX_OntologyViewHistory_UserId");
-
-                    b.HasIndex("OntologyId", "UserId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_OntologyViewHistory_OntologyId_UserId");
-
-                    b.ToTable("OntologyViewHistories");
-                });
-
             modelBuilder.Entity("Eidos.Models.Property", b =>
                 {
                     b.Property<int>("Id")
@@ -2090,25 +2047,6 @@ namespace Eidos.Migrations
                         .IsRequired();
 
                     b.Navigation("Ontology");
-                });
-
-            modelBuilder.Entity("Eidos.Models.OntologyViewHistory", b =>
-                {
-                    b.HasOne("Eidos.Models.Ontology", "Ontology")
-                        .WithMany()
-                        .HasForeignKey("OntologyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Eidos.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Ontology");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Eidos.Models.Property", b =>

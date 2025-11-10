@@ -53,6 +53,14 @@ namespace Eidos.Data
         // Ontology organization (tags/folders)
         public DbSet<OntologyTag> OntologyTags { get; set; }
 
+        // Merge request approval workflow
+        public DbSet<MergeRequest> MergeRequests { get; set; }
+        public DbSet<MergeRequestChange> MergeRequestChanges { get; set; }
+        public DbSet<MergeRequestComment> MergeRequestComments { get; set; }
+
+        // Ontology view tracking for "What's New" feature
+        public DbSet<OntologyViewHistory> OntologyViewHistories { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -489,6 +497,110 @@ namespace Eidos.Data
                 // Create index on Tag for finding all ontologies with a specific tag/folder
                 entity.HasIndex(t => t.Tag)
                     .HasDatabaseName("IX_OntologyTag_Tag");
+            });
+
+            // Configure MergeRequest
+            modelBuilder.Entity<MergeRequest>(entity =>
+            {
+                // Ontology relationship
+                entity.HasOne(mr => mr.Ontology)
+                    .WithMany()
+                    .HasForeignKey(mr => mr.OntologyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // CreatedBy relationship
+                entity.HasOne(mr => mr.CreatedByUser)
+                    .WithMany()
+                    .HasForeignKey(mr => mr.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // AssignedReviewer relationship (optional)
+                entity.HasOne(mr => mr.AssignedReviewer)
+                    .WithMany()
+                    .HasForeignKey(mr => mr.AssignedReviewerUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // ReviewedBy relationship (optional)
+                entity.HasOne(mr => mr.ReviewedBy)
+                    .WithMany()
+                    .HasForeignKey(mr => mr.ReviewedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // Indexes for efficient queries
+                entity.HasIndex(mr => mr.OntologyId)
+                    .HasDatabaseName("IX_MergeRequest_OntologyId");
+
+                entity.HasIndex(mr => new { mr.OntologyId, mr.Status })
+                    .HasDatabaseName("IX_MergeRequest_OntologyId_Status");
+
+                entity.HasIndex(mr => mr.CreatedByUserId)
+                    .HasDatabaseName("IX_MergeRequest_CreatedByUserId");
+
+                entity.HasIndex(mr => mr.AssignedReviewerUserId)
+                    .HasDatabaseName("IX_MergeRequest_AssignedReviewerUserId");
+            });
+
+            // Configure MergeRequestChange
+            modelBuilder.Entity<MergeRequestChange>(entity =>
+            {
+                entity.HasOne(c => c.MergeRequest)
+                    .WithMany(mr => mr.Changes)
+                    .HasForeignKey(c => c.MergeRequestId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Index for efficient queries
+                entity.HasIndex(c => c.MergeRequestId)
+                    .HasDatabaseName("IX_MergeRequestChange_MergeRequestId");
+            });
+
+            // Configure MergeRequestComment
+            modelBuilder.Entity<MergeRequestComment>(entity =>
+            {
+                entity.HasOne(c => c.MergeRequest)
+                    .WithMany(mr => mr.Comments)
+                    .HasForeignKey(c => c.MergeRequestId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(c => c.User)
+                    .WithMany()
+                    .HasForeignKey(c => c.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Optional reference to a specific change
+                entity.HasOne(c => c.MergeRequestChange)
+                    .WithMany()
+                    .HasForeignKey(c => c.MergeRequestChangeId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // Indexes for efficient queries
+                entity.HasIndex(c => c.MergeRequestId)
+                    .HasDatabaseName("IX_MergeRequestComment_MergeRequestId");
+
+                entity.HasIndex(c => new { c.MergeRequestId, c.CreatedAt })
+                    .HasDatabaseName("IX_MergeRequestComment_MergeRequestId_CreatedAt");
+            });
+
+            // Configure OntologyViewHistory (for "What's New" feature)
+            modelBuilder.Entity<OntologyViewHistory>(entity =>
+            {
+                entity.HasOne(v => v.Ontology)
+                    .WithMany()
+                    .HasForeignKey(v => v.OntologyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(v => v.User)
+                    .WithMany()
+                    .HasForeignKey(v => v.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Composite unique index: one record per user per ontology
+                entity.HasIndex(v => new { v.OntologyId, v.UserId })
+                    .IsUnique()
+                    .HasDatabaseName("IX_OntologyViewHistory_OntologyId_UserId");
+
+                // Index for querying by user
+                entity.HasIndex(v => v.UserId)
+                    .HasDatabaseName("IX_OntologyViewHistory_UserId");
             });
 
             // Seed feature toggles only

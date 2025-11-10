@@ -1035,4 +1035,59 @@
         font-size: 0.7rem;
         padding: 0.15rem 0.4rem;
     }
+
+    /* Highlight flash animation for recent items navigation */
+    .highlight-flash {
+        animation: highlight-pulse 2s ease-in-out;
+    }
+
+    @@keyframes highlight-pulse {
+        0% {
+            background-color: var(--bs-primary-bg-subtle);
+            transform: scale(1);
+        }
+        25% {
+            background-color: var(--bs-warning-bg-subtle);
+            transform: scale(1.02);
+        }
+        50% {
+            background-color: var(--bs-primary-bg-subtle);
+            transform: scale(1);
+        }
+        75% {
+            background-color: var(--bs-warning-bg-subtle);
+            transform: scale(1.02);
+        }
+        100% {
+            background-color: transparent;
+            transform: scale(1);
+        }
+    }
+
+    [data-bs-theme="dark"] .highlight-flash {
+        animation: highlight-pulse-dark 2s ease-in-out;
+    }
+
+    @@keyframes highlight-pulse-dark {
+        0% {
+            background-color: rgba(13, 110, 253, 0.2);
+            transform: scale(1);
+        }
+        25% {
+            background-color: rgba(255, 193, 7, 0.2);
+            transform: scale(1.02);
+        }
+        50% {
+            background-color: rgba(13, 110, 253, 0.2);
+            transform: scale(1);
+        }
+        75% {
+            background-color: rgba(255, 193, 7, 0.2);
+            transform: scale(1.02);
+        }
+        100% {
+            background-color: transparent;
+            transform: scale(1);
+        }
+    }
 </style>

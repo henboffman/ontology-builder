@@ -87,6 +87,41 @@
     /* Accent Colors */
     --accent-purple: #6f42c1;          /* Purple accent for headers */
     --accent-blue: #0d6efd;            /* Blue accent */
+
+    /* ========================================
+       Design System - Standardized Values
+       ======================================== */
+
+    /* Animation & Transition Timing */
+    --transition-fast: 150ms;          /* Quick interactions (hover, focus) */
+    --transition-normal: 250ms;        /* Standard transitions (modals, dropdowns) */
+    --transition-slow: 350ms;          /* Smooth, deliberate animations (theme changes) */
+    --transition-ease: cubic-bezier(0.4, 0, 0.2, 1);  /* Material Design easing */
+    --transition-ease-out: cubic-bezier(0.0, 0, 0.2, 1);  /* Deceleration curve */
+    --transition-ease-in: cubic-bezier(0.4, 0, 1, 1);  /* Acceleration curve */
+
+    /* Border Radius Scale */
+    --radius-sm: 4px;                  /* Small elements (badges, tags) */
+    --radius-md: 6px;                  /* Default (buttons, inputs) */
+    --radius-lg: 8px;                  /* Cards, modals */
+    --radius-xl: 12px;                 /* Panels, large containers */
+    --radius-2xl: 16px;                /* Feature panels */
+    --radius-full: 9999px;             /* Pills, avatars */
+
+    /* Spacing Scale */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-lg: 16px;
+    --space-xl: 20px;
+    --space-2xl: 24px;
+    --space-3xl: 32px;
+    --space-4xl: 48px;
+
+    /* Focus Indicators */
+    --focus-ring-width: 3px;
+    --focus-ring-color: rgba(13, 110, 253, 0.5);  /* Blue with 50% opacity */
+    --focus-ring-offset: 2px;
 }
 
 /* Dark Theme - Using Bootstrap 5.3+ data-bs-theme attribute */
@@ -177,6 +212,12 @@
     /* Accent Colors - Adjusted for dark mode */
     --accent-purple: #8B5FD6;          /* Lighter purple */
     --accent-blue: #4A90E2;            /* Lighter blue */
+
+    /* Design System values inherited from :root (same for both themes) */
+    /* Animation timing, border-radius, and spacing remain consistent */
+
+    /* Focus Indicators - Adjusted for dark mode */
+    --focus-ring-color: rgba(74, 144, 226, 0.6);  /* Brighter blue for dark mode */
 }
 
 /* ========================================
@@ -187,7 +228,8 @@
 body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: background-color var(--transition-slow) var(--transition-ease),
+                color var(--transition-slow) var(--transition-ease);
 }
 
 /* Cards */
@@ -475,15 +517,31 @@ footer {
 
 /* Smooth transitions for theme changes */
 * {
-    transition: background-color 0.3s ease,
-                color 0.3s ease,
-                border-color 0.3s ease;
+    transition: background-color var(--transition-slow) var(--transition-ease),
+                color var(--transition-slow) var(--transition-ease),
+                border-color var(--transition-slow) var(--transition-ease);
 }
 
-/* Disable transitions for certain elements to avoid flashing */
+/* Enable fast transitions for interactive elements */
 .btn,
+.list-group-item,
+.nav-link,
+.dropdown-item {
+    transition: background-color var(--transition-fast) var(--transition-ease-out),
+                color var(--transition-fast) var(--transition-ease-out),
+                border-color var(--transition-fast) var(--transition-ease-out),
+                transform var(--transition-fast) var(--transition-ease-out),
+                box-shadow var(--transition-fast) var(--transition-ease-out) !important;
+}
+
+/* Standard transitions for forms */
 .form-control,
-.form-select,
+.form-select {
+    transition: border-color var(--transition-normal) var(--transition-ease),
+                box-shadow var(--transition-normal) var(--transition-ease);
+}
+
+/* Disable transitions for modals and dropdowns (instant appear/disappear) */
 .modal,
 .dropdown-menu {
     transition: none;
@@ -511,4 +569,534 @@ footer {
 
 .highlight-flash {
     animation: highlight-pulse 2s ease-out;
+}
+
+/* ========================================
+   Enhanced Focus Indicators & Button States
+   ======================================== */
+
+/* Improved focus indicators for accessibility */
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.list-group-item:focus-visible,
+.nav-link:focus-visible,
+a:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+    box-shadow: 0 0 0 var(--focus-ring-offset) var(--bg-primary),
+                0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) var(--focus-ring-color);
+}
+
+/* Enhanced button states - Minimal, sci-fi aesthetic */
+.btn {
+    border-radius: var(--radius-md);
+}
+
+.btn:hover:not(:disabled) {
+    /* Subtle glow instead of lift - more sci-fi */
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.btn:active:not(:disabled) {
+    /* Minimal feedback */
+    opacity: 0.9;
+}
+
+.btn:disabled,
+.btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Dark mode - subtle outline glow */
+[data-bs-theme="dark"] .btn:hover:not(:disabled) {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+/* Card hover effects - Minimal */
+.card {
+    border-radius: var(--radius-lg);
+}
+
+.card.clickable:hover,
+.list-group-item-action:hover {
+    /* Subtle border glow only */
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Modal and dialog improvements */
+.modal-content {
+    border-radius: var(--radius-xl);
+    padding: var(--space-lg);
+}
+
+.modal-header {
+    padding: var(--space-xl) var(--space-xl) var(--space-lg);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+
+.modal-body {
+    padding: var(--space-lg) var(--space-xl);
+}
+
+.modal-footer {
+    padding: var(--space-lg) var(--space-xl) var(--space-xl);
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+}
+
+/* Form improvements */
+.form-control,
+.form-select {
+    border-radius: var(--radius-md);
+    padding: var(--space-sm) var(--space-md);
+}
+
+/* List group improvements */
+.list-group-item {
+    border-radius: var(--radius-md) !important;
+    margin-bottom: var(--space-xs);
+}
+
+/* Dropdown improvements */
+.dropdown-menu {
+    border-radius: var(--radius-lg);
+    padding: var(--space-sm);
+    box-shadow: var(--shadow-lg);
+}
+
+.dropdown-item {
+    border-radius: var(--radius-sm);
+    padding: var(--space-sm) var(--space-md);
+    margin-bottom: 2px;
+}
+
+/* Badge improvements */
+.badge {
+    border-radius: var(--radius-sm);
+    padding: var(--space-xs) var(--space-sm);
+}
+
+/* Enhanced hover states for interactive elements - Minimal */
+.nav-link:hover,
+.list-group-item-action:hover {
+    background-color: var(--bg-hover);
+}
+
+/* ========================================
+   Loading States & Skeleton Screens
+   ======================================== */
+
+/* Minimal loading spinner - sci-fi aesthetic */
+.loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: var(--radius-full);
+    animation: spin 0.8s linear infinite;
+}
+
+.loading-spinner-lg {
+    width: 48px;
+    height: 48px;
+    border-width: 3px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Skeleton loading - minimal pulse */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--bg-secondary) 0%,
+        var(--bg-tertiary) 50%,
+        var(--bg-secondary) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    border-radius: var(--radius-md);
+}
+
+@keyframes skeleton-pulse {
+    0%, 100% { background-position: 0% 0%; }
+    50% { background-position: 100% 0%; }
+}
+
+.skeleton-text {
+    height: 1em;
+    margin-bottom: var(--space-sm);
+}
+
+.skeleton-title {
+    height: 1.5em;
+    width: 60%;
+    margin-bottom: var(--space-md);
+}
+
+.skeleton-card {
+    height: 200px;
+    width: 100%;
+}
+
+/* ========================================
+   Empty States
+   ======================================== */
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4xl) var(--space-2xl);
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    color: var(--text-muted);
+    margin-bottom: var(--space-lg);
+    opacity: 0.5;
+}
+
+.empty-state-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-sm);
+}
+
+.empty-state-message {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    max-width: 400px;
+    margin-bottom: var(--space-xl);
+}
+
+/* ========================================
+   Progress Indicators
+   ======================================== */
+
+/* Minimal progress bar - sci-fi line */
+.progress-bar {
+    height: 2px;
+    background-color: var(--border-color);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: var(--primary-color);
+    transition: width var(--transition-normal) var(--transition-ease);
+    box-shadow: 0 0 8px var(--primary-color);
+}
+
+.progress-bar-indeterminate {
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar-indeterminate::before {
+    content: '';
+    position: absolute;
+    height: 100%;
+    width: 30%;
+    background-color: var(--primary-color);
+    animation: progress-indeterminate 1.5s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--primary-color);
+}
+
+@keyframes progress-indeterminate {
+    0% { left: -30%; }
+    100% { left: 100%; }
+}
+
+/* ========================================
+   Error & Alert States
+   ======================================== */
+
+.alert-minimal {
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-md);
+    border-left: 3px solid;
+    background-color: var(--bg-secondary);
+    margin-bottom: var(--space-lg);
+}
+
+.alert-minimal.alert-error {
+    border-left-color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.alert-minimal.alert-warning {
+    border-left-color: #ffc107;
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.alert-minimal.alert-info {
+    border-left-color: #0dcaf0;
+    background-color: rgba(13, 202, 240, 0.1);
+}
+
+.alert-minimal.alert-success {
+    border-left-color: #198754;
+    background-color: rgba(25, 135, 84, 0.1);
+}
+
+/* ========================================
+   Typography Enhancements
+   ======================================== */
+
+/* Heading hierarchy - sharp, technical */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+h1 { font-size: 2rem; margin-bottom: var(--space-lg); }
+h2 { font-size: 1.5rem; margin-bottom: var(--space-md); }
+h3 { font-size: 1.25rem; margin-bottom: var(--space-md); }
+h4 { font-size: 1.125rem; margin-bottom: var(--space-sm); }
+h5 { font-size: 1rem; margin-bottom: var(--space-sm); }
+h6 { font-size: 0.875rem; margin-bottom: var(--space-sm); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Body text */
+p {
+    line-height: 1.6;
+    margin-bottom: var(--space-md);
+}
+
+/* Code and monospace - technical aesthetic */
+code, pre {
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875em;
+}
+
+/* Helper text */
+.text-help {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* Label text */
+.label-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xs);
+    display: block;
+}
+
+/* ========================================
+   Utility Classes
+   ======================================== */
+
+/* Spacing utilities */
+.mt-auto { margin-top: auto; }
+.mb-auto { margin-bottom: auto; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+
+/* Flexbox utilities */
+.flex { display: flex; }
+.flex-column { flex-direction: column; }
+.flex-center { align-items: center; justify-content: center; }
+.flex-between { justify-content: space-between; }
+.flex-gap-sm { gap: var(--space-sm); }
+.flex-gap-md { gap: var(--space-md); }
+.flex-gap-lg { gap: var(--space-lg); }
+
+/* Text utilities */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Visibility utilities */
+.opacity-50 { opacity: 0.5; }
+.opacity-75 { opacity: 0.75; }
+
+/* ========================================
+   Form Inputs - Minimal Sci-Fi Style
+   ======================================== */
+
+.form-control,
+.form-select {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    transition: border-color var(--transition-fast) var(--transition-ease),
+                box-shadow var(--transition-fast) var(--transition-ease);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring-color);
+}
+
+/* Minimal input group styling */
+.input-group-text {
+    border-radius: var(--radius-md);
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+/* ========================================
+   Tables - Clean Technical Style
+   ======================================== */
+
+.table {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.table thead th {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border-color);
+    padding: var(--space-md) var(--space-lg);
+}
+
+.table tbody tr {
+    transition: background-color var(--transition-fast) var(--transition-ease);
+}
+
+.table tbody tr:hover {
+    background-color: var(--bg-secondary);
+}
+
+.table td {
+    padding: var(--space-md) var(--space-lg);
+    border-top: 1px solid var(--border-color);
+}
+
+/* ========================================
+   Badges & Tags - Minimal Pill Style
+   ======================================== */
+
+.badge {
+    border-radius: var(--radius-full);
+    padding: var(--space-xs) var(--space-md);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.badge-subtle {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+/* Status badges with minimal glow */
+.badge-success {
+    background-color: rgba(40, 167, 69, 0.15);
+    color: var(--success-color);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.badge-warning {
+    background-color: rgba(255, 193, 7, 0.15);
+    color: var(--warning-color);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.badge-danger {
+    background-color: rgba(220, 53, 69, 0.15);
+    color: var(--danger-color);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.badge-info {
+    background-color: rgba(13, 202, 240, 0.15);
+    color: var(--info-color);
+    border: 1px solid rgba(13, 202, 240, 0.3);
+}
+
+/* ========================================
+   Modals & Dialogs - Sharp Technical
+   ======================================== */
+
+.modal-content {
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    background-color: var(--bg-primary);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border-color);
+    padding: var(--space-xl);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+
+.modal-body {
+    padding: var(--space-xl);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color);
+    padding: var(--space-xl);
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    gap: var(--space-md);
+}
+
+/* ========================================
+   Tooltips - Minimal Floating Style
+   ======================================== */
+
+.tooltip-inner {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.875rem;
+}
+
+/* ========================================
+   Scrollbars - Minimal Track & Thumb
+   ======================================== */
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: var(--radius-md);
+    transition: background-color var(--transition-fast) var(--transition-ease);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) var(--bg-secondary);
 }

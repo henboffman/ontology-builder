@@ -3,6 +3,7 @@ using Eidos.Data.Repositories;
 using Eidos.Models;
 using Eidos.Models.Enums;
 using Eidos.Models.Events;
+using Eidos.Models.Exceptions;
 using Eidos.Services.Commands;
 using Eidos.Services.Interfaces;
 using Eidos.Hubs;
@@ -31,6 +32,7 @@ public class ConceptService : IConceptService
     private readonly IOntologyShareService _shareService;
     private readonly IOntologyActivityService _activityService;
     private readonly IDbContextFactory<OntologyDbContext> _contextFactory;
+    private readonly OntologyPermissionService _permissionService;
 
     public ConceptService(
         IConceptRepository conceptRepository,
@@ -42,7 +44,8 @@ public class ConceptService : IConceptService
         IUserService userService,
         IOntologyShareService shareService,
         IOntologyActivityService activityService,
-        IDbContextFactory<OntologyDbContext> contextFactory)
+        IDbContextFactory<OntologyDbContext> contextFactory,
+        OntologyPermissionService permissionService)
     {
         _conceptRepository = conceptRepository;
         _ontologyRepository = ontologyRepository;
@@ -54,23 +57,23 @@ public class ConceptService : IConceptService
         _shareService = shareService;
         _activityService = activityService;
         _contextFactory = contextFactory;
+        _permissionService = permissionService;
     }
 
     public async Task<Concept> CreateAsync(Concept concept, bool recordUndo = true)
     {
         // Verify user has permission to add concepts (defense in depth)
         var currentUser = await _userService.GetCurrentUserAsync();
-        var hasPermission = await _shareService.HasPermissionAsync(
-            concept.OntologyId,
-            currentUser?.Id,
-            sessionToken: null,
-            requiredLevel: PermissionLevel.ViewAndAdd);
+        var canEdit = await _permissionService.CanEditAsync(concept.OntologyId, currentUser?.Id);
 
-        if (!hasPermission)
+        if (!canEdit)
         {
             throw new UnauthorizedAccessException(
                 $"User does not have permission to add concepts to ontology {concept.OntologyId}");
         }
+
+        // Check if approval workflow is required (throws ApprovalRequiredException if needed)
+        await CheckApprovalModeAsync(concept.OntologyId, currentUser?.Id, "create concept");
 
         if (recordUndo)
         {
@@ -98,17 +101,16 @@ public class ConceptService : IConceptService
     {
         // Verify user has permission to edit concepts (defense in depth)
         var currentUser = await _userService.GetCurrentUserAsync();
-        var hasPermission = await _shareService.HasPermissionAsync(
-            concept.OntologyId,
-            currentUser?.Id,
-            sessionToken: null,
-            requiredLevel: PermissionLevel.ViewAddEdit);
+        var canEdit = await _permissionService.CanEditAsync(concept.OntologyId, currentUser?.Id);
 
-        if (!hasPermission)
+        if (!canEdit)
         {
             throw new UnauthorizedAccessException(
                 $"User does not have permission to edit concepts in ontology {concept.OntologyId}");
         }
+
+        // Check if approval workflow is required (throws ApprovalRequiredException if needed)
+        await CheckApprovalModeAsync(concept.OntologyId, currentUser?.Id, "update concept");
 
         // Capture before state for activity tracking
         var beforeConcept = await _conceptRepository.GetByIdAsync(concept.Id);
@@ -143,17 +145,16 @@ public class ConceptService : IConceptService
 
         // Verify user has permission to delete concepts (defense in depth)
         var currentUser = await _userService.GetCurrentUserAsync();
-        var hasPermission = await _shareService.HasPermissionAsync(
-            ontologyId,
-            currentUser?.Id,
-            sessionToken: null,
-            requiredLevel: PermissionLevel.ViewAddEdit);
+        var canEdit = await _permissionService.CanEditAsync(ontologyId, currentUser?.Id);
 
-        if (!hasPermission)
+        if (!canEdit)
         {
             throw new UnauthorizedAccessException(
                 $"User does not have permission to delete concepts from ontology {ontologyId}");
         }
+
+        // Check if approval workflow is required (throws ApprovalRequiredException if needed)
+        await CheckApprovalModeAsync(ontologyId, currentUser?.Id, "delete concept");
 
         if (recordUndo)
         {
@@ -456,13 +457,9 @@ public class ConceptService : IConceptService
                 return false;
 
             // Validate permissions
-            var hasPermission = await _shareService.HasPermissionAsync(
-                concept.OntologyId,
-                userId,
-                sessionToken: null,
-                requiredLevel: PermissionLevel.ViewAddEdit);
+            var canEdit = await _permissionService.CanEditAsync(concept.OntologyId, userId);
 
-            if (!hasPermission)
+            if (!canEdit)
                 return false;
 
             // Validate name
@@ -489,5 +486,36 @@ public class ConceptService : IConceptService
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// Checks if the ontology requires approval for changes and if the current user
+    /// has sufficient permissions to bypass the approval workflow.
+    /// Throws ApprovalRequiredException if approval is required and user only has edit permissions.
+    /// </summary>
+    /// <param name="ontologyId">The ontology ID to check</param>
+    /// <param name="userId">The current user ID</param>
+    /// <param name="operationType">The type of operation being attempted (e.g., "create", "update", "delete")</param>
+    private async Task CheckApprovalModeAsync(int ontologyId, string? userId, string operationType)
+    {
+        if (string.IsNullOrEmpty(userId))
+            return; // Permission checks will handle this
+
+        // Get the ontology to check if approval is required
+        var ontology = await _ontologyRepository.GetByIdAsync(ontologyId);
+        if (ontology == null || !ontology.RequiresApproval)
+            return; // No approval required
+
+        // Check if user has FullAccess (can bypass approval)
+        var canManage = await _permissionService.CanManageAsync(ontologyId, userId);
+        if (canManage)
+            return; // User has FullAccess, can bypass approval workflow
+
+        // User only has Edit permission but approval is required
+        throw new ApprovalRequiredException(
+            ontologyId,
+            operationType,
+            $"This ontology requires approval for {operationType} operations. Please create a merge request instead."
+        );
     }
 }

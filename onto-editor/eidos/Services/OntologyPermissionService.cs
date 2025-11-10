@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Eidos.Data;
 using Eidos.Models;
+using Eidos.Models.Enums;
 
 namespace Eidos.Services;
 
@@ -57,7 +58,22 @@ public class OntologyPermissionService
                 .Where(gp => gp.OntologyId == ontologyId)
                 .AnyAsync(gp => gp.UserGroup.Members.Any(m => m.UserId == userId));
 
-            return hasGroupAccess;
+            if (hasGroupAccess)
+                return true;
+        }
+
+        // Check share link permissions (for any visibility level)
+        if (!string.IsNullOrEmpty(userId))
+        {
+            var hasShareAccess = await context.UserShareAccesses
+                .Where(usa => usa.UserId == userId)
+                .Join(context.OntologyShares,
+                    usa => usa.OntologyShareId,
+                    os => os.Id,
+                    (usa, os) => new { os.OntologyId, os.IsActive })
+                .AnyAsync(share => share.OntologyId == ontologyId && share.IsActive);
+
+            return hasShareAccess;
         }
 
         // Private ontologies are only visible to owner
@@ -109,10 +125,22 @@ public class OntologyPermissionService
                              gp.PermissionLevel == PermissionLevels.Admin)
                 .AnyAsync(gp => gp.UserGroup.Members.Any(m => m.UserId == userId));
 
-            return hasEditAccess;
+            if (hasEditAccess)
+                return true;
         }
 
-        return false;
+        // Check share link permissions
+        var hasShareAccess = await context.UserShareAccesses
+            .Where(usa => usa.UserId == userId)
+            .Join(context.OntologyShares,
+                usa => usa.OntologyShareId,
+                os => os.Id,
+                (usa, os) => new { os.OntologyId, os.PermissionLevel, os.IsActive })
+            .AnyAsync(share => share.OntologyId == ontologyId
+                && share.IsActive
+                && (share.PermissionLevel == PermissionLevel.ViewAddEdit || share.PermissionLevel == PermissionLevel.FullAccess));
+
+        return hasShareAccess;
     }
 
     /// <summary>
@@ -154,10 +182,22 @@ public class OntologyPermissionService
                 .Where(gp => gp.PermissionLevel == PermissionLevels.Admin)
                 .AnyAsync(gp => gp.UserGroup.Members.Any(m => m.UserId == userId));
 
-            return hasAdminAccess;
+            if (hasAdminAccess)
+                return true;
         }
 
-        return false;
+        // Check share link permissions for FullAccess
+        var hasFullAccessShare = await context.UserShareAccesses
+            .Where(usa => usa.UserId == userId)
+            .Join(context.OntologyShares,
+                usa => usa.OntologyShareId,
+                os => os.Id,
+                (usa, os) => new { os.OntologyId, os.PermissionLevel, os.IsActive })
+            .AnyAsync(share => share.OntologyId == ontologyId
+                && share.IsActive
+                && share.PermissionLevel == PermissionLevel.FullAccess);
+
+        return hasFullAccessShare;
     }
 
     /// <summary>
@@ -266,6 +306,30 @@ public class OntologyPermissionService
             {
                 return permissionLevel;
             }
+        }
+
+        // Check share link permissions
+        var sharePermission = await context.UserShareAccesses
+            .Where(usa => usa.UserId == userId)
+            .Join(context.OntologyShares,
+                usa => usa.OntologyShareId,
+                os => os.Id,
+                (usa, os) => new { os.OntologyId, os.PermissionLevel, os.IsActive })
+            .Where(share => share.OntologyId == ontologyId && share.IsActive)
+            .Select(share => share.PermissionLevel)
+            .FirstOrDefaultAsync();
+
+        if (sharePermission != null)
+        {
+            // Convert PermissionLevel enum to string
+            return sharePermission switch
+            {
+                PermissionLevel.View => PermissionLevels.View,
+                PermissionLevel.ViewAndAdd => PermissionLevels.Edit, // Map ViewAndAdd to Edit
+                PermissionLevel.ViewAddEdit => PermissionLevels.Edit,
+                PermissionLevel.FullAccess => PermissionLevels.Admin,
+                _ => "none"
+            };
         }
 
         return "none";
