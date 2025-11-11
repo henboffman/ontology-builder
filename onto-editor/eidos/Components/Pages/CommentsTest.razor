@@ -1,0 +1,74 @@
+@page "/comments-test"
+@using Eidos.Models
+@using Eidos.Components.Ontology
+@inject NavigationManager Navigation
+
+<PageTitle>Comments Test - Eidos</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-chat-left-text me-2"></i>
+                        In-Context Commenting System - Test Page
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5>Test the Comment System</h5>
+                        <p class="mb-2">This page demonstrates the in-context commenting system on a test concept.</p>
+                        <ul class="mb-0">
+                            <li>Try adding a comment</li>
+                            <li>Use Ctrl+Enter or Cmd+Enter to quickly submit</li>
+                            <li>Try mentioning someone with @@username</li>
+                            <li>Reply to comments to create threaded discussions</li>
+                            <li>Edit and delete your own comments</li>
+                            <li>Resolve comment threads when done</li>
+                        </ul>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Test Entity: Sample Concept</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div style="width: 30px; height: 30px; background-color: #4A90E2; border-radius: 4px;"></div>
+                                <h6 class="mb-0">Mammal</h6>
+                            </div>
+                            <p><strong>Category:</strong> Biology</p>
+                            <p><strong>Explanation:</strong> A warm-blooded vertebrate animal that has hair or fur and produces milk for its young.</p>
+                            <p class="mb-0"><strong>Examples:</strong> Dog, Cat, Whale, Human</p>
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <h5 class="mb-3">
+                        <i class="bi bi-chat-left-text me-1"></i>
+                        Discussion
+                    </h5>
+
+                    @*
+                        Testing with a hardcoded concept:
+                        - OntologyId: 8 (from your database - Basic Formal Ontology)
+                        - EntityType: "Concept"
+                        - EntityId: 75 (Entity concept from your database)
+                    *@
+                    <CommentThread OntologyId="8"
+                                  EntityType="Concept"
+                                  EntityId="75" />
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <a href="/" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>
+                    Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

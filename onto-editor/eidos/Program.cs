@@ -116,6 +116,7 @@ if (!builder.Environment.IsDevelopment())
 
 // Add services to the container.
 builder.Services.AddRazorPages(); // For authentication pages
+builder.Services.AddControllers(); // For API controllers (CommentController, etc.)
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
@@ -371,8 +372,44 @@ if (builder.Environment.IsDevelopment())
         .SetApplicationName("Eidos");
 }
 
-// Add HTTP client for downloading ontologies
+// Add HTTP client for downloading ontologies and API calls
 builder.Services.AddHttpClient();
+
+// Configure HttpClient with base address and cookie authentication for Blazor components
+builder.Services.AddScoped(sp =>
+{
+    var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+    var httpContext = httpContextAccessor.HttpContext;
+
+    if (httpContext != null)
+    {
+        var request = httpContext.Request;
+        var baseAddress = $"{request.Scheme}://{request.Host}{request.PathBase}";
+
+        // Create HttpClient with cookie container to pass authentication cookies
+        var cookieContainer = new System.Net.CookieContainer();
+        var handler = new HttpClientHandler
+        {
+            CookieContainer = cookieContainer,
+            UseCookies = true
+        };
+
+        // Copy authentication cookie from current request to HttpClient
+        var authCookie = httpContext.Request.Cookies[".AspNetCore.Identity.Application"];
+        if (authCookie != null)
+        {
+            cookieContainer.Add(new Uri(baseAddress), new System.Net.Cookie(".AspNetCore.Identity.Application", authCookie));
+        }
+
+        var httpClient = new HttpClient(handler);
+        httpClient.BaseAddress = new Uri(baseAddress);
+        return httpClient;
+    }
+
+    // Fallback for cases where HttpContext is not available
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    return factory.CreateClient();
+});
 
 // Add health checks
 builder.Services.AddHealthChecks()
@@ -388,6 +425,7 @@ builder.Services.AddScoped<IRestrictionRepository, RestrictionRepository>();
 builder.Services.AddScoped<ICollaborationPostRepository, CollaborationPostRepository>();
 builder.Services.AddScoped<IOntologyLinkRepository, OntologyLinkRepository>();
 builder.Services.AddScoped<IMergeRequestRepository, MergeRequestRepository>();
+builder.Services.AddScoped<IEntityCommentRepository, EntityCommentRepository>();
 
 // Register Export Strategies (Strategy Pattern)
 builder.Services.AddScoped<IExportStrategy, JsonExportStrategy>();
@@ -417,6 +455,7 @@ builder.Services.AddScoped<IRestrictionService, RestrictionService>();
 builder.Services.AddScoped<IRelationshipSuggestionService, RelationshipSuggestionService>();
 builder.Services.AddScoped<IOntologyValidationService, OntologyValidationService>();
 builder.Services.AddScoped<IOntologyLinkService, OntologyLinkService>();
+builder.Services.AddScoped<IEntityCommentService, EntityCommentService>();
 builder.Services.AddScoped<IMergeRequestService, MergeRequestService>();
 builder.Services.AddScoped<IChangeDetectionService, ChangeDetectionService>();
 builder.Services.AddScoped<IOntologyViewHistoryService, OntologyViewHistoryService>();
@@ -548,6 +587,7 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorPages(); // Map Razor Pages for authentication
+app.MapControllers(); // Map API controllers (CommentController, etc.)
 
 // Map additional Identity endpoints
 app.MapAdditionalIdentityEndpoints();
@@ -557,6 +597,9 @@ app.MapRazorComponents<App>()
 
 // Map SignalR hub for real-time collaborative editing
 app.MapHub<Eidos.Hubs.OntologyHub>("/ontologyhub");
+
+// Map SignalR hub for real-time comment notifications
+app.MapHub<Eidos.Hubs.CommentHub>("/commenthub");
 
 // Map health check endpoints
 app.MapHealthChecks("/health");

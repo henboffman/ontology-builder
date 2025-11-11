@@ -1,0 +1,178 @@
+@using Eidos.Models.DTOs
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Authorization
+@inject HttpClient Http
+@inject ILogger<CommentEditor> Logger
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="comment-editor">
+    <div class="mb-2">
+        <textarea class="form-control @(HasError ? "is-invalid" : "")"
+                  @bind="CommentText"
+                  @bind:event="oninput"
+                  @onkeydown="HandleKeyDown"
+                  rows="@Rows"
+                  placeholder="@Placeholder"
+                  disabled="@IsSubmitting"></textarea>
+        @if (HasError)
+        {
+            <div class="invalid-feedback">
+                @ErrorMessage
+            </div>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(CommentText))
+    {
+        <div class="text-muted small mb-2">
+            <i class="bi bi-info-circle"></i> Use @@username or @@user@@example.com to mention someone
+        </div>
+    }
+
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <button class="btn btn-sm btn-primary me-2"
+                    @onclick="SubmitComment"
+                    disabled="@(!CanSubmit || IsSubmitting)">
+                @if (IsSubmitting)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                <i class="bi bi-send"></i> @SubmitButtonText
+            </button>
+
+            @if (OnCancel.HasDelegate)
+            {
+                <button class="btn btn-sm btn-secondary"
+                        @onclick="Cancel"
+                        disabled="@IsSubmitting">
+                    <i class="bi bi-x"></i> Cancel
+                </button>
+            }
+        </div>
+
+        <div class="text-muted small">
+            @CommentText.Length / 5000 characters
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public int OntologyId { get; set; }
+
+    [Parameter, EditorRequired]
+    public string EntityType { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public int EntityId { get; set; }
+
+    [Parameter]
+    public int? ParentCommentId { get; set; }
+
+    [Parameter]
+    public EventCallback<CommentResponse> OnCommentSubmitted { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public string Placeholder { get; set; } = "Write a comment...";
+
+    [Parameter]
+    public int Rows { get; set; } = 3;
+
+    private string CommentText { get; set; } = string.Empty;
+    private bool IsSubmitting { get; set; } = false;
+    private bool HasError { get; set; } = false;
+    private string ErrorMessage { get; set; } = string.Empty;
+
+    private bool CanSubmit => !string.IsNullOrWhiteSpace(CommentText)
+                              && CommentText.Length <= 5000
+                              && CommentText.Length >= 1;
+
+    private string SubmitButtonText => ParentCommentId.HasValue ? "Reply" : "Comment";
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        // Ctrl+Enter or Cmd+Enter to submit
+        if (e.Key == "Enter" && (e.CtrlKey || e.MetaKey))
+        {
+            await SubmitComment();
+        }
+    }
+
+    private async Task SubmitComment()
+    {
+        Console.WriteLine($"[CommentEditor] SubmitComment called - CanSubmit: {CanSubmit}, IsSubmitting: {IsSubmitting}");
+
+        if (!CanSubmit || IsSubmitting)
+        {
+            Console.WriteLine($"[CommentEditor] Submission blocked - CanSubmit: {CanSubmit}, IsSubmitting: {IsSubmitting}");
+            return;
+        }
+
+        try
+        {
+            IsSubmitting = true;
+            HasError = false;
+            ErrorMessage = string.Empty;
+            StateHasChanged();
+
+            Console.WriteLine($"[CommentEditor] Creating request - OntologyId: {OntologyId}, EntityType: {EntityType}, EntityId: {EntityId}");
+
+            var request = new CreateCommentRequest
+            {
+                EntityType = EntityType,
+                EntityId = EntityId,
+                Text = CommentText.Trim(),
+                ParentCommentId = ParentCommentId
+            };
+
+            Console.WriteLine($"[CommentEditor] Posting to: /api/ontologies/{OntologyId}/comments");
+            var response = await Http.PostAsJsonAsync($"/api/ontologies/{OntologyId}/comments", request);
+            Console.WriteLine($"[CommentEditor] Response status: {response.StatusCode}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var newComment = await response.Content.ReadFromJsonAsync<CommentResponse>();
+                Console.WriteLine($"[CommentEditor] Comment created successfully: {newComment?.Id}");
+                if (newComment != null)
+                {
+                    CommentText = string.Empty;
+                    await OnCommentSubmitted.InvokeAsync(newComment);
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                HasError = true;
+                ErrorMessage = $"Failed to post comment: {response.StatusCode}";
+                Console.WriteLine($"[CommentEditor] Error: {response.StatusCode} - {errorContent}");
+                Logger.LogError("Failed to post comment: {StatusCode} - {Error}", response.StatusCode, errorContent);
+            }
+        }
+        catch (Exception ex)
+        {
+            HasError = true;
+            ErrorMessage = "An error occurred while posting your comment. Please try again.";
+            Console.WriteLine($"[CommentEditor] Exception: {ex.Message}");
+            Logger.LogError(ex, "Error submitting comment");
+        }
+        finally
+        {
+            IsSubmitting = false;
+            StateHasChanged();
+            Console.WriteLine("[CommentEditor] SubmitComment completed");
+        }
+    }
+
+    private async Task Cancel()
+    {
+        CommentText = string.Empty;
+        HasError = false;
+        ErrorMessage = string.Empty;
+        await OnCancel.InvokeAsync();
+    }
+}

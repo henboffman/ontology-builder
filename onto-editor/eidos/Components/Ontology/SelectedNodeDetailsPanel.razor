@@ -7,7 +7,7 @@
             Details
         </h6>
     </div>
-    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+    <div class="card-body" style="max-height: calc(100vh - 200px); overflow-y: auto;">
         @if (SelectedConcept != null)
         {
             <div class="d-flex align-items-center gap-2 mb-3">
@@ -86,6 +86,21 @@
                                           PropertiesChanged="@OnPropertiesChanged" />
                 </div>
             }
+
+            @* Comments Section *@
+            @if (OntologyId.HasValue)
+            {
+                <hr class="my-2" />
+                <div class="mb-2">
+                    <h6 class="small fw-bold mb-2">
+                        <i class="bi bi-chat-left-text me-1"></i>
+                        Discussion
+                    </h6>
+                    <CommentThread OntologyId="@OntologyId.Value"
+                                  EntityType="Concept"
+                                  EntityId="@SelectedConcept.Id" />
+                </div>
+            }
         }
         else if (SelectedRelationship != null)
         {
@@ -119,6 +134,21 @@
             {
                 <p class="mb-2 small"><strong>Description:</strong> @SelectedRelationship.Description</p>
             }
+
+            @* Comments Section *@
+            @if (OntologyId.HasValue)
+            {
+                <hr class="my-2" />
+                <div class="mb-2">
+                    <h6 class="small fw-bold mb-2">
+                        <i class="bi bi-chat-left-text me-1"></i>
+                        Discussion
+                    </h6>
+                    <CommentThread OntologyId="@OntologyId.Value"
+                                  EntityType="Relationship"
+                                  EntityId="@SelectedRelationship.Id" />
+                </div>
+            }
         }
         else if (SelectedIndividual != null)
         {
@@ -144,6 +174,21 @@
             {
                 <p class="mb-2 small"><strong>Description:</strong> @SelectedIndividual.Description</p>
             }
+
+            @* Comments Section *@
+            @if (OntologyId.HasValue)
+            {
+                <hr class="my-2" />
+                <div class="mb-2">
+                    <h6 class="small fw-bold mb-2">
+                        <i class="bi bi-chat-left-text me-1"></i>
+                        Discussion
+                    </h6>
+                    <CommentThread OntologyId="@OntologyId.Value"
+                                  EntityType="Individual"
+                                  EntityId="@SelectedIndividual.Id" />
+                </div>
+            }
         }
         else
         {
@@ -162,6 +207,7 @@
     [Parameter] public IEnumerable<ConceptConnection>? ConnectedConcepts { get; set; }
     [Parameter] public ICollection<ConceptProperty>? ConceptProperties { get; set; }
     [Parameter] public EventCallback OnPropertiesChanged { get; set; }
+    [Parameter] public int? OntologyId { get; set; }
 
     protected override void OnParametersSet()
     {

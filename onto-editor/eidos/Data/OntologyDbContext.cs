@@ -61,6 +61,11 @@ namespace Eidos.Data
         // Ontology view tracking for "What's New" feature
         public DbSet<OntologyViewHistory> OntologyViewHistories { get; set; }
 
+        // Entity commenting system
+        public DbSet<EntityComment> EntityComments { get; set; }
+        public DbSet<CommentMention> CommentMentions { get; set; }
+        public DbSet<EntityCommentCount> EntityCommentCounts { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -601,6 +606,74 @@ namespace Eidos.Data
                 // Index for querying by user
                 entity.HasIndex(v => v.UserId)
                     .HasDatabaseName("IX_OntologyViewHistory_UserId");
+            });
+
+            // Configure EntityComment (in-context commenting)
+            modelBuilder.Entity<EntityComment>(entity =>
+            {
+                entity.HasOne(c => c.Ontology)
+                    .WithMany()
+                    .HasForeignKey(c => c.OntologyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(c => c.User)
+                    .WithMany()
+                    .HasForeignKey(c => c.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Self-referencing relationship for threaded comments
+                entity.HasOne(c => c.ParentComment)
+                    .WithMany(c => c.Replies)
+                    .HasForeignKey(c => c.ParentCommentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Composite index for entity lookup
+                entity.HasIndex(c => new { c.OntologyId, c.EntityType, c.EntityId })
+                    .HasDatabaseName("IX_EntityComment_OntologyId_EntityType_EntityId");
+
+                // Index for user's comments
+                entity.HasIndex(c => c.UserId)
+                    .HasDatabaseName("IX_EntityComment_UserId");
+
+                // Index for parent comment (efficient reply queries)
+                entity.HasIndex(c => c.ParentCommentId)
+                    .HasDatabaseName("IX_EntityComment_ParentCommentId");
+            });
+
+            // Configure CommentMention
+            modelBuilder.Entity<CommentMention>(entity =>
+            {
+                entity.HasOne(m => m.Comment)
+                    .WithMany(c => c.Mentions)
+                    .HasForeignKey(m => m.CommentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(m => m.MentionedUser)
+                    .WithMany()
+                    .HasForeignKey(m => m.MentionedUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Index for finding mentions by user
+                entity.HasIndex(m => m.MentionedUserId)
+                    .HasDatabaseName("IX_CommentMention_MentionedUserId");
+
+                // Composite index for unread mentions
+                entity.HasIndex(m => new { m.MentionedUserId, m.HasViewed })
+                    .HasDatabaseName("IX_CommentMention_MentionedUserId_HasViewed");
+            });
+
+            // Configure EntityCommentCount
+            modelBuilder.Entity<EntityCommentCount>(entity =>
+            {
+                entity.HasOne(c => c.Ontology)
+                    .WithMany()
+                    .HasForeignKey(c => c.OntologyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Composite unique index: one count per entity
+                entity.HasIndex(c => new { c.OntologyId, c.EntityType, c.EntityId })
+                    .IsUnique()
+                    .HasDatabaseName("IX_EntityCommentCount_OntologyId_EntityType_EntityId");
             });
 
             // Seed feature toggles only
