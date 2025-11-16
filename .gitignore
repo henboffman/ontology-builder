@@ -120,3 +120,4 @@ lhci-data/
 
 # npm package-lock (optional - commit if you want reproducible builds)
 package-lock.json
+onto-editor/eidos/.claude/settings.local.json
