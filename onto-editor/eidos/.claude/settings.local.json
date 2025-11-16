@@ -1,23 +1,89 @@
 {
-    "permissions": {},
-    "Stop": [
-        {
-            "hooks": [
-                {
-                    "type": "command",
-                    "command": "say 'Claude is waiting for you'"
-                }
-            ]
-        }
-    ],
-    "Notification": [
-        {
-            "hooks": [
-                {
-                    "type": "command",
-                    "command": "say 'Claude needs your input'"
-                }
-            ]
-        }
+  "permissions": {
+    "allow": [
+      "Bash(dotnet ef migrations add AddCollapsedRelationshipsToConceptGroup)",
+      "Bash(dotnet ef database update)",
+      "Bash(dotnet build)",
+      "Bash(sqlite3 ontology.db \"ALTER TABLE ConceptGroups ADD COLUMN CollapsedRelationships TEXT;\")",
+      "Bash(sqlite3 ontology.db \"INSERT INTO __EFMigrationsHistory (MigrationId, ProductVersion) VALUES (''20251114230435_AddCollapsedRelationshipsToConceptGroup'', ''9.0.0'');\")",
+      "Bash(kill -9 39802 39793)",
+      "Bash(lsof -i :5000 -i :5001 -i :5158 -i :7158)",
+      "Bash(lsof -iTCP -sTCP:LISTEN)",
+      "Bash(lsof -i :7216)",
+      "Bash(kill -9 39814)",
+      "Bash(sqlite3 ontology.db \"SELECT Id, ParentConceptId, ChildConceptIds, IsCollapsed FROM ConceptGroups ORDER BY Id DESC LIMIT 5;\")",
+      "Bash(sqlite3 ontology.db \"UPDATE ConceptGroups SET IsCollapsed = 1 WHERE IsCollapsed = 0;\")",
+      "Bash(sqlite3 ontology.db \"SELECT Id, ParentConceptId, ChildConceptIds, IsCollapsed FROM ConceptGroups WHERE ParentConceptId IN (227, 229, 230, 228, 231) ORDER BY Id DESC LIMIT 10;\")",
+      "Bash(sqlite3 ontology.db \"SELECT Id, ParentConceptId, ChildConceptIds, IsCollapsed FROM ConceptGroups WHERE IsCollapsed = 0;\")",
+      "Bash(sqlite3 ontology.db \"DELETE FROM ConceptGroups WHERE IsCollapsed = 0;\")",
+      "Bash(sqlite3 ontology.db \"SELECT COUNT(*) FROM ConceptGroups;\")",
+      "Bash(sqlite3 ontology.db \"SELECT Id, ParentConceptId, ChildConceptIds, IsCollapsed FROM ConceptGroups ORDER BY Id DESC LIMIT 10;\")",
+      "Bash(dotnet ef migrations add AddWorkspaceAndNotesSchema)",
+      "Bash(sqlite3 ontology.db \"SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId DESC LIMIT 5;\")",
+      "Bash(sqlite3 ontology.db \"INSERT INTO __EFMigrationsHistory (MigrationId, ProductVersion) VALUES (''20251114005839_AddConceptGrouping'', ''9.0.0'');\")",
+      "Bash(sqlite3 ontology.db \"SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId ASC LIMIT 5;\")",
+      "Bash(dotnet ef migrations script 20251114230435_AddCollapsedRelationshipsToConceptGroup 20251115005839_AddWorkspaceAndNotesSchema --output /tmp/workspace_migration.sql)",
+      "Read(//tmp/**)",
+      "Bash(sqlite3 ontology.db \".tables\")",
+      "Bash(sqlite3 ontology.db \"SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId DESC LIMIT 3;\")",
+      "Bash(dotnet watch run)",
+      "Bash(lsof -iTCP -sTCP:LISTEN -n -P)",
+      "Bash(dotnet list package)",
+      "Bash(dotnet add package Markdig)",
+      "Bash(lsof -i :5000 -i :5001 -i :7158 -i :5158)",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs kill -9)",
+      "Bash(pkill -9 dotnet)",
+      "Bash(sqlite3 ontology.db \"SELECT Id, Title, WorkspaceId, IsConceptNote, LinkedConceptId, CreatedAt FROM Notes WHERE Title IN (''Quantum Physics'', ''Philosophy'') ORDER BY CreatedAt DESC LIMIT 10;\")",
+      "Bash(sqlite3 /Users/benjaminhoffman/Documents/code/ontology-builder/onto-editor/eidos/ontology.db \"SELECT Id, Title, WorkspaceId, IsConceptNote, LinkedConceptId, CreatedAt FROM Notes ORDER BY Id DESC LIMIT 10;\")",
+      "Bash(dotnet build /Users/benjaminhoffman/Documents/code/ontology-builder/onto-editor/eidos/Eidos.csproj)",
+      "Bash(kill -9 47116)",
+      "Bash(awk 'NR>1 {print $2}')",
+      "Bash(xargs -r kill -9)",
+      "Bash(lsof -ti:7216)",
+      "Bash(lsof -i:7216)",
+      "Bash(sqlite3 ontology.db \"SELECT Id, Name, WorkspaceId FROM Ontologies ORDER BY Id DESC LIMIT 10;\")",
+      "Bash(sqlite3 ontology.db \"SELECT w.Id AS WorkspaceId, w.Name AS WorkspaceName, o.Id AS OntologyId, o.Name AS OntologyName FROM Workspaces w LEFT JOIN Ontologies o ON o.WorkspaceId = w.Id WHERE w.Id = 8;\")",
+      "Bash(sqlite3 ontology.db \"SELECT w.Id as WorkspaceId, w.Name as WorkspaceName, o.Id as OntologyId, o.Name as OntologyName, o.WorkspaceId as OntologyWorkspaceId FROM Workspaces w LEFT JOIN Ontologies o ON o.WorkspaceId = w.Id ORDER BY w.Id DESC LIMIT 10;\")",
+      "Bash(sqlite3 ontology.db \"SELECT Id, Name, WorkspaceId FROM Ontologies WHERE Name = ''eidos design'' OR Id >= 17 ORDER BY Id DESC LIMIT 15;\")",
+      "Bash(sqlite3 ontology.db \"SELECT Id, Name, UserId, CreatedAt FROM Workspaces WHERE Name LIKE ''%eidos design%'' ORDER BY Id DESC LIMIT 5;\")",
+      "Bash(sqlite3 ontology.db \"UPDATE Ontologies SET WorkspaceId = 13 WHERE Id = 18; SELECT Id, Name, WorkspaceId FROM Ontologies WHERE Id = 18;\")",
+      "Bash(sqlite3 ontology.db \"SELECT o.Id as OntId, o.Name as OntName, o.WorkspaceId as OntWsId, w.Id as WsId, w.Name as WsName FROM Ontologies o LEFT JOIN Workspaces w ON w.Name = o.Name WHERE o.Id IN (17, 19) ORDER BY o.Id;\")",
+      "Bash(sqlite3 ontology.db \"SELECT w.Id, w.Name, o.Id as OntId, o.Name as OntName, o.WorkspaceId FROM Workspaces w LEFT JOIN Ontologies o ON o.WorkspaceId = w.Id WHERE w.Id = 11;\")",
+      "Bash(sqlite3 ontology.db \"SELECT Id, Name, WorkspaceId FROM Ontologies WHERE Name LIKE ''%eidos design%'' OR WorkspaceId = 11 ORDER BY Id;\")",
+      "Bash(sqlite3 ontology.db \"SELECT w.Id, w.Name, o.Id as OntId, o.Name as OntName FROM Workspaces w LEFT JOIN Ontologies o ON o.WorkspaceId = w.Id WHERE w.Id IN (11, 13) ORDER BY w.Id;\")",
+      "Bash(sqlite3 ontology.db \"SELECT COUNT(*) FROM Notes WHERE WorkspaceId = 11;\")",
+      "Bash(sqlite3 ontology.db \"SELECT WorkspaceId, COUNT(*) as NoteCount FROM Notes WHERE WorkspaceId IN (11, 13) GROUP BY WorkspaceId;\")",
+      "Bash(sqlite3 ontology.db \"UPDATE Ontologies SET WorkspaceId = 11 WHERE Id = 18; SELECT Id, Name, WorkspaceId FROM Ontologies WHERE Id = 18;\")",
+      "Bash(sqlite3 ontology.db \"DELETE FROM Workspaces WHERE Id = 13; SELECT Id, Name FROM Workspaces WHERE Name = ''eidos design'';\")",
+      "Bash(sqlite3 ontology.db \"SELECT w.Id, w.Name, COUNT(n.Id) as NoteCount FROM Workspaces w LEFT JOIN Notes n ON n.WorkspaceId = w.Id WHERE w.Name = ''eidos design'' GROUP BY w.Id ORDER BY w.Id;\")",
+      "Bash(sqlite3 ontology.db \"DELETE FROM Workspaces WHERE Id IN (9, 10, 12); SELECT Id, Name FROM Workspaces WHERE Name = ''eidos design'';\")",
+      "Bash(sqlite3 ontology.db \"SELECT w.Id as WsId, w.Name as WsName, o.Id as OntId, o.Name as OntName, o.WorkspaceId as OntWsId, (SELECT COUNT(*) FROM Notes n WHERE n.WorkspaceId = w.Id) as NoteCount FROM Workspaces w LEFT JOIN Ontologies o ON o.WorkspaceId = w.Id WHERE w.Id = 11;\")",
+      "Read(//Users/benjaminhoffman/Documents/code/ontology-builder/onto-editor/**)",
+      "Bash(dotnet test --filter \"FullyQualifiedName~WikiLinkParserTests\" --verbosity normal)",
+      "Bash(dotnet build Unit/Services/WikiLinkParserTests.cs --no-restore)",
+      "Bash(kill -9 60950)",
+      "Bash(killall -9 dotnet)"
     ]
+  },
+  "Stop": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "say 'Claude is waiting for you'"
+        }
+      ]
+    }
+  ],
+  "Notification": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "say 'Claude needs your input'"
+        }
+      ]
+    }
+  ]
 }

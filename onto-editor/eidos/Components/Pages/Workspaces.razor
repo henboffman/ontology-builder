@@ -1,0 +1,204 @@
+@page "/workspaces"
+@using Eidos.Models
+@using Eidos.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject WorkspaceService WorkspaceService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject ToastService ToastService
+@rendermode InteractiveServer
+
+<PageTitle>My Workspaces - Eidos</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Workspaces</h2>
+        <button class="btn btn-primary" @onclick="ShowCreateDialog">
+            <i class="bi bi-plus-lg"></i> New Workspace
+        </button>
+    </div>
+
+    @if (loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (workspaces.Any())
+    {
+        <div class="row g-4">
+            @foreach (var workspace in workspaces)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 workspace-card" @onclick="@(() => OpenWorkspace(workspace.Id))">
+                        <div class="card-body">
+                            <h5 class="card-title">@workspace.Name</h5>
+                            @if (!string.IsNullOrWhiteSpace(workspace.Description))
+                            {
+                                <p class="card-text text-muted">@workspace.Description</p>
+                            }
+                            <div class="workspace-stats mt-3">
+                                <small class="text-muted">
+                                    <i class="bi bi-journal-text"></i> @workspace.NoteCount notes
+                                </small>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    Updated @workspace.UpdatedAt.ToString("MMM d, yyyy")
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-state text-center py-5">
+            <i class="bi bi-folder2-open" style="font-size: 4rem; opacity: 0.3;"></i>
+            <h4 class="mt-4">No Workspaces Yet</h4>
+            <p class="text-muted">Create your first workspace to start taking notes</p>
+            <button class="btn btn-primary mt-3" @onclick="ShowCreateDialog">
+                <i class="bi bi-plus-lg"></i> Create Workspace
+            </button>
+        </div>
+    }
+</div>
+
+@if (showCreateDialog)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Workspace</h5>
+                    <button type="button" class="btn-close" @onclick="HideCreateDialog"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Workspace Name</label>
+                        <input type="text"
+                               class="form-control"
+                               @bind="newWorkspaceName"
+                               placeholder="My Knowledge Base" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description (optional)</label>
+                        <textarea class="form-control"
+                                  rows="3"
+                                  @bind="newWorkspaceDescription"
+                                  placeholder="What will you use this workspace for?"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideCreateDialog">Cancel</button>
+                    <button type="button"
+                            class="btn btn-primary"
+                            @onclick="CreateWorkspace"
+                            disabled="@creating">
+                        @if (creating)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Create
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Workspace> workspaces = new();
+    private bool loading = true;
+    private bool showCreateDialog = false;
+    private bool creating = false;
+    private string newWorkspaceName = string.Empty;
+    private string newWorkspaceDescription = string.Empty;
+    private string? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUserId = authState.User.FindFirst(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            Navigation.NavigateTo("/Account/Login");
+            return;
+        }
+
+        await LoadWorkspacesAsync();
+    }
+
+    private async Task LoadWorkspacesAsync()
+    {
+        try
+        {
+            loading = true;
+            workspaces = await WorkspaceService.GetUserWorkspacesAsync(currentUserId!);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading workspaces: {ex.Message}");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void ShowCreateDialog()
+    {
+        newWorkspaceName = string.Empty;
+        newWorkspaceDescription = string.Empty;
+        showCreateDialog = true;
+    }
+
+    private void HideCreateDialog()
+    {
+        showCreateDialog = false;
+    }
+
+    private async Task CreateWorkspace()
+    {
+        if (string.IsNullOrWhiteSpace(newWorkspaceName))
+        {
+            ToastService.ShowWarning("Please enter a workspace name");
+            return;
+        }
+
+        try
+        {
+            creating = true;
+            var workspace = await WorkspaceService.CreateWorkspaceAsync(
+                currentUserId!,
+                newWorkspaceName,
+                newWorkspaceDescription
+            );
+
+            workspaces.Insert(0, workspace);
+            ToastService.ShowSuccess($"Created workspace '{newWorkspaceName}'");
+            HideCreateDialog();
+
+            // Navigate to the new workspace
+            Navigation.NavigateTo($"/workspace/{workspace.Id}");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error creating workspace: {ex.Message}");
+        }
+        finally
+        {
+            creating = false;
+        }
+    }
+
+    private void OpenWorkspace(int workspaceId)
+    {
+        Navigation.NavigateTo($"/workspace/{workspaceId}");
+    }
+}

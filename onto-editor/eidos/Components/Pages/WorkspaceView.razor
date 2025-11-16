@@ -1,0 +1,849 @@
+@page "/workspace/{WorkspaceId:int}"
+@using Eidos.Models
+@using Eidos.Services
+@using Eidos.Services.Interfaces
+@using Eidos.Components.Workspace
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
+@inject WorkspaceService WorkspaceService
+@inject NoteService NoteService
+@inject IConceptService ConceptService
+@inject IRelationshipService RelationshipService
+@inject MarkdownRenderingService MarkdownRenderer
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject ToastService ToastService
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+@rendermode InteractiveServer
+
+<PageTitle>@(workspace?.Name ?? "Workspace") - Eidos</PageTitle>
+
+<link href="css/workspace-view.css" rel="stylesheet" />
+<link href="css/components/workspace-quick-switcher.css" rel="stylesheet" />
+<script src="js/wikiLinkEditor.js"></script>
+<script src="js/wikiLinkPreview.js"></script>
+<script src="js/workspaceKeyboardHandler.js"></script>
+
+<!-- Quick Switcher Component -->
+<WorkspaceQuickSwitcher @ref="quickSwitcher"
+                        WorkspaceId="@WorkspaceId"
+                        OnNoteSelected="HandleQuickSwitcherNoteSelected"
+                        OnHide="HandleQuickSwitcherHide" />
+
+<div class="workspace-container">
+    @if (loading)
+    {
+        <div class="loading-state">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading workspace...</span>
+            </div>
+            <p class="mt-3">Loading workspace...</p>
+        </div>
+    }
+    else if (workspace == null)
+    {
+        <div class="error-state">
+            <h3>Workspace Not Found</h3>
+            <p>The workspace you're looking for doesn't exist or you don't have access to it.</p>
+            <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/"))">
+                Go to Home
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Workspace Header -->
+        <div class="workspace-header">
+            <div class="workspace-title">
+                <h2>@workspace.Name</h2>
+                @if (!string.IsNullOrWhiteSpace(workspace.Description))
+                {
+                    <p class="text-muted small mb-0">@workspace.Description</p>
+                }
+            </div>
+        </div>
+
+        <!-- Keyboard Shortcuts Hint Banner -->
+        @if (!hideKeyboardHints)
+        {
+            <div class="keyboard-hints-banner">
+                <div class="hints-content">
+                    <i class="bi bi-keyboard me-2"></i>
+                    <span class="hints-text">
+                        <kbd>Cmd/Ctrl + K</kbd> Quick switcher
+                        <span class="mx-2">•</span>
+                        <kbd>Cmd/Ctrl + E</kbd> Toggle preview
+                        <span class="mx-2">•</span>
+                        Type <code>[[Concept]]</code> to create links
+                    </span>
+                </div>
+                <button class="btn-close-hints" @onclick="DismissKeyboardHints" title="Dismiss">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        }
+
+        <!-- Three-Pane Layout (Obsidian-style) -->
+        <div class="three-pane-layout">
+            <!-- Left Pane: File Explorer -->
+            <div class="pane pane-left">
+                <div class="pane-header-vertical">
+                    <div class="pane-header-row">
+                        <h5>Notes</h5>
+                        <button class="btn btn-sm btn-link text-decoration-none p-1"
+                                @onclick="ToggleCondensedView"
+                                title="@(isCondensedView ? "Comfortable View" : "Condensed View")">
+                            <i class="bi @(isCondensedView ? "bi-list" : "bi-list-task")"></i>
+                        </button>
+                    </div>
+                    <div class="pane-actions-compact">
+                        <button class="btn btn-sm btn-link text-decoration-none p-1"
+                                @onclick="CreateNewNote"
+                                title="New Note">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                        @if (selectedNote != null && !showPreview)
+                        {
+                            <button class="btn btn-sm btn-link text-decoration-none p-1 text-success"
+                                    @onclick="SaveNote"
+                                    disabled="@saving"
+                                    title="Save">
+                                @if (saving)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-check-lg"></i>
+                                }
+                            </button>
+                        }
+                        @if (workspace.Ontology != null)
+                        {
+                            <button class="btn btn-sm btn-link text-decoration-none p-1"
+                                    @onclick="@(() => Navigation.NavigateTo($"/ontology/{workspace.Ontology.Id}"))"
+                                    title="View in Graph">
+                                <i class="bi bi-diagram-3"></i>
+                            </button>
+                        }
+                        @if (selectedNote != null)
+                        {
+                            <div class="edit-toggle-divider"></div>
+                            <button class="btn btn-sm btn-link text-decoration-none edit-toggle-btn @(showPreview ? "" : "active")"
+                                    @onclick="TogglePreview">
+                                <i class="bi @(showPreview ? "bi-pencil" : "bi-eye")"></i>
+                                <span class="ms-1">@(showPreview ? "Edit" : "Preview")</span>
+                            </button>
+                        }
+                    </div>
+                    <div class="pane-search">
+                        <input type="search"
+                               class="form-control form-control-sm"
+                               placeholder="Search notes..."
+                               @bind="searchTerm"
+                               @bind:event="oninput"
+                               @bind:after="OnSearchChanged" />
+                    </div>
+                </div>
+                <div class="pane-content">
+                    @if (notes.Any())
+                    {
+                        <div class="note-list">
+                            @foreach (var note in FilteredNotes)
+                            {
+                                <div class="note-item @(selectedNote?.Id == note.Id ? "active" : "") @(isCondensedView ? "condensed" : "")"
+                                     @onclick="@(() => SelectNote(note.Id))">
+                                    @if (isCondensedView)
+                                    {
+                                        <div class="d-flex align-items-center gap-2">
+                                            @if (note.IsConceptNote)
+                                            {
+                                                <span class="badge bg-primary" style="font-size: 0.5rem; padding: 0.1rem 0.3rem;">C</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary" style="font-size: 0.5rem; padding: 0.1rem 0.3rem;">N</span>
+                                            }
+                                            <span class="note-item-title">@note.Title</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="note-item-title">
+                                            @note.Title
+                                        </div>
+                                        <div class="note-item-meta d-flex align-items-center gap-2">
+                                            @if (note.IsConceptNote)
+                                            {
+                                                <span class="badge bg-primary" style="font-size: 0.55rem; padding: 0.15rem 0.35rem;">Concept</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary" style="font-size: 0.55rem; padding: 0.15rem 0.35rem;">Note</span>
+                                            }
+                                            <small class="text-muted">
+                                                @note.UpdatedAt.ToString("MMM d, yyyy")
+                                            </small>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-state">
+                            <p class="text-muted">No notes yet</p>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="CreateNewNote">
+                                Create your first note
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Center Pane: Markdown Editor -->
+            <div class="pane pane-center">
+                @if (selectedNote != null)
+                {
+                    <div class="pane-header">
+                        <input type="text"
+                               class="form-control note-title-input"
+                               @bind="selectedNote.Title"
+                               placeholder="Note title..." />
+                    </div>
+                    <div class="pane-content">
+                        @if (!showPreview)
+                        {
+                            <textarea @ref="editorTextArea"
+                                      id="note-editor-@selectedNote.Id"
+                                      class="markdown-editor"
+                                      @bind="noteContent"
+                                      @bind:event="oninput"
+                                      placeholder="Start typing... Use [[concept name]] to link to concepts"></textarea>
+                        }
+                        else
+                        {
+                            <div class="markdown-preview">
+                                @((MarkupString)MarkdownRenderer.RenderToHtml(noteContent))
+                            </div>
+                        }
+                    </div>
+                }
+                else if (creatingNote)
+                {
+                    <div class="pane-header">
+                        <input type="text"
+                               class="form-control note-title-input"
+                               @bind="newNoteTitle"
+                               placeholder="Note title..." />
+                        <div class="pane-actions">
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    @onclick="CancelNewNote">
+                                Cancel
+                            </button>
+                            <button class="btn btn-sm btn-success"
+                                    @onclick="SaveNewNote"
+                                    disabled="@saving">
+                                Create
+                            </button>
+                        </div>
+                    </div>
+                    <div class="pane-content">
+                        <textarea @ref="newNoteTextArea"
+                                  id="note-editor-new"
+                                  class="markdown-editor"
+                                  @bind="noteContent"
+                                  @bind:event="oninput"
+                                  placeholder="Start typing... Use [[concept name]] to link to concepts"></textarea>
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <i class="bi bi-journal-text" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <p class="text-muted mt-3">Select a note to view or edit</p>
+                        <p class="text-muted small">
+                            Tip: Use <code>[[concept name]]</code> to create links to concepts
+                        </p>
+                    </div>
+                }
+            </div>
+
+            <!-- Right Pane: Related Concepts & Backlinks -->
+            <div class="pane pane-right">
+                <!-- Related Concepts Section (for concept notes only) -->
+                @if (selectedNote?.IsConceptNote == true && selectedNote.LinkedConceptId.HasValue)
+                {
+                    <div class="pane-header">
+                        <h5>Related Concepts</h5>
+                    </div>
+                    <div class="pane-content" style="border-bottom: 1px solid var(--border-color, #dee2e6);">
+                        @if (relatedConcepts.Any())
+                        {
+                            <div class="backlinks-list">
+                                @foreach (var concept in relatedConcepts)
+                                {
+                                    <div class="backlink-item" @onclick="@(() => NavigateToConceptNote(concept.Name))">
+                                        <div class="backlink-source">
+                                            <i class="bi bi-circle-fill text-primary me-1" style="font-size: 0.5rem;"></i>
+                                            @concept.Name
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(concept.Definition))
+                                        {
+                                            <div class="backlink-context">
+                                                <small class="text-muted">@concept.Definition</small>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                <p class="text-muted small">No related concepts</p>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <!-- Backlinks Section -->
+                <div class="pane-header">
+                    <h5>Backlinks</h5>
+                </div>
+                <div class="pane-content">
+                    @if (selectedNote != null && backlinks.Any())
+                    {
+                        <div class="backlinks-list">
+                            @foreach (var backlink in backlinks)
+                            {
+                                <div class="backlink-item" @onclick="@(() => SelectNote(backlink.SourceNoteId))">
+                                    <div class="backlink-source">
+                                        <i class="bi bi-file-text me-1"></i>
+                                        @backlink.SourceNote?.Title
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(backlink.ContextSnippet))
+                                    {
+                                        <div class="backlink-context">
+                                            <small class="text-muted">"...@backlink.ContextSnippet..."</small>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else if (selectedNote != null)
+                    {
+                        <div class="empty-state">
+                            <p class="text-muted small">No backlinks</p>
+                            <p class="text-muted" style="font-size: 0.7rem;">
+                                Other notes that link to "[[<span>@selectedNote.Title</span>]]" will appear here
+                            </p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-state">
+                            <p class="text-muted small">Select a note to view backlinks</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int WorkspaceId { get; set; }
+
+    private Workspace? workspace;
+    private List<Note> notes = new();
+    private Note? selectedNote;
+    private List<NoteLink> backlinks = new();
+    private List<Concept> relatedConcepts = new();
+
+    private string noteContent = string.Empty;
+    private string searchTerm = string.Empty;
+    private string newNoteTitle = string.Empty;
+
+    private bool loading = true;
+    private bool saving = false;
+    private bool showPreview = false;
+    private bool creatingNote = false;
+    private bool isCondensedView = true; // Default to condensed view (VS Code style)
+    private bool hideKeyboardHints = false;
+
+    private string? currentUserId;
+
+    // Quick Switcher
+    private WorkspaceQuickSwitcher? quickSwitcher;
+
+    // Element references for JavaScript interop
+    private ElementReference editorTextArea;
+    private ElementReference newNoteTextArea;
+    private IJSObjectReference? wikiLinkEditorModule;
+    private DotNetObjectReference<WorkspaceView>? dotNetHelper;
+
+    private IEnumerable<Note> FilteredNotes =>
+        string.IsNullOrWhiteSpace(searchTerm)
+            ? notes
+            : notes.Where(n => n.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUserId = authState.User.FindFirst(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            Navigation.NavigateTo("/Account/Login");
+            return;
+        }
+
+        await LoadWorkspaceAsync();
+
+        // Check for noteId query parameter and auto-select that note
+        var uri = new Uri(Navigation.Uri);
+        var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var noteIdParam = queryParams["noteId"];
+
+        if (!string.IsNullOrEmpty(noteIdParam) && int.TryParse(noteIdParam, out int noteIdToSelect))
+        {
+            await SelectNote(noteIdToSelect);
+        }
+    }
+
+    private async Task LoadWorkspaceAsync()
+    {
+        try
+        {
+            loading = true;
+
+            workspace = await WorkspaceService.GetWorkspaceAsync(WorkspaceId, currentUserId!, includeOntology: true);
+
+            if (workspace != null)
+            {
+                // If workspace doesn't have an ontology loaded, it might be a legacy workspace
+                // Try to reload it to ensure the Ontology navigation property is populated
+                if (workspace.Ontology == null)
+                {
+                    Console.WriteLine($"[WorkspaceView] Workspace {WorkspaceId} has no ontology loaded, reloading...");
+                    workspace = await WorkspaceService.GetWorkspaceAsync(WorkspaceId, currentUserId!, includeOntology: true);
+
+                    if (workspace?.Ontology != null)
+                    {
+                        Console.WriteLine($"[WorkspaceView] Successfully loaded ontology {workspace.Ontology.Id} for workspace {WorkspaceId}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[WorkspaceView] Workspace {WorkspaceId} still has no ontology after reload");
+                    }
+                }
+
+                await LoadNotesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading workspace: {ex.Message}");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task LoadNotesAsync()
+    {
+        try
+        {
+            notes = await NoteService.GetWorkspaceNotesAsync(WorkspaceId, currentUserId!);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading notes: {ex.Message}");
+        }
+    }
+
+    private async Task SelectNote(int noteId)
+    {
+        try
+        {
+            // Save current note if it was being edited
+            if (selectedNote != null && !string.IsNullOrEmpty(noteContent))
+            {
+                await SaveNote();
+            }
+
+            var note = await NoteService.GetNoteWithContentAsync(noteId, currentUserId!);
+
+            if (note != null)
+            {
+                selectedNote = note;
+                noteContent = note.Content?.MarkdownContent ?? string.Empty;
+                showPreview = true; // Default to preview mode
+                creatingNote = false;
+
+                // Load backlinks and related concepts
+                // If this is a concept note, get backlinks via the concept
+                if (note.LinkedConceptId.HasValue)
+                {
+                    backlinks = await NoteService.GetBacklinksAsync(note.LinkedConceptId.Value);
+
+                    // Load related concepts for concept notes
+                    await LoadRelatedConceptsAsync(note.LinkedConceptId.Value);
+                }
+                else
+                {
+                    relatedConcepts = new List<Concept>();
+
+                    // For regular notes, we need to find a concept with matching name
+                    // This allows backlinks to work for any note via [[note title]]
+                    if (workspace?.Ontology != null)
+                    {
+                        var concepts = await ConceptService.GetByOntologyIdAsync(workspace.Ontology.Id);
+                        var matchingConcept = concepts.FirstOrDefault(c =>
+                            c.Name.Equals(note.Title, StringComparison.OrdinalIgnoreCase));
+
+                        if (matchingConcept != null)
+                        {
+                            backlinks = await NoteService.GetBacklinksAsync(matchingConcept.Id);
+                        }
+                        else
+                        {
+                            backlinks = new List<NoteLink>();
+                        }
+                    }
+                    else
+                    {
+                        backlinks = new List<NoteLink>();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading note: {ex.Message}");
+        }
+    }
+
+    private void CreateNewNote()
+    {
+        creatingNote = true;
+        selectedNote = null;
+        newNoteTitle = string.Empty;
+        noteContent = string.Empty;
+        showPreview = false;
+    }
+
+    private void CancelNewNote()
+    {
+        creatingNote = false;
+        newNoteTitle = string.Empty;
+        noteContent = string.Empty;
+    }
+
+    private async Task SaveNewNote()
+    {
+        if (string.IsNullOrWhiteSpace(newNoteTitle))
+        {
+            ToastService.ShowWarning("Please enter a note title");
+            return;
+        }
+
+        try
+        {
+            saving = true;
+
+            var note = await NoteService.CreateNoteAsync(
+                WorkspaceId,
+                currentUserId!,
+                newNoteTitle,
+                noteContent
+            );
+
+            notes.Insert(0, note);
+            ToastService.ShowSuccess($"Created note '{newNoteTitle}'");
+
+            // Select the new note
+            creatingNote = false;
+            await SelectNote(note.Id);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error creating note: {ex.Message}");
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private async Task SaveNote()
+    {
+        if (selectedNote == null)
+        {
+            return;
+        }
+
+        try
+        {
+            saving = true;
+
+            await NoteService.UpdateNoteContentAsync(selectedNote.Id, currentUserId!, noteContent);
+
+            // Reload notes to show any auto-created concept notes from [[wiki-links]]
+            await LoadNotesAsync();
+
+            // Update local note timestamp
+            var note = notes.FirstOrDefault(n => n.Id == selectedNote.Id);
+            if (note != null)
+            {
+                note.UpdatedAt = DateTime.UtcNow;
+            }
+
+            ToastService.ShowSuccess("Note saved");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error saving note: {ex.Message}");
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    [JSInvokable]
+    public void TogglePreview()
+    {
+        showPreview = !showPreview;
+    }
+
+    private void ToggleCondensedView()
+    {
+        isCondensedView = !isCondensedView;
+    }
+
+    private void DismissKeyboardHints()
+    {
+        hideKeyboardHints = true;
+    }
+
+    private void OnSearchChanged()
+    {
+        // Search is handled by FilteredNotes property
+        StateHasChanged();
+    }
+
+    // JavaScript interop for wiki-link editor and preview
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Create .NET object reference for JS callbacks
+                dotNetHelper = DotNetObjectReference.Create(this);
+
+                // Wait a moment for scripts to load, then initialize handlers
+                await Task.Delay(100);
+                await JSRuntime.InvokeVoidAsync("WorkspaceKeyboardHandler.initialize", dotNetHelper);
+                await JSRuntime.InvokeVoidAsync("initializeWikiLinkPreview", dotNetHelper);
+
+                // Initialize wiki-link editor when a note is selected
+                if (selectedNote != null)
+                {
+                    await InitializeWikiLinkEditor();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing wiki-link handlers: {ex.Message}");
+            }
+        }
+        else if (selectedNote != null || creatingNote)
+        {
+            // Re-initialize when note changes
+            await InitializeWikiLinkEditor();
+        }
+    }
+
+    private async Task InitializeWikiLinkEditor()
+    {
+        try
+        {
+            var elementId = creatingNote ? "note-editor-new" : $"note-editor-{selectedNote?.Id}";
+
+            await JSRuntime.InvokeVoidAsync(
+                "WikiLinkEditor.initialize",
+                elementId,
+                dotNetHelper
+            );
+        }
+        catch (Exception ex)
+        {
+            // Silently fail if editor not ready yet
+            Console.WriteLine($"WikiLinkEditor init failed (may retry): {ex.Message}");
+        }
+    }
+
+    private async Task LoadRelatedConceptsAsync(int conceptId)
+    {
+        try
+        {
+            if (workspace?.Ontology == null)
+            {
+                relatedConcepts = new List<Concept>();
+                return;
+            }
+
+            // Get all relationships for this concept
+            var relationships = await RelationshipService.GetByConceptIdAsync(conceptId);
+            var conceptIds = new HashSet<int>();
+
+            foreach (var rel in relationships)
+            {
+                // Add both source and target concepts (excluding the current concept)
+                if (rel.SourceConceptId != conceptId)
+                {
+                    conceptIds.Add(rel.SourceConceptId);
+                }
+                if (rel.TargetConceptId != conceptId)
+                {
+                    conceptIds.Add(rel.TargetConceptId);
+                }
+            }
+
+            // Load the concept details
+            var allConcepts = await ConceptService.GetByOntologyIdAsync(workspace.Ontology.Id);
+            relatedConcepts = allConcepts
+                .Where(c => conceptIds.Contains(c.Id))
+                .OrderBy(c => c.Name)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading related concepts: {ex.Message}");
+            relatedConcepts = new List<Concept>();
+        }
+    }
+
+    private async Task NavigateToConceptNote(string conceptName)
+    {
+        try
+        {
+            // Find the concept note by name
+            var note = notes.FirstOrDefault(n =>
+                n.IsConceptNote &&
+                n.Title.Equals(conceptName, StringComparison.OrdinalIgnoreCase));
+
+            if (note != null)
+            {
+                await SelectNote(note.Id);
+            }
+            else
+            {
+                ToastService.ShowInfo($"Note for '{conceptName}' not found");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error navigating to concept note: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Called from JavaScript when user Ctrl+Clicks a [[wiki-link]]
+    /// </summary>
+    [JSInvokable]
+    public async Task NavigateToConcept(string conceptName)
+    {
+        try
+        {
+            if (workspace?.Ontology == null)
+            {
+                ToastService.ShowWarning("Workspace has no ontology");
+                return;
+            }
+
+            // Find the concept by name
+            var concepts = await ConceptService.GetByOntologyIdAsync(workspace.Ontology.Id);
+            var concept = concepts.FirstOrDefault(c =>
+                c.Name.Equals(conceptName, StringComparison.OrdinalIgnoreCase));
+
+            if (concept != null)
+            {
+                // Navigate to the ontology view with this concept selected
+                Navigation.NavigateTo($"/ontology/{workspace.Ontology.Id}?selectedConcept={concept.Id}");
+                ToastService.ShowInfo($"Opening concept: {conceptName}");
+            }
+            else
+            {
+                ToastService.ShowWarning($"Concept '{conceptName}' not found");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error navigating to concept: {ex.Message}");
+        }
+    }
+
+    // Quick Switcher handlers
+    [JSInvokable]
+    public async Task ShowQuickSwitcher()
+    {
+        if (quickSwitcher != null && !string.IsNullOrEmpty(currentUserId))
+        {
+            await quickSwitcher.ShowAsync(currentUserId);
+        }
+    }
+
+    private async Task HandleQuickSwitcherNoteSelected(Note note)
+    {
+        if (note != null)
+        {
+            await SelectNote(note.Id);
+        }
+    }
+
+    private void HandleQuickSwitcherHide()
+    {
+        // Quick switcher closed, nothing specific to do
+        StateHasChanged();
+    }
+
+    // Cleanup
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (dotNetHelper != null)
+            {
+                // Dispose JavaScript handlers
+                await JSRuntime.InvokeVoidAsync("WorkspaceKeyboardHandler.dispose");
+                await JSRuntime.InvokeVoidAsync("disposeWikiLinkPreview");
+
+                if (selectedNote != null || creatingNote)
+                {
+                    var elementId = creatingNote ? "note-editor-new" : $"note-editor-{selectedNote?.Id}";
+                    await JSRuntime.InvokeVoidAsync("WikiLinkEditor.dispose", elementId);
+                }
+
+                dotNetHelper.Dispose();
+            }
+
+            if (wikiLinkEditorModule != null)
+            {
+                await wikiLinkEditorModule.DisposeAsync();
+            }
+        }
+        catch
+        {
+            // Ignore disposal errors
+        }
+    }
+}

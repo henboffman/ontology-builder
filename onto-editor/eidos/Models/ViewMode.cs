@@ -13,5 +13,6 @@ public enum ViewMode
     Collaborators,
     VersionHistory,
     MergeRequests,
-    Help
+    Help,
+    MindMap
 }

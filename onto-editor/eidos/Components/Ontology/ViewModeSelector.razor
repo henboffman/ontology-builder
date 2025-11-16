@@ -28,6 +28,13 @@
                 <i class="bi bi-diagram-2 me-2"></i>Hierarchy
                 @RenderViewerIndicators(ViewMode.Hierarchy)
             </button>
+            @* DISABLED - Mind Map view (work in progress)
+            <button class="list-group-item list-group-item-action view-mode-item @(CurrentViewMode == ViewMode.MindMap ? "active" : "")"
+                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.MindMap)" title="@GetViewerTooltip(ViewMode.MindMap)">
+                <i class="bi bi-share me-2"></i>Mind Map
+                @RenderViewerIndicators(ViewMode.MindMap)
+            </button>
+            *@
             <button class="list-group-item list-group-item-action view-mode-item @(CurrentViewMode == ViewMode.Instances ? "active" : "")"
                 @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Instances)" title="@GetViewerTooltip(ViewMode.Instances)">
                 <i class="bi bi-person me-2"></i>Instances
@@ -109,6 +116,14 @@
                         <i class="bi bi-diagram-2 me-2"></i> Hierarchy
                     </button>
                 </li>
+                @* DISABLED - Mind Map view (work in progress)
+                <li>
+                    <button class="dropdown-item @(CurrentViewMode == ViewMode.MindMap ? "active" : "")"
+                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.MindMap)">
+                        <i class="bi bi-share me-2"></i> Mind Map
+                    </button>
+                </li>
+                *@
                 <li>
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.Instances ? "active" : "")"
                         @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Instances)">
@@ -226,6 +241,7 @@
         ViewMode.Graph => "bi bi-diagram-3",
         ViewMode.List => "bi bi-list-ul",
         ViewMode.Hierarchy => "bi bi-diagram-2",
+        ViewMode.MindMap => "bi bi-share",
         ViewMode.Instances => "bi bi-person",
         ViewMode.Ttl => "bi bi-file-code",
         ViewMode.Notes => "bi bi-journal-text",
@@ -242,6 +258,7 @@
         ViewMode.Graph => "Graph",
         ViewMode.List => "List",
         ViewMode.Hierarchy => "Hierarchy",
+        ViewMode.MindMap => "Mind Map",
         ViewMode.Instances => "Instances",
         ViewMode.Ttl => "TTL",
         ViewMode.Notes => "Notes",
@@ -288,6 +305,7 @@
         ViewMode.Graph => "💡 Graph View - Interactive visual diagram of your ontology. Ctrl+Click nodes to quick-add concepts",
         ViewMode.List => "List View - Tabular view with sorting and filtering",
         ViewMode.Hierarchy => "Hierarchy View - Tree structure showing is-a relationships",
+        ViewMode.MindMap => "Mind Map - Infinite zoom network diagram with hierarchical exploration",
         ViewMode.Instances => "Instances - Individual examples of concepts",
         ViewMode.Ttl => "Export/View TTL - View RDF/OWL representation",
         ViewMode.Notes => "Notes - Personal documentation and markdown notes",

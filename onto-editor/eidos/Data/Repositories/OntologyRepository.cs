@@ -266,6 +266,7 @@ public class OntologyRepository : BaseRepository<Ontology>, IOntologyRepository
         existingOntology.Visibility = ontology.Visibility;
         existingOntology.AllowPublicEdit = ontology.AllowPublicEdit;
         existingOntology.RequiresApproval = ontology.RequiresApproval;
+        existingOntology.WorkspaceId = ontology.WorkspaceId;  // Allow updating workspace link
         existingOntology.UpdatedAt = DateTime.UtcNow;
 
         await context.SaveChangesAsync();

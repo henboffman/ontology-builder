@@ -60,4 +60,28 @@ public class RelationshipRepository : BaseRepository<Relationship>, IRelationshi
         await context.SaveChangesAsync();
         return relationship;
     }
+
+    public override async Task UpdateAsync(Relationship relationship)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        // Detach navigation properties to avoid tracking conflicts
+        // The Update method will only update the relationship's own properties
+        var entry = context.Entry(relationship);
+        entry.State = EntityState.Modified;
+
+        // Explicitly set which properties to update (exclude navigation properties)
+        entry.Property(r => r.SourceConceptId).IsModified = true;
+        entry.Property(r => r.TargetConceptId).IsModified = true;
+        entry.Property(r => r.RelationType).IsModified = true;
+        entry.Property(r => r.Label).IsModified = true;
+        entry.Property(r => r.Description).IsModified = true;
+
+        // Don't track or update navigation properties
+        entry.Reference(r => r.SourceConcept).IsModified = false;
+        entry.Reference(r => r.TargetConcept).IsModified = false;
+        entry.Reference(r => r.Ontology).IsModified = false;
+
+        await context.SaveChangesAsync();
+    }
 }

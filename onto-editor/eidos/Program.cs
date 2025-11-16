@@ -426,6 +426,7 @@ builder.Services.AddScoped<ICollaborationPostRepository, CollaborationPostReposi
 builder.Services.AddScoped<IOntologyLinkRepository, OntologyLinkRepository>();
 builder.Services.AddScoped<IMergeRequestRepository, MergeRequestRepository>();
 builder.Services.AddScoped<IEntityCommentRepository, EntityCommentRepository>();
+builder.Services.AddScoped<IConceptGroupRepository, ConceptGroupRepository>();
 
 // Register Export Strategies (Strategy Pattern)
 builder.Services.AddScoped<IExportStrategy, JsonExportStrategy>();
@@ -442,6 +443,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserPreferencesService, UserPreferencesService>();
 builder.Services.AddScoped<IFeatureToggleService, FeatureToggleService>();
 builder.Services.AddScoped<IConceptService, ConceptService>();
+builder.Services.AddScoped<IConceptGroupService, ConceptGroupService>();
 builder.Services.AddScoped<IRelationshipService, RelationshipService>();
 builder.Services.AddScoped<IOntologyShareService, OntologyShareService>();
 builder.Services.AddScoped<IOntologyActivityService, OntologyActivityService>();
@@ -459,6 +461,14 @@ builder.Services.AddScoped<IEntityCommentService, EntityCommentService>();
 builder.Services.AddScoped<IMergeRequestService, MergeRequestService>();
 builder.Services.AddScoped<IChangeDetectionService, ChangeDetectionService>();
 builder.Services.AddScoped<IOntologyViewHistoryService, OntologyViewHistoryService>();
+
+// Register Workspace and Notes Services (Obsidian-style knowledge management)
+builder.Services.AddScoped<WorkspaceRepository>();
+builder.Services.AddScoped<NoteRepository>();
+builder.Services.AddScoped<WorkspaceService>();
+builder.Services.AddScoped<NoteService>();
+builder.Services.AddScoped<WikiLinkParser>();
+builder.Services.AddScoped<MarkdownRenderingService>();
 
 // Register Import Services (Single Responsibility Principle)
 builder.Services.AddScoped<IRdfParser, RdfParser>();

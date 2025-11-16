@@ -1,0 +1,946 @@
+// Concept Grouping for Graph View
+// iOS-style collapsible node groups with drag-and-drop
+
+// Store grouping state per graph instance
+const groupingState = new Map();
+
+/**
+ * Initialize grouping functionality for a Cytoscape instance
+ * @param {string} graphId - The graph container ID
+ * @param {object} cyOrNull - Cytoscape instance (optional, will be found by graphId if null)
+ * @param {object} dotNetHelper - Blazor interop object
+ * @param {array} groups - Existing groups from database
+ */
+window.initializeConceptGrouping = function(graphId, cyOrNull, dotNetHelper, groups) {
+    console.log('🚀 initializeConceptGrouping called for', graphId, 'with', groups ? groups.length : 0, 'groups');
+    console.log('   cyOrNull:', !!cyOrNull, 'window.cytoscapeInstances:', !!window.cytoscapeInstances);
+
+    // Find Cytoscape instance if not provided
+    const cy = cyOrNull || (window.cytoscapeInstances && window.cytoscapeInstances.get(graphId));
+
+    if (!cy) {
+        console.error('❌ Cytoscape instance not found for', graphId);
+        console.log('   Available instances:', window.cytoscapeInstances ? Array.from(window.cytoscapeInstances.keys()) : 'none');
+        return;
+    }
+
+    console.log('✅ Found Cytoscape instance for', graphId);
+
+    // Initialize state for this graph
+    const state = {
+        isDragging: false,
+        draggedNode: null,
+        dragStartTime: null,
+        hoverTarget: null,
+        groups: groups || [],
+        maxDepth: 5,
+        dotNetHelper: dotNetHelper,  // Store the .NET reference for later use
+        handlersInitialized: false   // Track if event handlers have been set up
+    };
+
+    groupingState.set(graphId, state);
+
+    console.log('🎯 Initialized concept grouping for', graphId, 'with', (groups || []).length, 'groups');
+
+    // Apply existing groups
+    applyGroupsToGraph(graphId, cy, groups);
+
+    // Set up drag-and-drop handlers (only once)
+    if (!state.handlersInitialized) {
+        setupDragHandlers(graphId, cy, dotNetHelper);
+        setupGroupHandlers(graphId, cy, dotNetHelper);
+        state.handlersInitialized = true;
+        console.log('✅ Event handlers initialized for', graphId);
+    } else {
+        console.log('⏭️ Handlers already initialized, skipping setup');
+    }
+};
+
+/**
+ * Apply existing groups to the graph visualization
+ */
+function applyGroupsToGraph(graphId, cy, groups) {
+    console.log('📊 applyGroupsToGraph: Processing', groups.length, 'groups');
+
+    groups.forEach(group => {
+        console.log('   Group', group.id, '- Parent:', group.parentConceptId, 'Children:', group.childConceptIds, 'Collapsed:', group.isCollapsed);
+
+        if (group.isCollapsed) {
+            // Hide child nodes and mark parent as grouped
+            const parentNode = cy.getElementById('concept-' + group.parentConceptId);
+            const childIds = JSON.parse(group.childConceptIds || '[]');
+            const collapsedRelationships = group.collapsedRelationships ?
+                JSON.parse(group.collapsedRelationships) : [];
+
+            if (parentNode.length) {
+                // Add grouped class to parent
+                parentNode.addClass('grouped');
+                parentNode.data('groupedChildren', childIds);
+                parentNode.data('groupId', group.id);
+                parentNode.data('collapsedRelationships', collapsedRelationships);
+
+                // Hide child nodes
+                childIds.forEach(childId => {
+                    const childNode = cy.getElementById('concept-' + childId);
+                    if (childNode.length) {
+                        childNode.addClass('grouped-hidden');
+                        childNode.style('visibility', 'hidden');
+
+                        // Hide ALL edges connected to this child node
+                        const connectedEdges = childNode.connectedEdges();
+                        connectedEdges.forEach(edge => {
+                            // Only hide if the edge isn't already being handled by rerouting
+                            if (!edge.hasClass('rerouted-edge')) {
+                                edge.addClass('grouped-edge-hidden');
+                                edge.style('visibility', 'hidden');
+                            }
+                        });
+                    }
+                });
+
+                // Handle edges: hide internal ones, reroute external ones
+                handleGroupedEdges(cy, group.parentConceptId, childIds, collapsedRelationships);
+            }
+        }
+    });
+
+    // Apply stacked visual effect to grouped nodes
+    applyStackedEffect(cy);
+}
+
+/**
+ * Apply stacked visual effect to grouped nodes (iOS folder style)
+ */
+function applyStackedEffect(cy) {
+    cy.nodes('.grouped').forEach(node => {
+        const childCount = (node.data('groupedChildren') || []).length;
+
+        // Add visual indicators for grouped nodes
+        node.style({
+            'border-width': '4px',
+            'border-color': '#0d6efd',
+            'box-shadow': '0 2px 8px rgba(13, 110, 253, 0.3), inset 0 -3px 0 rgba(13, 110, 253, 0.2)'
+        });
+
+        // Add count badge (will be rendered as pseudo-element via CSS)
+        node.data('groupCount', childCount);
+
+        // Add floating circle indicators
+        addFloatingIndicators(cy, node, childCount);
+    });
+}
+
+/**
+ * Add floating circle indicators around a grouped node
+ * Shows small circles representing the collapsed children
+ */
+function addFloatingIndicators(cy, node, childCount) {
+    const container = cy.container();
+    const nodeId = node.id();
+
+    // Remove existing indicators for this node
+    const existingIndicators = container.querySelectorAll(`.group-indicator-container[data-node-id="${nodeId}"]`);
+    existingIndicators.forEach(ind => ind.remove());
+
+    // Don't show indicators if there are no children
+    if (childCount === 0) return;
+
+    // Limit to showing max 5 circles to avoid clutter
+    const displayCount = Math.min(childCount, 5);
+
+    // Create container for indicators
+    const indicatorContainer = document.createElement('div');
+    indicatorContainer.className = 'group-indicator-container';
+    indicatorContainer.dataset.nodeId = nodeId;
+    container.appendChild(indicatorContainer);
+
+    // Create individual circle indicators positioned around the node
+    for (let i = 0; i < displayCount; i++) {
+        const indicator = document.createElement('div');
+        indicator.className = 'group-indicator-circle';
+        indicator.dataset.index = i;
+        indicatorContainer.appendChild(indicator);
+    }
+
+    // Position indicators around the node
+    updateIndicatorPositions(cy, node, indicatorContainer, displayCount);
+
+    // Update positions on pan/zoom
+    const updateHandler = () => {
+        const container = document.querySelector(`.group-indicator-container[data-node-id="${nodeId}"]`);
+        if (container && node.length) {
+            updateIndicatorPositions(cy, node, container, displayCount);
+        }
+    };
+
+    // Store handler for cleanup
+    if (!node.data('indicatorUpdateHandler')) {
+        cy.on('pan zoom', updateHandler);
+        node.data('indicatorUpdateHandler', updateHandler);
+    }
+}
+
+/**
+ * Update positions of floating indicators around a node
+ */
+function updateIndicatorPositions(cy, node, container, count) {
+    const renderedPos = node.renderedPosition();
+    const nodeWidth = node.renderedWidth();
+    const radius = nodeWidth / 2 + 20; // Orbit 20px outside the node
+
+    const circles = container.querySelectorAll('.group-indicator-circle');
+
+    circles.forEach((circle, i) => {
+        // Calculate angle for this indicator (spread them around the node)
+        // Start from top-right and go clockwise
+        const angleOffset = 45; // Start angle in degrees
+        const angleSpace = count > 1 ? 90 / (count - 1) : 0; // Spread over 90 degrees
+        const angle = (angleOffset + (i * angleSpace)) * (Math.PI / 180);
+
+        // Calculate position
+        const x = renderedPos.x + Math.cos(angle) * radius;
+        const y = renderedPos.y + Math.sin(angle) * radius;
+
+        circle.style.left = (x - 5) + 'px'; // Center the 10px circle
+        circle.style.top = (y - 5) + 'px';
+    });
+}
+
+/**
+ * Handle edges for grouped concepts: hide internal edges, reroute external edges
+ * @param {object} cy - Cytoscape instance
+ * @param {number} parentConceptId - The parent concept ID
+ * @param {array} childIds - Array of child concept IDs
+ * @param {array} collapsedRelationships - Metadata about collapsed relationships
+ */
+function handleGroupedEdges(cy, parentConceptId, childIds, collapsedRelationships) {
+    const allGroupedIds = [parentConceptId, ...childIds];
+    const reroutedEdges = new Set(); // Track which original edges we've rerouted
+
+    // Process each collapsed relationship
+    collapsedRelationships.forEach(relInfo => {
+        const originalEdge = cy.getElementById('rel-' + relInfo.relationshipId);
+
+        if (!originalEdge.length) {
+            console.warn('Original edge not found:', relInfo.relationshipId);
+            return;
+        }
+
+        if (relInfo.shouldBeRerouted && relInfo.externalConceptId) {
+            // This edge connects to an external concept - reroute it to the parent
+            const externalNode = cy.getElementById('concept-' + relInfo.externalConceptId);
+            const parentNode = cy.getElementById('concept-' + parentConceptId);
+
+            if (externalNode.length && parentNode.length) {
+                // Determine direction of the rerouted edge
+                const isFromGrouped = relInfo.isFromGroupedChild;
+                const sourceId = isFromGrouped ? parentConceptId : relInfo.externalConceptId;
+                const targetId = isFromGrouped ? relInfo.externalConceptId : parentConceptId;
+
+                // Create a temporary rerouted edge
+                const reroutedId = `rerouted-${relInfo.relationshipId}`;
+
+                // Check if we already have this rerouted edge
+                const existingRerouted = cy.getElementById(reroutedId);
+                if (!existingRerouted.length) {
+                    cy.add({
+                        group: 'edges',
+                        data: {
+                            id: reroutedId,
+                            source: 'concept-' + sourceId,
+                            target: 'concept-' + targetId,
+                            label: relInfo.relationshipType,
+                            relationshipType: relInfo.relationshipType,
+                            originalRelationshipId: relInfo.relationshipId,
+                            isRerouted: true
+                        },
+                        classes: 'rerouted-edge'
+                    });
+
+                    console.log(`✅ Rerouted edge ${relInfo.relationshipId}: concept-${sourceId} → concept-${targetId}`);
+                }
+
+                // Hide the original edge
+                originalEdge.addClass('grouped-edge-hidden');
+                originalEdge.style('visibility', 'hidden');
+                reroutedEdges.add(relInfo.relationshipId);
+            }
+        } else {
+            // This is an internal edge (both endpoints in the group) - just hide it
+            originalEdge.addClass('grouped-edge-hidden');
+            originalEdge.style('visibility', 'hidden');
+            console.log(`Hidden internal edge ${relInfo.relationshipId}`);
+        }
+    });
+
+    console.log(`📊 Group ${parentConceptId}: Processed ${collapsedRelationships.length} relationships, rerouted ${reroutedEdges.size}`);
+}
+
+/**
+ * Set up drag-and-drop handlers for grouping
+ * Drag one node over another to create a group with visual preview
+ */
+function setupDragHandlers(graphId, cy, dotNetHelper) {
+    const state = groupingState.get(graphId);
+    let groupPreviewOverlay = null;
+    let dragThrottleTimer = null;
+    const DRAG_THROTTLE_MS = 50; // Throttle drag event to 20fps for performance
+
+    console.log('🎯 Setting up drag handlers for', graphId);
+    console.log('   Cytoscape instance:', cy);
+    console.log('   DotNetHelper:', !!dotNetHelper);
+    console.log('   State:', state);
+
+    // Mouse down - start tracking drag
+    cy.on('mousedown', 'node', function(evt) {
+        const node = evt.target;
+
+        // Don't allow dragging of grouped-hidden nodes
+        if (node.hasClass('grouped-hidden')) return;
+
+        state.draggedNode = node;
+        state.isDragging = false;
+        state.hoverTarget = null;
+        state.canCreateGroup = null; // Reset validation state
+    });
+
+    // Drag - check for overlap with other nodes and show preview (throttled)
+    cy.on('drag', 'node', function(evt) {
+        const node = evt.target;
+
+        console.log('🖱️ Drag event fired on', node.id(), 'draggedNode:', state.draggedNode?.id());
+
+        if (!state.draggedNode) return;
+
+        state.isDragging = true;
+
+        // Throttle drag processing for performance
+        if (dragThrottleTimer) return;
+
+        dragThrottleTimer = setTimeout(() => {
+            dragThrottleTimer = null;
+
+            // Find nodes under cursor (overlapping)
+            const position = node.position();
+            const nearbyNodes = cy.nodes().filter(n => {
+                if (n.id() === node.id()) return false;
+                if (n.hasClass('grouped-hidden')) return false;
+
+                const dist = Math.sqrt(
+                    Math.pow(n.position().x - position.x, 2) +
+                    Math.pow(n.position().y - position.y, 2)
+                );
+
+                return dist < 100; // Within 100px = nearby (matches visual preview better)
+            });
+
+            // Clear previous hover effects
+            cy.nodes().removeClass('group-hover-target');
+            cy.nodes().removeClass('group-hover-invalid');
+
+            if (nearbyNodes.length > 0) {
+                const targetNode = nearbyNodes[0];
+                state.hoverTarget = targetNode;
+
+                // Validate if this group can be created
+                validateGroupCreation(state.dotNetHelper, node, targetNode, state);
+            } else {
+                state.hoverTarget = null;
+                state.canCreateGroup = null;
+                hideGroupPreview();
+            }
+        }, DRAG_THROTTLE_MS);
+    });
+
+    // Mouse up - complete grouping action
+    cy.on('mouseup', 'node', async function(evt) {
+        const node = evt.target;
+
+        console.log('⬆️ Mouse up on node:', node.id(), {
+            hasHoverTarget: !!state.hoverTarget,
+            hasDraggedNode: !!state.draggedNode,
+            isDragging: state.isDragging,
+            canCreateGroup: state.canCreateGroup,
+            hasDotNetHelper: !!state.dotNetHelper
+        });
+
+        // Clear hover effects
+        cy.nodes().removeClass('group-hover-target');
+        cy.nodes().removeClass('group-hover-invalid');
+        hideGroupPreview();
+
+        // Clear throttle timer
+        if (dragThrottleTimer) {
+            clearTimeout(dragThrottleTimer);
+            dragThrottleTimer = null;
+        }
+
+        // If we have a valid drop target and validation passed, create group
+        if (state.hoverTarget && state.draggedNode && state.isDragging && state.canCreateGroup) {
+            const draggedId = parseInt(state.draggedNode.id().replace('concept-', ''));
+            const targetId = parseInt(state.hoverTarget.id().replace('concept-', ''));
+
+            try {
+                // Call Blazor to create group
+                await state.dotNetHelper.invokeMethodAsync('CreateConceptGroup', targetId, [draggedId]);
+                showSuccessMessage(cy, 'Group created successfully');
+            } catch (error) {
+                console.error('Failed to create concept group:', error);
+                showErrorMessage(cy, 'Failed to create group: ' + (error.message || 'Unknown error'));
+            }
+        } else if (state.hoverTarget && state.draggedNode && state.isDragging && state.canCreateGroup === false) {
+            // Validation failed - show error
+            showErrorMessage(cy, 'Cannot create group: would create circular reference');
+        }
+
+        // Reset state
+        state.isDragging = false;
+        state.draggedNode = null;
+        state.hoverTarget = null;
+        state.canCreateGroup = null;
+    });
+
+    // Cancel on drag outside graph
+    cy.on('dragfreeon', 'node', function() {
+        cy.nodes().removeClass('group-hover-target');
+        cy.nodes().removeClass('group-hover-invalid');
+        hideGroupPreview();
+        state.isDragging = false;
+        state.hoverTarget = null;
+        state.canCreateGroup = null;
+
+        if (dragThrottleTimer) {
+            clearTimeout(dragThrottleTimer);
+            dragThrottleTimer = null;
+        }
+    });
+
+    /**
+     * Validate if a group can be created between two nodes
+     */
+    async function validateGroupCreation(dotNetHelper, draggedNode, targetNode, state) {
+        const draggedId = parseInt(draggedNode.id().replace('concept-', ''));
+        const targetId = parseInt(targetNode.id().replace('concept-', ''));
+
+        console.log('🔍 Validating group creation:', {
+            draggedId,
+            targetId,
+            hasDotNetHelper: !!dotNetHelper
+        });
+
+        try {
+            const canCreate = await dotNetHelper.invokeMethodAsync('CanCreateGroup', targetId, [draggedId]);
+            console.log('✅ Validation result:', canCreate);
+            state.canCreateGroup = canCreate;
+
+            if (canCreate) {
+                targetNode.addClass('group-hover-target');
+                showGroupPreview(cy, draggedNode, targetNode, true);
+            } else {
+                targetNode.addClass('group-hover-invalid');
+                showGroupPreview(cy, draggedNode, targetNode, false);
+            }
+        } catch (error) {
+            console.error('Failed to validate group creation:', error);
+            state.canCreateGroup = false;
+            targetNode.addClass('group-hover-invalid');
+            showGroupPreview(cy, draggedNode, targetNode, false);
+        }
+    }
+
+    /**
+     * Show visual preview of the group being formed
+     */
+    function showGroupPreview(cy, draggedNode, targetNode, isValid) {
+        const container = cy.container();
+
+        // Create overlay if it doesn't exist
+        if (!groupPreviewOverlay) {
+            groupPreviewOverlay = document.createElement('div');
+            groupPreviewOverlay.className = 'group-preview-overlay';
+            container.appendChild(groupPreviewOverlay);
+        }
+
+        // Calculate center point between the two nodes
+        const draggedPos = draggedNode.renderedPosition();
+        const targetPos = targetNode.renderedPosition();
+
+        const centerX = (draggedPos.x + targetPos.x) / 2;
+        const centerY = (draggedPos.y + targetPos.y) / 2;
+
+        // Calculate radius to encompass both nodes
+        const distance = Math.sqrt(
+            Math.pow(draggedPos.x - targetPos.x, 2) +
+            Math.pow(draggedPos.y - targetPos.y, 2)
+        );
+        const radius = Math.max(distance / 2 + 40, 60); // Minimum 60px radius
+
+        // Position the preview circle
+        groupPreviewOverlay.style.left = (centerX - radius) + 'px';
+        groupPreviewOverlay.style.top = (centerY - radius) + 'px';
+        groupPreviewOverlay.style.width = (radius * 2) + 'px';
+        groupPreviewOverlay.style.height = (radius * 2) + 'px';
+        groupPreviewOverlay.style.display = 'block';
+
+        // Update inner content - show 2 dots representing the nodes and validation status
+        const labelText = isValid ? 'Release to group' : 'Cannot group (circular reference)';
+        const labelClass = isValid ? 'group-preview-label' : 'group-preview-label-invalid';
+
+        groupPreviewOverlay.innerHTML = `
+            <div class="group-preview-content">
+                <div class="group-preview-dots">
+                    <div class="group-preview-dot"></div>
+                    <div class="group-preview-dot"></div>
+                </div>
+                <div class="${labelClass}">${labelText}</div>
+            </div>
+        `;
+
+        // Add invalid class if needed
+        if (isValid) {
+            groupPreviewOverlay.classList.remove('group-preview-invalid');
+        } else {
+            groupPreviewOverlay.classList.add('group-preview-invalid');
+        }
+    }
+
+    /**
+     * Hide the group preview overlay
+     */
+    function hideGroupPreview() {
+        if (groupPreviewOverlay) {
+            groupPreviewOverlay.style.display = 'none';
+        }
+    }
+}
+
+/**
+ * Start wiggle animation on a node (iOS-style)
+ * Uses border pulse since Cytoscape doesn't support CSS transforms
+ */
+function startWiggleAnimation(node) {
+    if (!node || !node.length) return;
+
+    node.addClass('wiggling');
+
+    // Save original border width
+    const originalBorderWidth = node.style('border-width');
+    node.data('originalBorderWidth', originalBorderWidth);
+
+    // Pulse animation using border width
+    let pulseUp = true;
+    const minWidth = parseInt(originalBorderWidth) || 2;
+    const maxWidth = minWidth + 4;
+
+    const wiggleInterval = setInterval(() => {
+        const current = parseInt(node.style('border-width')) || minWidth;
+
+        if (pulseUp) {
+            if (current >= maxWidth) {
+                pulseUp = false;
+                node.style('border-width', maxWidth + 'px');
+            } else {
+                node.style('border-width', (current + 1) + 'px');
+            }
+        } else {
+            if (current <= minWidth) {
+                pulseUp = true;
+                node.style('border-width', minWidth + 'px');
+            } else {
+                node.style('border-width', (current - 1) + 'px');
+            }
+        }
+
+        // Also pulse the border color between blue and lighter blue
+        node.style('border-color', pulseUp ? '#0d6efd' : '#5fa3ff');
+    }, 100);
+
+    node.data('wiggleInterval', wiggleInterval);
+}
+
+/**
+ * Stop wiggle animation on a node
+ */
+function stopWiggleAnimation(node) {
+    if (!node || !node.length) return;
+
+    node.removeClass('wiggling');
+
+    const wiggleInterval = node.data('wiggleInterval');
+    if (wiggleInterval) {
+        clearInterval(wiggleInterval);
+        node.removeData('wiggleInterval');
+    }
+
+    // Restore original border
+    const originalBorderWidth = node.data('originalBorderWidth');
+    if (originalBorderWidth) {
+        node.style('border-width', originalBorderWidth);
+        node.removeData('originalBorderWidth');
+    }
+    node.style('border-color', ''); // Reset to default
+}
+
+/**
+ * Set up handlers for group interaction (expand/collapse)
+ */
+function setupGroupHandlers(graphId, cy, dotNetHelper) {
+    console.log('🎯 Setting up group handlers for', graphId);
+    const state = groupingState.get(graphId);
+
+    let expandButton = null;
+    let expandButtonClickHandler = null;
+
+    // Mouse over grouped node - show expand button
+    cy.on('mouseover', 'node.grouped', function(evt) {
+        const node = evt.target;
+        const groupId = node.data('groupId');
+        const childCount = (node.data('groupedChildren') || []).length;
+
+        if (!groupId || childCount === 0) return;
+
+        // Get node position in rendered coordinates
+        const renderedPos = node.renderedPosition();
+        const zoom = cy.zoom();
+        const nodeWidth = node.renderedWidth();
+
+        // Create expand button if it doesn't exist
+        if (!expandButton) {
+            const container = cy.container();
+            expandButton = document.createElement('button');
+            expandButton.className = 'concept-group-expand-btn';
+            expandButton.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 3.5a.5.5 0 0 1 .5.5v4h4a.5.5 0 0 1 0 1h-4v4a.5.5 0 0 1-1 0v-4h-4a.5.5 0 0 1 0-1h4v-4a.5.5 0 0 1 .5-.5z"/>
+                </svg>
+                <span>${childCount}</span>
+            `;
+            expandButton.title = `Expand group (${childCount} node${childCount > 1 ? 's' : ''})`;
+            expandButton.style.position = 'absolute';
+            expandButton.style.pointerEvents = 'auto';
+            expandButton.style.zIndex = '9999';
+            container.appendChild(expandButton);
+
+            // Create and store click handler to prevent duplicates
+            expandButtonClickHandler = async (e) => {
+                e.stopPropagation();
+                const currentGroupId = expandButton.dataset.groupId;
+
+                console.log('🔄 Expanding group', currentGroupId);
+
+                try {
+                    await dotNetHelper.invokeMethodAsync('ToggleConceptGroup', parseInt(currentGroupId));
+                    console.log('✅ Group expanded');
+
+                    // Remove button after expansion
+                    if (expandButton) {
+                        if (expandButtonClickHandler) {
+                            expandButton.removeEventListener('click', expandButtonClickHandler);
+                        }
+                        expandButton.remove();
+                        expandButton = null;
+                        expandButtonClickHandler = null;
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to expand group:', error);
+                }
+            };
+
+            // Add click handler
+            expandButton.addEventListener('click', expandButtonClickHandler);
+        }
+
+        // Position the button
+        expandButton.style.left = (renderedPos.x + nodeWidth / 2 + 10) + 'px';
+        expandButton.style.top = (renderedPos.y - 12) + 'px';
+        expandButton.dataset.groupId = groupId;
+        expandButton.dataset.nodeId = node.id();
+
+        // Update count
+        const countSpan = expandButton.querySelector('span');
+        if (countSpan) {
+            countSpan.textContent = childCount;
+        }
+        expandButton.title = `Expand group (${childCount} node${childCount > 1 ? 's' : ''})`;
+    });
+
+    // Mouse out - hide expand button after a delay
+    cy.on('mouseout', 'node.grouped', function(evt) {
+        setTimeout(() => {
+            // Check if mouse is over the button
+            if (expandButton && !expandButton.matches(':hover')) {
+                expandButton.remove();
+                expandButton = null;
+            }
+        }, 200);
+    });
+
+    // Remove button when mouse leaves it
+    document.addEventListener('mouseout', (e) => {
+        if (expandButton && e.target === expandButton) {
+            setTimeout(() => {
+                if (expandButton && !expandButton.matches(':hover')) {
+                    const nodeId = expandButton.dataset.nodeId;
+                    const node = cy.getElementById(nodeId);
+
+                    // Only remove if not hovering over the node either
+                    if (!node.length || !node.data('hovered')) {
+                        expandButton.remove();
+                        expandButton = null;
+                    }
+                }
+            }, 200);
+        }
+    });
+
+    // Track hover state on nodes
+    cy.on('mouseover', 'node', function(evt) {
+        evt.target.data('hovered', true);
+    });
+
+    cy.on('mouseout', 'node', function(evt) {
+        evt.target.data('hovered', false);
+    });
+
+    // Clean up button on pan/zoom
+    cy.on('pan zoom', function() {
+        if (expandButton) {
+            expandButton.remove();
+            expandButton = null;
+        }
+    });
+}
+
+/**
+ * Expand a group (show all children)
+ */
+window.expandConceptGroup = function(graphId, groupId) {
+    const state = groupingState.get(graphId);
+    if (!state) return;
+
+    const cy = window.cytoscapeInstances && window.cytoscapeInstances.get(graphId);
+    if (!cy) return;
+
+    const group = state.groups.find(g => g.id === groupId);
+    if (!group) return;
+
+    const parentNode = cy.getElementById('concept-' + group.parentConceptId);
+    const childIds = JSON.parse(group.childConceptIds || '[]');
+    const collapsedRelationships = group.collapsedRelationships ?
+        JSON.parse(group.collapsedRelationships) : [];
+
+    // Remove floating indicators
+    const container = cy.container();
+    const indicators = container.querySelectorAll(`.group-indicator-container[data-node-id="${parentNode.id()}"]`);
+    indicators.forEach(ind => ind.remove());
+
+    // Remove event handler for indicator updates
+    const updateHandler = parentNode.data('indicatorUpdateHandler');
+    if (updateHandler) {
+        cy.off('pan zoom', updateHandler);
+        parentNode.removeData('indicatorUpdateHandler');
+    }
+
+    // Remove grouped class from parent
+    parentNode.removeClass('grouped');
+    parentNode.removeData('groupedChildren');
+    parentNode.removeData('groupCount');
+    parentNode.removeData('groupId');
+    parentNode.removeData('collapsedRelationships');
+
+    // Reset parent style
+    parentNode.style({
+        'border-width': '',
+        'border-color': '',
+        'box-shadow': ''
+    });
+
+    // Show child nodes and restore their edges
+    childIds.forEach(childId => {
+        const childNode = cy.getElementById('concept-' + childId);
+        if (childNode.length) {
+            childNode.removeClass('grouped-hidden');
+            childNode.style('visibility', 'visible');
+
+            // Restore ALL edges connected to this child node
+            const connectedEdges = childNode.connectedEdges();
+            connectedEdges.forEach(edge => {
+                // Only restore if it's not a rerouted edge (those will be removed separately)
+                if (!edge.hasClass('rerouted-edge')) {
+                    edge.removeClass('grouped-edge-hidden');
+                    edge.style('visibility', 'visible');
+                }
+            });
+        }
+    });
+
+    // Remove rerouted edges
+    collapsedRelationships.forEach(relInfo => {
+        const reroutedId = `rerouted-${relInfo.relationshipId}`;
+        const reroutedEdge = cy.getElementById(reroutedId);
+        if (reroutedEdge.length) {
+            cy.remove(reroutedEdge);
+            console.log(`Removed rerouted edge ${reroutedId}`);
+        }
+    });
+
+    console.log('✅ Expanded group', groupId);
+};
+
+/**
+ * Collapse a group (hide all children)
+ */
+window.collapseConceptGroup = function(graphId, groupId) {
+    const state = groupingState.get(graphId);
+    if (!state) return;
+
+    const cy = window.cytoscapeInstances && window.cytoscapeInstances.get(graphId);
+    if (!cy) return;
+
+    const group = state.groups.find(g => g.id === groupId);
+    if (!group) return;
+
+    applyGroupsToGraph(graphId, cy, [group]);
+
+    console.log('✅ Collapsed group', groupId);
+};
+
+/**
+ * Update groups after server-side changes
+ */
+window.updateConceptGroups = function(graphId, groups) {
+    console.log('🔄 updateConceptGroups called for', graphId, 'with', groups ? groups.length : 0, 'groups');
+    console.log('   Groups data:', groups);
+
+    const state = groupingState.get(graphId);
+    if (!state) {
+        console.error('❌ No grouping state found for', graphId);
+        return;
+    }
+
+    console.log('📝 State before update:', {
+        hasDotNetHelper: !!state.dotNetHelper,
+        groupCount: state.groups?.length || 0
+    });
+
+    state.groups = groups;
+
+    console.log('📝 State after update:', {
+        hasDotNetHelper: !!state.dotNetHelper,
+        groupCount: state.groups?.length || 0
+    });
+
+    const cy = window.cytoscapeInstances && window.cytoscapeInstances.get(graphId);
+    if (!cy) {
+        console.error('❌ No Cytoscape instance found for', graphId);
+        return;
+    }
+
+    console.log('🧹 Clearing existing group styles...');
+
+    // Clear all existing group styles
+    cy.nodes('.grouped').forEach(node => {
+        node.removeClass('grouped');
+        node.removeData('groupedChildren');
+        node.removeData('groupCount');
+        node.removeData('groupId');
+        node.removeData('collapsedRelationships');
+    });
+
+    cy.nodes('.grouped-hidden').removeClass('grouped-hidden').style('visibility', 'visible');
+    cy.edges('.grouped-edge-hidden').removeClass('grouped-edge-hidden').style('visibility', 'visible');
+
+    // Remove any rerouted edges
+    cy.edges('.rerouted-edge').remove();
+
+    console.log('✨ Reapplying', groups.length, 'groups...');
+
+    // Reapply groups
+    applyGroupsToGraph(graphId, cy, groups);
+
+    console.log('✅ Groups updated successfully');
+};
+
+/**
+ * Show success message overlay
+ */
+function showSuccessMessage(cy, message) {
+    const container = cy.container();
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'concept-group-message concept-group-message-success';
+    messageDiv.textContent = message;
+    messageDiv.style.position = 'absolute';
+    messageDiv.style.top = '20px';
+    messageDiv.style.left = '50%';
+    messageDiv.style.transform = 'translateX(-50%)';
+    messageDiv.style.padding = '12px 24px';
+    messageDiv.style.backgroundColor = '#28a745';
+    messageDiv.style.color = 'white';
+    messageDiv.style.borderRadius = '8px';
+    messageDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+    messageDiv.style.zIndex = '10000';
+    messageDiv.style.fontSize = '14px';
+    messageDiv.style.fontWeight = '500';
+    messageDiv.style.pointerEvents = 'none';
+    messageDiv.style.opacity = '0';
+    messageDiv.style.transition = 'opacity 0.3s ease';
+
+    container.appendChild(messageDiv);
+
+    // Fade in
+    setTimeout(() => {
+        messageDiv.style.opacity = '1';
+    }, 10);
+
+    // Fade out and remove
+    setTimeout(() => {
+        messageDiv.style.opacity = '0';
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, 300);
+    }, 2000);
+}
+
+/**
+ * Show error message overlay
+ */
+function showErrorMessage(cy, message) {
+    const container = cy.container();
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'concept-group-message concept-group-message-error';
+    messageDiv.textContent = message;
+    messageDiv.style.position = 'absolute';
+    messageDiv.style.top = '20px';
+    messageDiv.style.left = '50%';
+    messageDiv.style.transform = 'translateX(-50%)';
+    messageDiv.style.padding = '12px 24px';
+    messageDiv.style.backgroundColor = '#dc3545';
+    messageDiv.style.color = 'white';
+    messageDiv.style.borderRadius = '8px';
+    messageDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+    messageDiv.style.zIndex = '10000';
+    messageDiv.style.fontSize = '14px';
+    messageDiv.style.fontWeight = '500';
+    messageDiv.style.pointerEvents = 'none';
+    messageDiv.style.opacity = '0';
+    messageDiv.style.transition = 'opacity 0.3s ease';
+
+    container.appendChild(messageDiv);
+
+    // Fade in
+    setTimeout(() => {
+        messageDiv.style.opacity = '1';
+    }, 10);
+
+    // Fade out and remove
+    setTimeout(() => {
+        messageDiv.style.opacity = '0';
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, 300);
+    }, 3000); // Show errors a bit longer
+}

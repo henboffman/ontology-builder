@@ -36,6 +36,9 @@
                     <button class="nav-link @(activeSection == "views" ? "active" : "")" @onclick='async () => await ScrollToSection("views")'>
                         <i class="bi bi-eye"></i> Different Views
                     </button>
+                    <button class="nav-link @(activeSection == "workspaces" ? "active" : "")" @onclick='async () => await ScrollToSection("workspaces")'>
+                        <i class="bi bi-journal-text"></i> Workspaces & Notes
+                    </button>
                     <button class="nav-link @(activeSection == "collaboration" ? "active" : "")" @onclick='async () => await ScrollToSection("collaboration")'>
                         <i class="bi bi-people"></i> Collaboration
                     </button>
@@ -625,6 +628,187 @@
                         <li>Copy for use in other tools</li>
                         <li>Validate semantic web compliance</li>
                     </ul>
+                </section>
+
+                <!-- Workspaces & Notes -->
+                <section id="workspaces" class="doc-section">
+                    <h2><i class="bi bi-journal-text text-primary"></i> Workspaces & Notes</h2>
+
+                    <h3>What are Workspaces?</h3>
+                    <p>Workspaces combine your ontology with a wiki-style note-taking system, allowing you to capture both structured knowledge (concepts and relationships) and unstructured thoughts (markdown notes) in one integrated environment.</p>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> <strong>Think of it like this:</strong> Your ontology is the skeleton (structured concepts), and notes are the flesh (detailed explanations, examples, and context). Together they create a complete knowledge system!
+                    </div>
+
+                    <h3>Creating a Workspace</h3>
+                    <ol>
+                        <li>Navigate to your dashboard</li>
+                        <li>Click "Create New Workspace"</li>
+                        <li>Enter a name and optional description</li>
+                        <li>Click "Create"</li>
+                    </ol>
+                    <p>When you create a workspace, Eidos automatically creates an associated ontology. Existing ontologies automatically get workspaces when you access them!</p>
+
+                    <h3>The Three-Pane Interface</h3>
+
+                    <h4>Left Pane - Note Explorer</h4>
+                    <ul>
+                        <li>Browse all notes in your workspace</li>
+                        <li>Search notes by title</li>
+                        <li>Quick-create new notes with the "+" button</li>
+                        <li>Toggle between condensed and comfortable view modes</li>
+                        <li>Visual badges distinguish concept notes from user notes</li>
+                    </ul>
+
+                    <h4>Center Pane - Content Editor</h4>
+                    <ul>
+                        <li>Edit markdown notes with full syntax support</li>
+                        <li>Switch between edit and preview modes</li>
+                        <li>Auto-saves as you type (look for the save indicator)</li>
+                        <li>Click concept links in preview mode to navigate</li>
+                    </ul>
+
+                    <h4>Right Pane - Context Panel</h4>
+                    <ul>
+                        <li>View backlinks (notes that reference the current concept)</li>
+                        <li>See related concepts from your ontology</li>
+                        <li>Navigate concept relationships</li>
+                        <li>Context snippets show where concepts are mentioned</li>
+                    </ul>
+
+                    <h3>Wiki-Style Concept Links</h3>
+                    <p>The power of workspaces comes from linking notes to concepts using double-bracket syntax:</p>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Basic Syntax</h5>
+                            <pre class="bg-light p-3 rounded">[[Concept Name]]</pre>
+                            <p>This creates a link to "Concept Name". If the concept doesn't exist, it's automatically created!</p>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Display Text</h5>
+                            <pre class="bg-light p-3 rounded">[[Person|John Doe]]</pre>
+                            <p>Links to the "Person" concept but displays "John Doe" in your note.</p>
+                        </div>
+                    </div>
+
+                    <h4>Automatic Concept Creation</h4>
+                    <p>When you type <code>[[New Concept]]</code>, Eidos automatically:</p>
+                    <ol>
+                        <li>Creates the concept in your ontology</li>
+                        <li>Creates a concept note for it</li>
+                        <li>Links your current note to that concept</li>
+                        <li>Tracks the link for backlinks</li>
+                    </ol>
+
+                    <h4>Example Usage</h4>
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Project Planning Note</h5>
+                            <pre class="bg-light p-3 rounded small">## Project Overview
+
+This project involves [[Software Development]] and [[Project Management]].
+
+The team includes several [[Person|developers]] and a [[Person|project manager]].
+
+Key concepts:
+- [[Agile Methodology]]
+- [[Sprint Planning]]
+- [[Code Review]]</pre>
+                            <p class="mb-0 text-muted small">This automatically creates 5 concepts in your ontology and links them all to this note!</p>
+                        </div>
+                    </div>
+
+                    <h3>Note Types</h3>
+
+                    <h4><span class="badge bg-primary">User Notes</span></h4>
+                    <p>Free-form markdown notes you create manually:</p>
+                    <ul>
+                        <li>Click the "+" button in the note explorer</li>
+                        <li>Enter your note title</li>
+                        <li>Start writing in markdown</li>
+                        <li>Use concept links to build your ontology organically</li>
+                    </ul>
+
+                    <h4><span class="badge bg-success">Concept Notes</span></h4>
+                    <p>Automatically created for each concept in your ontology:</p>
+                    <ul>
+                        <li>Created when you reference a concept using <code>[[brackets]]</code></li>
+                        <li>Also created when adding concepts via the graph view</li>
+                        <li>Marked with a "Concept" badge for easy identification</li>
+                        <li>Show all backlinks to that concept</li>
+                    </ul>
+
+                    <h3>Backlinks</h3>
+                    <p>The backlinks panel shows which notes reference the current concept:</p>
+                    <ul>
+                        <li><strong>Context snippets:</strong> See surrounding text where the concept is mentioned</li>
+                        <li><strong>Quick navigation:</strong> Click any backlink to jump to that note</li>
+                        <li><strong>Knowledge discovery:</strong> Find unexpected connections</li>
+                        <li><strong>Bi-directional:</strong> Creates a web of interconnected knowledge</li>
+                    </ul>
+
+                    <h3>Keyboard Shortcuts</h3>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Shortcut</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><kbd>Cmd/Ctrl</kbd> + <kbd>K</kbd></td>
+                                    <td>Open quick switcher to search and jump to notes</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>Cmd/Ctrl</kbd> + <kbd>E</kbd></td>
+                                    <td>Toggle between edit and preview modes</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>Cmd/Ctrl</kbd> + <kbd>S</kbd></td>
+                                    <td>Save note (auto-saves anyway)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3>Integrating Notes and Ontology</h3>
+
+                    <h4>From Notes to Graph</h4>
+                    <ol>
+                        <li>Write notes with <code>[[concept links]]</code></li>
+                        <li>Click "View in Graph" button in the toolbar</li>
+                        <li>See all your concepts visualized</li>
+                        <li>Add relationships between concepts</li>
+                        <li>Define properties and restrictions</li>
+                    </ol>
+
+                    <h4>From Graph to Notes</h4>
+                    <ol>
+                        <li>In the ontology graph view, select any concept</li>
+                        <li>Click "Open Note" in the details panel</li>
+                        <li>Jump to that concept's note</li>
+                        <li>See all backlinks (notes that reference this concept)</li>
+                    </ol>
+
+                    <h3>Best Practices</h3>
+                    <ul>
+                        <li><strong>Start with notes:</strong> Write freely using concept links, refine structure later</li>
+                        <li><strong>Use descriptive names:</strong> Make concept names clear and searchable</li>
+                        <li><strong>Link liberally:</strong> Don't worry about over-linking, connections are valuable</li>
+                        <li><strong>Review backlinks:</strong> Discover unexpected connections in your knowledge</li>
+                        <li><strong>Combine workflows:</strong> Bottom-up (notes → concepts) and top-down (concepts → notes)</li>
+                    </ul>
+
+                    <div class="alert alert-success">
+                        <i class="bi bi-lightbulb"></i> <strong>Pro Tip:</strong> Use the quick switcher (<kbd>Cmd/Ctrl + K</kbd>) to rapidly navigate between notes. This is much faster than scrolling through the note list!
+                    </div>
                 </section>
 
                 <!-- Collaboration -->

@@ -1,0 +1,281 @@
+@using Eidos.Models
+@using Eidos.Data.Repositories
+@inject NoteRepository NoteRepository
+
+@if (IsVisible)
+{
+    <div class="workspace-quick-switcher-backdrop" @onclick="Hide">
+        <div class="workspace-quick-switcher-container" @onclick:stopPropagation="true" @onkeydown="HandleKeyDown">
+            <div class="workspace-quick-switcher-input-container">
+                <i class="bi bi-search"></i>
+                <input type="text"
+                       class="workspace-quick-switcher-input"
+                       placeholder="Search notes..."
+                       @bind="searchQuery"
+                       @bind:event="oninput"
+                       @bind:after="OnSearchQueryChanged"
+                       @ref="searchInput"
+                       autofocus />
+                @if (!string.IsNullOrWhiteSpace(searchQuery))
+                {
+                    <button class="workspace-quick-switcher-clear" @onclick="ClearSearch" title="Clear">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                }
+            </div>
+
+            @if (filteredNotes != null && filteredNotes.Any())
+            {
+                <div class="workspace-quick-switcher-results">
+                    <div class="workspace-quick-switcher-group">
+                        <div class="workspace-quick-switcher-group-header">
+                            <i class="bi bi-journal-text"></i> Notes (@filteredNotes.Count)
+                        </div>
+                        @foreach (var note in filteredNotes)
+                        {
+                            var index = filteredNotes.IndexOf(note);
+                            var isConceptNote = note.IsConceptNote;
+                            <div class="workspace-quick-switcher-result @(selectedIndex == index ? "selected" : "")"
+                                 @onclick="() => SelectNote(note)"
+                                 @onmouseenter="() => selectedIndex = index">
+                                <div class="workspace-quick-switcher-result-icon">
+                                    <i class="@(isConceptNote ? "bi bi-diagram-3" : "bi bi-journal-text")"></i>
+                                </div>
+                                <div class="workspace-quick-switcher-result-content">
+                                    <div class="workspace-quick-switcher-result-title">@note.Title</div>
+                                    <div class="workspace-quick-switcher-result-subtitle">
+                                        @if (isConceptNote)
+                                        {
+                                            <span>Concept Note</span>
+                                        }
+                                        else
+                                        {
+                                            <span>@note.LinkCount @(note.LinkCount == 1 ? "link" : "links") • Updated @FormatDate(note.UpdatedAt)</span>
+                                        }
+                                    </div>
+                                </div>
+                                @if (isConceptNote)
+                                {
+                                    <div class="workspace-quick-switcher-result-badge">Concept</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                <div class="workspace-quick-switcher-no-results">
+                    <i class="bi bi-inbox"></i>
+                    <p>No notes found for "@searchQuery"</p>
+                </div>
+            }
+            else
+            {
+                <div class="workspace-quick-switcher-no-results">
+                    <i class="bi bi-lightning-charge"></i>
+                    <p class="mb-3"><strong>Quick Switcher</strong></p>
+                    <div class="workspace-quick-switcher-help">
+                        <p class="small text-start mb-2">Type to search notes:</p>
+                        <ul class="list-unstyled small text-start text-muted">
+                            <li><i class="bi bi-journal-text"></i> User notes</li>
+                            <li><i class="bi bi-diagram-3"></i> Concept notes</li>
+                        </ul>
+                    </div>
+                </div>
+            }
+
+            <div class="workspace-quick-switcher-footer">
+                <div class="workspace-quick-switcher-shortcuts">
+                    <kbd>↑↓</kbd> Navigate
+                    <kbd>Enter</kbd> Select
+                    <kbd>Esc</kbd> Close
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int WorkspaceId { get; set; }
+
+    [Parameter]
+    public EventCallback<Note> OnNoteSelected { get; set; }
+
+    [Parameter]
+    public EventCallback OnHide { get; set; }
+
+    private bool IsVisible { get; set; }
+    private string searchQuery = string.Empty;
+    private List<Note> allNotes = new();
+    private List<Note> filteredNotes = new();
+    private int selectedIndex = 0;
+    private ElementReference searchInput;
+    private System.Timers.Timer? debounceTimer;
+    private string userId = string.Empty;
+
+    public async Task ShowAsync(string currentUserId)
+    {
+        userId = currentUserId;
+        IsVisible = true;
+        searchQuery = string.Empty;
+        selectedIndex = 0;
+
+        // Load all notes for this workspace
+        await LoadNotesAsync();
+
+        StateHasChanged();
+
+        // Focus input after render
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(100);
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    await searchInput.FocusAsync();
+                }
+                catch { /* Ignore focus errors */ }
+            });
+        });
+    }
+
+    public void Hide()
+    {
+        IsVisible = false;
+        searchQuery = string.Empty;
+        filteredNotes = new();
+        StateHasChanged();
+
+        // Notify parent to restore focus
+        OnHide.InvokeAsync();
+    }
+
+    private async Task LoadNotesAsync()
+    {
+        try
+        {
+            // Get all notes in workspace, sorted by most recently updated
+            allNotes = await NoteRepository.GetByWorkspaceIdAsync(WorkspaceId, conceptNotesOnly: false);
+            allNotes = allNotes.OrderByDescending(n => n.UpdatedAt).ToList();
+            filteredNotes = allNotes.Take(10).ToList(); // Show first 10 by default
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading notes: {ex.Message}");
+            allNotes = new();
+            filteredNotes = new();
+        }
+    }
+
+    private void OnSearchQueryChanged()
+    {
+        // Debounce search
+        debounceTimer?.Stop();
+        debounceTimer?.Dispose();
+
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            // Show recent notes when search is cleared
+            filteredNotes = allNotes.Take(10).ToList();
+            selectedIndex = 0;
+            return;
+        }
+
+        debounceTimer = new System.Timers.Timer(200); // 200ms debounce
+        debounceTimer.Elapsed += async (sender, e) =>
+        {
+            await InvokeAsync(PerformSearch);
+            debounceTimer?.Dispose();
+        };
+        debounceTimer.AutoReset = false;
+        debounceTimer.Start();
+    }
+
+    private void PerformSearch()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredNotes = allNotes.Take(10).ToList();
+            selectedIndex = 0;
+            StateHasChanged();
+            return;
+        }
+
+        var query = searchQuery.Trim().ToLowerInvariant();
+
+        // Simple fuzzy search - match on title
+        filteredNotes = allNotes
+            .Where(n => n.Title?.ToLowerInvariant().Contains(query) == true)
+            .Take(20)
+            .ToList();
+
+        selectedIndex = 0;
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = string.Empty;
+        filteredNotes = allNotes.Take(10).ToList();
+        selectedIndex = 0;
+    }
+
+    private async Task SelectNote(Note note)
+    {
+        await OnNoteSelected.InvokeAsync(note);
+        Hide();
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Hide();
+            return;
+        }
+
+        if (!filteredNotes.Any())
+            return;
+
+        if (e.Key == "ArrowDown")
+        {
+            selectedIndex = (selectedIndex + 1) % filteredNotes.Count;
+            StateHasChanged();
+        }
+        else if (e.Key == "ArrowUp")
+        {
+            selectedIndex = (selectedIndex - 1 + filteredNotes.Count) % filteredNotes.Count;
+            StateHasChanged();
+        }
+        else if (e.Key == "Enter" && selectedIndex >= 0 && selectedIndex < filteredNotes.Count)
+        {
+            var selected = filteredNotes[selectedIndex];
+            _ = SelectNote(selected);
+        }
+    }
+
+    private string FormatDate(DateTime date)
+    {
+        var now = DateTime.UtcNow;
+        var diff = now - date;
+
+        if (diff.TotalMinutes < 1)
+            return "just now";
+        if (diff.TotalMinutes < 60)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+
+        return date.ToString("MMM d, yyyy");
+    }
+
+    public void Dispose()
+    {
+        debounceTimer?.Dispose();
+    }
+}

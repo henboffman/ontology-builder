@@ -1,0 +1,292 @@
+.workspace-container {
+    height: calc(100vh - 60px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.workspace-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+}
+
+.workspace-title h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.workspace-title p {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.875rem;
+}
+
+.workspace-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Three-Pane Layout (Obsidian-style) */
+.three-pane-layout {
+    display: grid;
+    grid-template-columns: 250px 1fr 300px;
+    gap: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.pane {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--bs-border-color);
+}
+
+.pane:last-child {
+    border-right: none;
+}
+
+.pane-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: var(--bs-light);
+    min-height: 3rem;
+}
+
+.pane-header h5 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--bs-secondary);
+}
+
+.pane-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.pane-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Left Pane: File Explorer */
+.pane-left {
+    background: var(--bs-light);
+}
+
+.pane-left .pane-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+}
+
+.pane-left .pane-header h5 {
+    margin-bottom: 0.5rem;
+}
+
+.note-list {
+    padding: 0;
+}
+
+.note-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--bs-border-color);
+    transition: background-color 0.15s ease;
+}
+
+.note-item.condensed {
+    padding: 0.35rem 0.75rem;
+    border-bottom: none;
+}
+
+.note-item:hover {
+    background: rgba(var(--bs-primary-rgb), 0.05);
+}
+
+.note-item.active {
+    background: rgba(var(--bs-primary-rgb), 0.1);
+    border-left: 3px solid var(--bs-primary);
+    padding-left: calc(1rem - 3px);
+}
+
+.note-item.active.condensed {
+    border-left: 2px solid var(--bs-primary);
+    padding-left: calc(0.75rem - 2px);
+}
+
+.note-item-title {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+}
+
+.note-item.condensed .note-item-title {
+    font-weight: 400;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.note-item-meta {
+    font-size: 0.75rem;
+}
+
+/* Center Pane: Markdown Editor */
+.pane-center {
+    background: var(--bs-body-bg);
+}
+
+.note-title-input {
+    border: none;
+    font-size: 1.25rem;
+    font-weight: 600;
+    padding: 0.5rem;
+    background: transparent;
+}
+
+.note-title-input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.markdown-editor {
+    width: 100%;
+    height: 100%;
+    border: none;
+    padding: 1.5rem;
+    resize: none;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+.markdown-editor:focus {
+    outline: none;
+}
+
+.markdown-preview {
+    padding: 1.5rem;
+    line-height: 1.6;
+}
+
+.markdown-preview pre {
+    background: var(--bs-light);
+    padding: 1rem;
+    border-radius: 0.375rem;
+    overflow-x: auto;
+}
+
+/* Right Pane: Backlinks */
+.pane-right {
+    background: var(--bs-light);
+}
+
+.backlinks-list {
+    padding: 0.5rem;
+}
+
+.backlink-item {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    background: var(--bs-body-bg);
+    border-radius: 0.375rem;
+    border: 1px solid var(--bs-border-color);
+}
+
+.backlink-source {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--bs-primary);
+}
+
+.backlink-context {
+    font-size: 0.875rem;
+    color: var(--bs-secondary);
+    font-style: italic;
+}
+
+/* Loading and Empty States */
+.loading-state,
+.error-state,
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 2rem;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    opacity: 0.3;
+    margin-bottom: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .three-pane-layout {
+        grid-template-columns: 200px 1fr;
+    }
+
+    .pane-right {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .three-pane-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .pane-left {
+        display: none;
+    }
+
+    .workspace-header {
+        padding: 0.75rem 1rem;
+    }
+
+    .workspace-title h2 {
+        font-size: 1.25rem;
+    }
+}
+
+/* Dark Mode Support - Uses data-bs-theme attribute */
+[data-bs-theme="dark"] .pane-left,
+[data-bs-theme="dark"] .pane-right {
+    background: var(--bs-tertiary-bg);
+}
+
+[data-bs-theme="dark"] .pane-header {
+    background: var(--bs-secondary-bg);
+}
+
+[data-bs-theme="dark"] .note-item.active {
+    background: rgba(var(--bs-primary-rgb), 0.2);
+}
+
+[data-bs-theme="dark"] .backlink-item {
+    background: var(--bs-tertiary-bg);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .markdown-preview pre {
+    background: var(--bs-secondary-bg);
+}

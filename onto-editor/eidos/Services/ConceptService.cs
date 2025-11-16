@@ -10,6 +10,7 @@ using Eidos.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace Eidos.Services;
 
@@ -33,6 +34,9 @@ public class ConceptService : IConceptService
     private readonly IOntologyActivityService _activityService;
     private readonly IDbContextFactory<OntologyDbContext> _contextFactory;
     private readonly OntologyPermissionService _permissionService;
+    private readonly NoteRepository _noteRepository;
+    private readonly WorkspaceRepository _workspaceRepository;
+    private readonly ILogger<ConceptService> _logger;
 
     public ConceptService(
         IConceptRepository conceptRepository,
@@ -45,7 +49,10 @@ public class ConceptService : IConceptService
         IOntologyShareService shareService,
         IOntologyActivityService activityService,
         IDbContextFactory<OntologyDbContext> contextFactory,
-        OntologyPermissionService permissionService)
+        OntologyPermissionService permissionService,
+        NoteRepository noteRepository,
+        WorkspaceRepository workspaceRepository,
+        ILogger<ConceptService> logger)
     {
         _conceptRepository = conceptRepository;
         _ontologyRepository = ontologyRepository;
@@ -58,6 +65,9 @@ public class ConceptService : IConceptService
         _activityService = activityService;
         _contextFactory = contextFactory;
         _permissionService = permissionService;
+        _noteRepository = noteRepository;
+        _workspaceRepository = workspaceRepository;
+        _logger = logger;
     }
 
     public async Task<Concept> CreateAsync(Concept concept, bool recordUndo = true)
@@ -93,6 +103,9 @@ public class ConceptService : IConceptService
 
         // Broadcast concept creation to other users in the ontology
         await BroadcastConceptChange(concept.OntologyId, ChangeType.Added, concept);
+
+        // Auto-create concept note for this concept
+        await AutoCreateConceptNoteAsync(concept.Id, concept.Name, concept.OntologyId, currentUser?.Id);
 
         return concept;
     }
@@ -517,5 +530,83 @@ public class ConceptService : IConceptService
             operationType,
             $"This ontology requires approval for {operationType} operations. Please create a merge request instead."
         );
+    }
+
+    /// <summary>
+    /// Auto-creates a concept note for a newly created concept
+    /// </summary>
+    private async Task AutoCreateConceptNoteAsync(int conceptId, string conceptName, int ontologyId, string? userId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Cannot create concept note: userId is null");
+                return;
+            }
+
+            // Check if concept note already exists
+            var existingNote = await _noteRepository.GetConceptNoteAsync(conceptId);
+            if (existingNote != null)
+            {
+                return; // Note already exists
+            }
+
+            // Find workspace with this ontology
+            var workspaces = await _workspaceRepository.GetByUserIdAsync(userId);
+            Workspace? workspace = null;
+            foreach (var ws in workspaces)
+            {
+                var fullWs = await _workspaceRepository.GetByIdAsync(ws.Id, includeOntology: true);
+                if (fullWs?.Ontology?.Id == ontologyId)
+                {
+                    workspace = fullWs;
+                    break;
+                }
+            }
+
+            if (workspace == null)
+            {
+                _logger.LogWarning("Cannot create concept note: No workspace found for ontology {OntologyId}", ontologyId);
+                return;
+            }
+
+            // Generate default content for concept note
+            var markdownContent = $@"# {conceptName}
+
+*Auto-generated note for concept: {conceptName}*
+
+## Definition
+
+[Add the concept's definition here]
+
+## Notes
+
+[Add your notes about this concept here]
+";
+
+            var note = new Note
+            {
+                WorkspaceId = workspace.Id,
+                Title = conceptName,
+                IsConceptNote = true,
+                LinkedConceptId = conceptId,
+                UserId = userId,
+                LinkCount = 0
+            };
+
+            await _noteRepository.CreateAsync(note, markdownContent);
+
+            // Update workspace note counts
+            await _workspaceRepository.UpdateNoteCountsAsync(workspace.Id);
+
+            _logger.LogInformation("Auto-created concept note {NoteId} for concept {ConceptId} '{ConceptName}'",
+                note.Id, conceptId, conceptName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error auto-creating concept note for concept {ConceptId}", conceptId);
+            // Don't throw - this is a nice-to-have feature, don't break concept creation
+        }
     }
 }

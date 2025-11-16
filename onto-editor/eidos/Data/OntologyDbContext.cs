@@ -66,6 +66,17 @@ namespace Eidos.Data
         public DbSet<CommentMention> CommentMentions { get; set; }
         public DbSet<EntityCommentCount> EntityCommentCounts { get; set; }
 
+        // Concept grouping for graph view (UI-only feature)
+        public DbSet<ConceptGroup> ConceptGroups { get; set; }
+
+        // Workspace and Notes (Obsidian-style knowledge management)
+        public DbSet<Workspace> Workspaces { get; set; }
+        public DbSet<Note> Notes { get; set; }
+        public DbSet<NoteContent> NoteContents { get; set; }
+        public DbSet<NoteLink> NoteLinks { get; set; }
+        public DbSet<WorkspaceGroupPermission> WorkspaceGroupPermissions { get; set; }
+        public DbSet<WorkspaceUserAccess> WorkspaceUserAccesses { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -858,6 +869,150 @@ namespace Eidos.Data
                     UpdatedAt = seedDate
                 }
             );
+
+            // ===== WORKSPACE AND NOTES CONFIGURATION (Obsidian-style) =====
+
+            // Configure Workspace - User relationship
+            modelBuilder.Entity<Workspace>()
+                .HasOne(w => w.User)
+                .WithMany()
+                .HasForeignKey(w => w.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure Workspace - Ontology (1:1 relationship)
+            modelBuilder.Entity<Workspace>()
+                .HasOne(w => w.Ontology)
+                .WithOne(o => o.Workspace)
+                .HasForeignKey<Ontology>(o => o.WorkspaceId)
+                .OnDelete(DeleteBehavior.SetNull); // If workspace deleted, ontology becomes orphaned (for migration safety)
+
+            // Configure Workspace indexes
+            modelBuilder.Entity<Workspace>()
+                .HasIndex(w => w.UserId)
+                .HasDatabaseName("IX_Workspace_UserId");
+
+            modelBuilder.Entity<Workspace>()
+                .HasIndex(w => w.Visibility)
+                .HasDatabaseName("IX_Workspace_Visibility");
+
+            modelBuilder.Entity<Workspace>()
+                .HasIndex(w => new { w.UserId, w.Name })
+                .HasDatabaseName("IX_Workspace_UserId_Name");
+
+            // Configure Note - Workspace relationship
+            modelBuilder.Entity<Note>()
+                .HasOne(n => n.Workspace)
+                .WithMany(w => w.Notes)
+                .HasForeignKey(n => n.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure Note - User relationship
+            modelBuilder.Entity<Note>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure Note - Concept (1:1 for concept notes)
+            modelBuilder.Entity<Note>()
+                .HasOne(n => n.LinkedConcept)
+                .WithOne(c => c.ConceptNote)
+                .HasForeignKey<Note>(n => n.LinkedConceptId)
+                .OnDelete(DeleteBehavior.SetNull); // If concept deleted, note becomes regular note
+
+            // Configure Note indexes
+            modelBuilder.Entity<Note>()
+                .HasIndex(n => n.WorkspaceId)
+                .HasDatabaseName("IX_Note_WorkspaceId");
+
+            modelBuilder.Entity<Note>()
+                .HasIndex(n => n.LinkedConceptId)
+                .HasDatabaseName("IX_Note_LinkedConceptId");
+
+            modelBuilder.Entity<Note>()
+                .HasIndex(n => n.IsConceptNote)
+                .HasDatabaseName("IX_Note_IsConceptNote");
+
+            modelBuilder.Entity<Note>()
+                .HasIndex(n => new { n.WorkspaceId, n.IsConceptNote })
+                .HasDatabaseName("IX_Note_WorkspaceId_IsConceptNote");
+
+            // Configure NoteContent - Note relationship (1:1)
+            modelBuilder.Entity<NoteContent>()
+                .HasKey(nc => nc.NoteId); // NoteId is the primary key
+
+            modelBuilder.Entity<NoteContent>()
+                .HasOne(nc => nc.Note)
+                .WithOne(n => n.Content)
+                .HasForeignKey<NoteContent>(nc => nc.NoteId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure NoteLink - Source Note relationship
+            modelBuilder.Entity<NoteLink>()
+                .HasOne(nl => nl.SourceNote)
+                .WithMany(n => n.OutgoingLinks)
+                .HasForeignKey(nl => nl.SourceNoteId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure NoteLink - Target Concept relationship (for backlinks)
+            modelBuilder.Entity<NoteLink>()
+                .HasOne(nl => nl.TargetConcept)
+                .WithMany(c => c.IncomingNoteLinks)
+                .HasForeignKey(nl => nl.TargetConceptId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure NoteLink indexes
+            modelBuilder.Entity<NoteLink>()
+                .HasIndex(nl => nl.SourceNoteId)
+                .HasDatabaseName("IX_NoteLink_SourceNoteId");
+
+            modelBuilder.Entity<NoteLink>()
+                .HasIndex(nl => nl.TargetConceptId)
+                .HasDatabaseName("IX_NoteLink_TargetConceptId");
+
+            modelBuilder.Entity<NoteLink>()
+                .HasIndex(nl => new { nl.SourceNoteId, nl.TargetConceptId })
+                .HasDatabaseName("IX_NoteLink_SourceNoteId_TargetConceptId");
+
+            // Configure WorkspaceGroupPermission - Workspace relationship
+            modelBuilder.Entity<WorkspaceGroupPermission>()
+                .HasOne(wgp => wgp.Workspace)
+                .WithMany(w => w.GroupPermissions)
+                .HasForeignKey(wgp => wgp.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure WorkspaceGroupPermission - UserGroup relationship
+            modelBuilder.Entity<WorkspaceGroupPermission>()
+                .HasOne(wgp => wgp.UserGroup)
+                .WithMany()
+                .HasForeignKey(wgp => wgp.UserGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure WorkspaceGroupPermission indexes
+            modelBuilder.Entity<WorkspaceGroupPermission>()
+                .HasIndex(wgp => new { wgp.WorkspaceId, wgp.UserGroupId })
+                .IsUnique()
+                .HasDatabaseName("IX_WorkspaceGroupPermission_WorkspaceId_UserGroupId");
+
+            // Configure WorkspaceUserAccess - Workspace relationship
+            modelBuilder.Entity<WorkspaceUserAccess>()
+                .HasOne(wua => wua.Workspace)
+                .WithMany(w => w.UserAccesses)
+                .HasForeignKey(wua => wua.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure WorkspaceUserAccess - User relationship
+            modelBuilder.Entity<WorkspaceUserAccess>()
+                .HasOne(wua => wua.SharedWithUser)
+                .WithMany()
+                .HasForeignKey(wua => wua.SharedWithUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure WorkspaceUserAccess indexes
+            modelBuilder.Entity<WorkspaceUserAccess>()
+                .HasIndex(wua => new { wua.WorkspaceId, wua.SharedWithUserId })
+                .IsUnique()
+                .HasDatabaseName("IX_WorkspaceUserAccess_WorkspaceId_SharedWithUserId");
         }
     }
 }

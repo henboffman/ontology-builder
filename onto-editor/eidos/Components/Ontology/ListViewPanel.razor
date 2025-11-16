@@ -2,6 +2,7 @@
 @using Eidos.Models.Enums
 @using Enums = Eidos.Models.Enums
 @using Eidos.Components.Shared
+@using Eidos.Services
 @using Microsoft.JSInterop
 @implements IDisposable
 
@@ -198,6 +199,12 @@
                                 <div class="concept-actions">
                                     <!-- Desktop: Horizontal button group -->
                                     <div class="btn-group d-none d-lg-flex">
+                                        <button class="btn btn-sm btn-outline-info"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="() => ViewConceptNote(concept)"
+                                                title="View Note">
+                                            <i class="bi bi-journal-text"></i>
+                                        </button>
                                         <button class="btn btn-sm btn-outline-primary"
                                                 @onclick:stopPropagation="true"
                                                 @onclick="() => OnConceptEdit.InvokeAsync(concept)"
@@ -229,6 +236,12 @@
                                             <i class="bi bi-three-dots-vertical"></i>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end" @onclick:stopPropagation="true">
+                                            <li>
+                                                <button class="dropdown-item" @onclick="() => ViewConceptNote(concept)">
+                                                    <i class="bi bi-journal-text me-2"></i> View Note
+                                                </button>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 <button class="dropdown-item" @onclick="() => OnConceptEdit.InvokeAsync(concept)">
                                                     <i class="bi bi-pencil me-2"></i> Edit
@@ -450,6 +463,9 @@
 </div>
 
 @inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@inject Data.Repositories.NoteRepository NoteRepository
+@inject ToastService ToastService
 
 @code {
     [Parameter]
@@ -527,6 +543,9 @@
 
     [Parameter]
     public ValidationResult? ValidationResult { get; set; }
+
+    [Parameter]
+    public int? OntologyId { get; set; }
 
     // Helper class to represent both base and virtual concepts in the list
     private class ConceptListItem
@@ -874,6 +893,37 @@
     {
         // Invoke the callback to parent component
         await OnConceptNameUpdate.InvokeAsync((conceptId, newName));
+    }
+
+    private async Task ViewConceptNote(Concept concept)
+    {
+        if (concept == null)
+        {
+            ToastService.ShowWarning("Unable to navigate to note");
+            return;
+        }
+
+        try
+        {
+            // Find the concept note for this concept
+            var note = await NoteRepository.GetConceptNoteAsync(concept.Id);
+
+            if (note != null)
+            {
+                // Navigate to workspace with the note pre-selected
+                Navigation.NavigateTo($"/workspace/{note.WorkspaceId}?noteId={note.Id}");
+            }
+            else
+            {
+                // Note doesn't exist yet - just show a message
+                ToastService.ShowInfo($"Note for '{concept.Name}' will be created automatically when needed");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error navigating to concept note: {ex.Message}");
+            ToastService.ShowError($"Error navigating to note: {ex.Message}");
+        }
     }
 
     // Quick Preview functionality

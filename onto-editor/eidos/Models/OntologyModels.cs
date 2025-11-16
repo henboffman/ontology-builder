@@ -12,7 +12,14 @@ namespace Eidos.Models
         public int Id { get; set; }
 
         /// <summary>
+        /// The workspace this ontology belongs to
+        /// </summary>
+        public int? WorkspaceId { get; set; }
+        public Workspace? Workspace { get; set; }
+
+        /// <summary>
         /// The user who owns this ontology (ApplicationUser ID from Identity)
+        /// NOTE: This is deprecated in favor of Workspace.UserId, but kept for backwards compatibility during migration
         /// </summary>
         public string UserId { get; set; } = string.Empty;
         public ApplicationUser User { get; set; } = null!;
@@ -281,6 +288,18 @@ public static class OntologyVisibility
         public ICollection<Relationship> RelationshipsAsSource { get; set; } = new List<Relationship>();
         public ICollection<Relationship> RelationshipsAsTarget { get; set; } = new List<Relationship>();
         public ICollection<ConceptRestriction> Restrictions { get; set; } = new List<ConceptRestriction>();
+
+        /// <summary>
+        /// Auto-generated concept note (Obsidian-style)
+        /// Each concept gets a markdown note for detailed documentation
+        /// </summary>
+        public Note? ConceptNote { get; set; }
+
+        /// <summary>
+        /// Incoming links from notes that reference this concept using [[concept-name]] syntax
+        /// Enables backlinks (Obsidian-style)
+        /// </summary>
+        public ICollection<NoteLink> IncomingNoteLinks { get; set; } = new List<NoteLink>();
     }
 
     /// <summary>

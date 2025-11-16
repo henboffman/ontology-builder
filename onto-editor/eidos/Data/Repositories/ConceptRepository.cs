@@ -52,6 +52,37 @@ public class ConceptRepository : BaseRepository<Concept>, IConceptRepository
         return concept;
     }
 
+    public override async Task UpdateAsync(Concept concept)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        // Detach navigation properties to avoid tracking conflicts
+        var entry = context.Entry(concept);
+        entry.State = EntityState.Modified;
+
+        // Explicitly set which scalar properties to update (exclude navigation properties)
+        entry.Property(c => c.OntologyId).IsModified = true;
+        entry.Property(c => c.Name).IsModified = true;
+        entry.Property(c => c.Definition).IsModified = true;
+        entry.Property(c => c.SimpleExplanation).IsModified = true;
+        entry.Property(c => c.Examples).IsModified = true;
+        entry.Property(c => c.PositionX).IsModified = true;
+        entry.Property(c => c.PositionY).IsModified = true;
+        entry.Property(c => c.Category).IsModified = true;
+        entry.Property(c => c.Color).IsModified = true;
+        entry.Property(c => c.SourceOntology).IsModified = true;
+
+        // Don't track or update navigation properties
+        entry.Reference(c => c.Ontology).IsModified = false;
+        entry.Collection(c => c.Properties).IsModified = false;
+        entry.Collection(c => c.ConceptProperties).IsModified = false;
+        entry.Collection(c => c.RelationshipsAsSource).IsModified = false;
+        entry.Collection(c => c.RelationshipsAsTarget).IsModified = false;
+        entry.Collection(c => c.Restrictions).IsModified = false;
+
+        await context.SaveChangesAsync();
+    }
+
     public override async Task DeleteAsync(int id)
     {
         using var context = await _contextFactory.CreateDbContextAsync();

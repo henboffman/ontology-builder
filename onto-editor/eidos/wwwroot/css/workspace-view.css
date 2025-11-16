@@ -1,0 +1,543 @@
+/* Workspace View - Obsidian-style three-pane layout */
+
+.workspace-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.workspace-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    background: var(--surface-color, white);
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.workspace-title {
+    flex: 0 0 auto;
+}
+
+.workspace-title h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.workspace-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex: 1 1 auto;
+}
+
+/* Keyboard Hints Banner */
+.keyboard-hints-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.5rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hints-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.hints-text {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.keyboard-hints-banner kbd {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    padding: 0.125rem 0.375rem;
+    font-size: 0.75rem;
+    font-family: 'Courier New', monospace;
+    color: white;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.keyboard-hints-banner code {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    padding: 0.125rem 0.375rem;
+    font-size: 0.75rem;
+    font-family: 'Courier New', monospace;
+    color: white;
+}
+
+.btn-close-hints {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    font-size: 1.125rem;
+    line-height: 1;
+    opacity: 0.8;
+}
+
+.btn-close-hints:hover {
+    background: rgba(255, 255, 255, 0.2);
+    opacity: 1;
+}
+
+/* Three-pane layout */
+.three-pane-layout {
+    display: grid;
+    grid-template-columns: 250px 1fr 250px;
+    height: calc(100vh - 120px);
+    gap: 1px;
+    background: var(--border-color, #dee2e6);
+}
+
+.pane {
+    background: var(--surface-color, white);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.pane-left {
+    border-right: 1px solid var(--border-color, #dee2e6);
+}
+
+.pane-center {
+    flex: 1;
+}
+
+.pane-right {
+    border-left: 1px solid var(--border-color, #dee2e6);
+}
+
+.pane-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.pane-header-vertical {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.pane-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pane-header h5,
+.pane-header-row h5 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted, #6c757d);
+}
+
+.pane-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.pane-actions-compact {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.pane-actions-compact .btn {
+    opacity: 0.8;
+    transition: all 0.2s ease;
+    font-size: 1.1rem;
+    padding: 0.4rem;
+}
+
+.pane-actions-compact .btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.edit-toggle-divider {
+    width: 1px;
+    height: 1.5rem;
+    background: var(--border-color, #dee2e6);
+    margin: 0 0.25rem;
+}
+
+.edit-toggle-btn {
+    font-size: 0.875rem !important;
+    padding: 0.25rem 0.5rem !important;
+    border-radius: 4px;
+}
+
+.edit-toggle-btn.active {
+    background: var(--primary-light, #e7f3ff);
+    color: var(--primary-color, #0d6efd);
+    opacity: 1 !important;
+}
+
+.edit-toggle-btn:hover {
+    background: var(--hover-color, #f8f9fa);
+    transform: none !important;
+}
+
+.pane-search {
+    width: 100%;
+}
+
+.pane-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+/* Note list (left pane) */
+.note-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.note-item {
+    padding: 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    border: 1px solid transparent;
+}
+
+.note-item:hover {
+    background: var(--hover-color, #f8f9fa);
+}
+
+.note-item.active {
+    background: var(--primary-light, #e7f3ff);
+    border-color: var(--primary-color, #0d6efd);
+}
+
+.note-item-title {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+}
+
+.note-item-meta {
+    font-size: 0.75rem;
+}
+
+/* Markdown editor (center pane) */
+.note-title-input {
+    font-size: 1.25rem;
+    font-weight: 600;
+    border: none;
+    outline: none;
+    flex: 1;
+    background: transparent;
+    color: inherit;
+}
+
+.note-title-input:focus {
+    box-shadow: none;
+}
+
+.markdown-editor {
+    width: 100%;
+    height: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    padding: 0;
+    background: var(--editor-bg, #ffffff);
+    color: var(--text-color, #1a1a1a);
+}
+
+.markdown-editor:focus {
+    outline: none;
+}
+
+/* Dark mode for editor - Uses data-bs-theme attribute */
+[data-bs-theme="dark"] .markdown-editor {
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .note-title-input {
+    color: var(--bs-body-color);
+}
+
+/* Wiki-link styling in editor */
+.markdown-editor {
+    position: relative;
+}
+
+/* Markdown preview */
+.markdown-preview {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 800px;
+    color: var(--text-color, #1a1a1a); /* Use theme text color */
+}
+
+/* Dark mode for markdown preview - Uses data-bs-theme attribute */
+[data-bs-theme="dark"] .markdown-preview {
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .markdown-preview code {
+    background: var(--bs-secondary-bg);
+}
+
+[data-bs-theme="dark"] .markdown-preview pre {
+    background: var(--bs-secondary-bg);
+}
+
+/* Wiki-links in preview */
+.markdown-preview .wiki-link {
+    color: var(--primary-color, #0d6efd);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    background: var(--primary-light, #e7f3ff);
+    border-bottom: 1px solid var(--primary-color, #0d6efd);
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.markdown-preview .wiki-link:hover {
+    background: var(--primary-color, #0d6efd);
+    color: white;
+    border-bottom-color: transparent;
+    transform: translateY(-1px);
+}
+
+.markdown-preview .wiki-link:active {
+    transform: translateY(0);
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.markdown-preview h1 {
+    font-size: 2rem;
+    border-bottom: 2px solid var(--border-color, #dee2e6);
+    padding-bottom: 0.5rem;
+}
+
+.markdown-preview h2 {
+    font-size: 1.5rem;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    padding-bottom: 0.5rem;
+}
+
+.markdown-preview code {
+    background: var(--code-bg, #f5f5f5);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875em;
+}
+
+.markdown-preview pre {
+    background: var(--code-bg, #f5f5f5);
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+.markdown-preview pre code {
+    background: transparent;
+    padding: 0;
+}
+
+/* Backlinks (right pane) */
+.backlinks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.backlink-item {
+    padding: 0.75rem;
+    background: var(--surface-color, #f8f9fa);
+    border-radius: 4px;
+    border-left: 3px solid var(--primary-color, #0d6efd);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.backlink-item:hover {
+    background: var(--hover-color, #e9ecef);
+    border-left-color: var(--primary-color, #0d6efd);
+    transform: translateX(2px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.backlink-item:active {
+    transform: translateX(0);
+}
+
+.backlink-source {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: var(--primary-color, #0d6efd);
+    display: flex;
+    align-items: center;
+}
+
+.backlink-context {
+    font-size: 0.875rem;
+    color: var(--text-muted, #6c757d);
+    font-style: italic;
+    line-height: 1.4;
+    margin-top: 0.5rem;
+}
+
+/* Empty states */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted, #6c757d);
+}
+
+/* Loading state */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    text-align: center;
+}
+
+/* Error state */
+.error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    text-align: center;
+    padding: 2rem;
+}
+
+.error-state h3 {
+    color: var(--danger-color, #dc3545);
+    margin-bottom: 1rem;
+}
+
+/* Dark mode support - Uses Bootstrap theme variables */
+[data-bs-theme="dark"] .workspace-container,
+[data-bs-theme="dark"] .pane,
+[data-bs-theme="dark"] .workspace-header {
+    --surface-color: var(--bs-body-bg);
+    --border-color: var(--bs-border-color);
+    --hover-color: var(--bs-secondary-bg);
+    --text-muted: var(--bs-secondary-color);
+    --primary-light: var(--bs-primary-bg-subtle);
+    --editor-bg: var(--bs-tertiary-bg);
+    --code-bg: var(--bs-secondary-bg);
+}
+
+/* Responsive design */
+@media (max-width: 992px) {
+    .three-pane-layout {
+        grid-template-columns: 200px 1fr;
+    }
+
+    .pane-right {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .three-pane-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .pane-left {
+        display: none;
+    }
+}
+
+/* Wiki-link tooltip styling */
+.markdown-editor[title]:not([title=""]) {
+    cursor: help;
+}
+
+/* Visual indicator for Ctrl+Click functionality */
+.markdown-editor::after {
+    content: 'Tip: Ctrl+Click on [[wiki-links]] to navigate';
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted, #999);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.markdown-editor:focus::after {
+    opacity: 0.5;
+}
+
+.markdown-editor:focus:hover::after {
+    opacity: 0.8;
+}

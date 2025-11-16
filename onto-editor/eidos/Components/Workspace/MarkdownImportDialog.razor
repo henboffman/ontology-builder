@@ -1,0 +1,216 @@
+@using Eidos.Services
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="modal fade @(IsOpen ? "show d-block" : "")" tabindex="-1" style="@(IsOpen ? "background-color: rgba(0,0,0,0.5);" : "")">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-earmark-arrow-up me-2"></i>
+                    Import Markdown Files
+                </h5>
+                <button type="button" class="btn-close" @onclick="Close"></button>
+            </div>
+            <div class="modal-body">
+                @if (importing)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Importing...</span>
+                        </div>
+                        <p class="text-muted">Importing @selectedFiles.Count file(s)...</p>
+                    </div>
+                }
+                else if (importResult != null)
+                {
+                    <div class="import-results">
+                        <div class="alert @(importResult.FailureCount == 0 ? "alert-success" : "alert-warning")">
+                            <h6 class="alert-heading">
+                                <i class="bi @(importResult.FailureCount == 0 ? "bi-check-circle" : "bi-exclamation-triangle") me-2"></i>
+                                Import Complete
+                            </h6>
+                            <p class="mb-0">
+                                Successfully imported @importResult.SuccessCount of @importResult.TotalFiles file(s)
+                            </p>
+                        </div>
+
+                        @if (importResult.Results.Any())
+                        {
+                            <div class="results-list mt-3">
+                                @foreach (var result in importResult.Results)
+                                {
+                                    <div class="result-item d-flex align-items-start mb-2 p-2 rounded @(result.Success ? "bg-success bg-opacity-10" : "bg-danger bg-opacity-10")">
+                                        <i class="bi @(result.Success ? "bi-check-circle text-success" : "bi-x-circle text-danger") me-2 mt-1"></i>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-medium">@result.FileName</div>
+                                            @if (result.Success)
+                                            {
+                                                <small class="text-muted">
+                                                    Created: @result.NoteTitle
+                                                    @if (result.ImportedTags.Any())
+                                                    {
+                                                        <span class="ms-2">
+                                                            <i class="bi bi-tags"></i> @string.Join(", ", result.ImportedTags)
+                                                        </span>
+                                                    }
+                                                </small>
+                                            }
+                                            else
+                                            {
+                                                <small class="text-danger">@result.ErrorMessage</small>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="file-picker">
+                        <InputFile OnChange="OnFileSelected" multiple accept=".md,.markdown" class="form-control" id="markdownFilePicker" />
+                        <label for="markdownFilePicker" class="file-picker-label mt-3">
+                            <i class="bi bi-cloud-upload fs-1 text-muted mb-2"></i>
+                            <p class="mb-1">Choose markdown files to import</p>
+                            <small class="text-muted">Supports .md and .markdown files with YAML frontmatter</small>
+                        </label>
+
+                        @if (selectedFiles.Any())
+                        {
+                            <div class="selected-files mt-3">
+                                <h6>Selected Files (@selectedFiles.Count)</h6>
+                                <div class="list-group">
+                                    @foreach (var file in selectedFiles)
+                                    {
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <span>
+                                                <i class="bi bi-file-earmark-text me-2"></i>
+                                                @file.Key
+                                            </span>
+                                            <button class="btn btn-sm btn-link text-danger" @onclick="() => RemoveFile(file.Key)">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                @if (importResult != null)
+                {
+                    <button type="button" class="btn btn-primary" @onclick="Close">Done</button>
+                }
+                else if (!importing)
+                {
+                    <button type="button" class="btn btn-secondary" @onclick="Close">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="ImportFiles" disabled="@(!selectedFiles.Any())">
+                        <i class="bi bi-upload me-1"></i>
+                        Import @selectedFiles.Count File(s)
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter]
+    public int WorkspaceId { get; set; }
+
+    [Parameter]
+    public string UserId { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback OnImportComplete { get; set; }
+
+    [Inject]
+    private MarkdownImportService ImportService { get; set; } = default!;
+
+    [Inject]
+    private ToastService ToastService { get; set; } = default!;
+
+    private Dictionary<string, string> selectedFiles = new();
+    private bool importing = false;
+    private BatchImportResult? importResult = null;
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            selectedFiles.Clear();
+
+            foreach (var file in e.GetMultipleFiles(50))
+            {
+                if (file.Size > 5 * 1024 * 1024) // 5MB limit
+                {
+                    ToastService.ShowWarning($"File {file.Name} is too large (max 5MB)");
+                    continue;
+                }
+
+                using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+                using var reader = new StreamReader(stream);
+                var content = await reader.ReadToEndAsync();
+
+                selectedFiles[file.Name] = content;
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error reading files: {ex.Message}");
+        }
+    }
+
+    private void RemoveFile(string fileName)
+    {
+        selectedFiles.Remove(fileName);
+    }
+
+    private async Task ImportFiles()
+    {
+        if (!selectedFiles.Any() || string.IsNullOrEmpty(UserId))
+        {
+            return;
+        }
+
+        try
+        {
+            importing = true;
+            StateHasChanged();
+
+            importResult = await ImportService.ImportMarkdownFilesAsync(WorkspaceId, UserId, selectedFiles);
+
+            if (importResult.SuccessCount > 0)
+            {
+                await OnImportComplete.InvokeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Import failed: {ex.Message}");
+        }
+        finally
+        {
+            importing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Close()
+    {
+        selectedFiles.Clear();
+        importResult = null;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

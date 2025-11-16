@@ -21,6 +21,7 @@
 @inject ToastService ToastService
 @inject ICollaborationBoardService CollaborationService
 @inject HolidayThemeService HolidayService
+@inject WorkspaceService WorkspaceService
 @rendermode InteractiveServer
 
 <PageTitle>Eidos</PageTitle>
@@ -108,14 +109,20 @@
                     {
                         <div class="text-end mb-2">
                             <small class="text-muted">
-                                <i class="bi bi-info-circle"></i> Please <a href="/Account/Login">sign in</a> to create ontologies
+                                <i class="bi bi-info-circle"></i> Please <a href="/Account/Login">sign in</a> to create content
                             </small>
                         </div>
                     }
-                    <button class="btn btn-primary btn-lg" @onclick="ShowCreateOntologyDialog" disabled="@(!isAuthenticated)"
-                            title="@(isAuthenticated ? "Create a new ontology" : "Please sign in to create ontologies")">
-                        <i class="bi bi-plus-circle"></i> Create New Ontology @GetHolidayEmoji(2)
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary btn-lg" @onclick="ShowCreateOntologyDialog" disabled="@(!isAuthenticated)"
+                                title="@(isAuthenticated ? "Create a new ontology" : "Please sign in to create ontologies")">
+                            <i class="bi bi-plus-circle"></i> Create New Ontology @GetHolidayEmoji(2)
+                        </button>
+                        <button class="btn btn-outline-primary btn-lg" @onclick="CreateNewWorkspace" disabled="@(!isAuthenticated)"
+                                title="@(isAuthenticated ? "Create a new workspace for notes" : "Please sign in to create workspaces")">
+                            <i class="bi bi-folder-plus"></i> New Workspace
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1405,6 +1412,12 @@
         };
         selectedTemplate = "";
         showCreateDialog = true;
+    }
+
+    private void CreateNewWorkspace()
+    {
+        // Navigate to the workspaces page where user can create a new workspace
+        Navigation.NavigateTo("/workspaces");
     }
 
     private async Task CreateOntology()

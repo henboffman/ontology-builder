@@ -301,6 +301,62 @@ namespace Eidos.Migrations
                     b.ToTable("Concepts");
                 });
 
+            modelBuilder.Entity("Eidos.Models.ConceptGroup", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ChildConceptIds")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("CollapsedPositionX")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("CollapsedPositionY")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("CollapsedRelationships")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GroupName")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsCollapsed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MaxDepth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("OntologyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ParentConceptId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OntologyId");
+
+                    b.HasIndex("ParentConceptId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ConceptGroups");
+                });
+
             modelBuilder.Entity("Eidos.Models.ConceptProperty", b =>
                 {
                     b.Property<int>("Id")
@@ -987,6 +1043,123 @@ namespace Eidos.Migrations
                     b.ToTable("MergeRequestComments");
                 });
 
+            modelBuilder.Entity("Eidos.Models.Note", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ContentLength")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsConceptNote")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("LinkCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("LinkedConceptId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WorkspaceId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsConceptNote")
+                        .HasDatabaseName("IX_Note_IsConceptNote");
+
+                    b.HasIndex("LinkedConceptId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Note_LinkedConceptId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("WorkspaceId")
+                        .HasDatabaseName("IX_Note_WorkspaceId");
+
+                    b.HasIndex("WorkspaceId", "IsConceptNote")
+                        .HasDatabaseName("IX_Note_WorkspaceId_IsConceptNote");
+
+                    b.ToTable("Notes");
+                });
+
+            modelBuilder.Entity("Eidos.Models.NoteContent", b =>
+                {
+                    b.Property<int>("NoteId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MarkdownContent")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RenderedHtml")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("NoteId");
+
+                    b.ToTable("NoteContents");
+                });
+
+            modelBuilder.Entity("Eidos.Models.NoteLink", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CharacterPosition")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ContextSnippet")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("NoteId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SourceNoteId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TargetConceptId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NoteId");
+
+                    b.HasIndex("SourceNoteId")
+                        .HasDatabaseName("IX_NoteLink_SourceNoteId");
+
+                    b.HasIndex("TargetConceptId")
+                        .HasDatabaseName("IX_NoteLink_TargetConceptId");
+
+                    b.HasIndex("SourceNoteId", "TargetConceptId")
+                        .HasDatabaseName("IX_NoteLink_SourceNoteId_TargetConceptId");
+
+                    b.ToTable("NoteLinks");
+                });
+
             modelBuilder.Entity("Eidos.Models.Ontology", b =>
                 {
                     b.Property<int>("Id")
@@ -1067,11 +1240,17 @@ namespace Eidos.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("WorkspaceId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ParentOntologyId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("WorkspaceId")
+                        .IsUnique();
 
                     b.ToTable("Ontologies");
                 });
@@ -1734,6 +1913,120 @@ namespace Eidos.Migrations
                     b.ToTable("UserShareAccesses");
                 });
 
+            modelBuilder.Entity("Eidos.Models.Workspace", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("AllowPublicEdit")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ConceptNoteCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("NoteCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserNoteCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Visibility")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_Workspace_UserId");
+
+                    b.HasIndex("Visibility")
+                        .HasDatabaseName("IX_Workspace_Visibility");
+
+                    b.HasIndex("UserId", "Name")
+                        .HasDatabaseName("IX_Workspace_UserId_Name");
+
+                    b.ToTable("Workspaces");
+                });
+
+            modelBuilder.Entity("Eidos.Models.WorkspaceGroupPermission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PermissionLevel")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UserGroupId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("WorkspaceId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserGroupId");
+
+                    b.HasIndex("WorkspaceId", "UserGroupId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_WorkspaceGroupPermission_WorkspaceId_UserGroupId");
+
+                    b.ToTable("WorkspaceGroupPermissions");
+                });
+
+            modelBuilder.Entity("Eidos.Models.WorkspaceUserAccess", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PermissionLevel")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SharedWithUserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WorkspaceId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SharedWithUserId");
+
+                    b.HasIndex("WorkspaceId", "SharedWithUserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_WorkspaceUserAccess_WorkspaceId_SharedWithUserId");
+
+                    b.ToTable("WorkspaceUserAccesses");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -1934,6 +2227,33 @@ namespace Eidos.Migrations
                         .IsRequired();
 
                     b.Navigation("Ontology");
+                });
+
+            modelBuilder.Entity("Eidos.Models.ConceptGroup", b =>
+                {
+                    b.HasOne("Eidos.Models.Ontology", "Ontology")
+                        .WithMany()
+                        .HasForeignKey("OntologyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Eidos.Models.Concept", "ParentConcept")
+                        .WithMany()
+                        .HasForeignKey("ParentConceptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Eidos.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Ontology");
+
+                    b.Navigation("ParentConcept");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Eidos.Models.ConceptProperty", b =>
@@ -2158,6 +2478,66 @@ namespace Eidos.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Eidos.Models.Note", b =>
+                {
+                    b.HasOne("Eidos.Models.Concept", "LinkedConcept")
+                        .WithOne("ConceptNote")
+                        .HasForeignKey("Eidos.Models.Note", "LinkedConceptId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Eidos.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Eidos.Models.Workspace", "Workspace")
+                        .WithMany("Notes")
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LinkedConcept");
+
+                    b.Navigation("User");
+
+                    b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("Eidos.Models.NoteContent", b =>
+                {
+                    b.HasOne("Eidos.Models.Note", "Note")
+                        .WithOne("Content")
+                        .HasForeignKey("Eidos.Models.NoteContent", "NoteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Note");
+                });
+
+            modelBuilder.Entity("Eidos.Models.NoteLink", b =>
+                {
+                    b.HasOne("Eidos.Models.Note", null)
+                        .WithMany("IncomingLinks")
+                        .HasForeignKey("NoteId");
+
+                    b.HasOne("Eidos.Models.Note", "SourceNote")
+                        .WithMany("OutgoingLinks")
+                        .HasForeignKey("SourceNoteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Eidos.Models.Concept", "TargetConcept")
+                        .WithMany("IncomingNoteLinks")
+                        .HasForeignKey("TargetConceptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SourceNote");
+
+                    b.Navigation("TargetConcept");
+                });
+
             modelBuilder.Entity("Eidos.Models.Ontology", b =>
                 {
                     b.HasOne("Eidos.Models.Ontology", "ParentOntology")
@@ -2171,9 +2551,16 @@ namespace Eidos.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Eidos.Models.Workspace", "Workspace")
+                        .WithOne("Ontology")
+                        .HasForeignKey("Eidos.Models.Ontology", "WorkspaceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("ParentOntology");
 
                     b.Navigation("User");
+
+                    b.Navigation("Workspace");
                 });
 
             modelBuilder.Entity("Eidos.Models.OntologyActivity", b =>
@@ -2391,6 +2778,55 @@ namespace Eidos.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Eidos.Models.Workspace", b =>
+                {
+                    b.HasOne("Eidos.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Eidos.Models.WorkspaceGroupPermission", b =>
+                {
+                    b.HasOne("Eidos.Models.UserGroup", "UserGroup")
+                        .WithMany()
+                        .HasForeignKey("UserGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Eidos.Models.Workspace", "Workspace")
+                        .WithMany("GroupPermissions")
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("UserGroup");
+
+                    b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("Eidos.Models.WorkspaceUserAccess", b =>
+                {
+                    b.HasOne("Eidos.Models.ApplicationUser", "SharedWithUser")
+                        .WithMany()
+                        .HasForeignKey("SharedWithUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Eidos.Models.Workspace", "Workspace")
+                        .WithMany("UserAccesses")
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SharedWithUser");
+
+                    b.Navigation("Workspace");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -2456,7 +2892,11 @@ namespace Eidos.Migrations
 
             modelBuilder.Entity("Eidos.Models.Concept", b =>
                 {
+                    b.Navigation("ConceptNote");
+
                     b.Navigation("ConceptProperties");
+
+                    b.Navigation("IncomingNoteLinks");
 
                     b.Navigation("Properties");
 
@@ -2490,6 +2930,15 @@ namespace Eidos.Migrations
                     b.Navigation("Comments");
                 });
 
+            modelBuilder.Entity("Eidos.Models.Note", b =>
+                {
+                    b.Navigation("Content");
+
+                    b.Navigation("IncomingLinks");
+
+                    b.Navigation("OutgoingLinks");
+                });
+
             modelBuilder.Entity("Eidos.Models.Ontology", b =>
                 {
                     b.Navigation("ChildOntologies");
@@ -2521,6 +2970,17 @@ namespace Eidos.Migrations
                     b.Navigation("Members");
 
                     b.Navigation("OntologyPermissions");
+                });
+
+            modelBuilder.Entity("Eidos.Models.Workspace", b =>
+                {
+                    b.Navigation("GroupPermissions");
+
+                    b.Navigation("Notes");
+
+                    b.Navigation("Ontology");
+
+                    b.Navigation("UserAccesses");
                 });
 #pragma warning restore 612, 618
         }

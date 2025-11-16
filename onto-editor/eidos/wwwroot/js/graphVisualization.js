@@ -1,3 +1,6 @@
+// Global map to store Cytoscape instances by container ID
+window.cytoscapeInstances = window.cytoscapeInstances || new Map();
+
 window.renderOntologyGraph = function (containerId, elements, dotNetHelper, displayOptions) {
     // Clear any existing graph in this container
     const container = document.getElementById(containerId);
@@ -660,6 +663,9 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
         // Store reference for potential future use
         container.cytoscapeInstance = cy;
         container.resizeObserver = resizeObserver;
+
+        // Store in global map for access by other modules (e.g., conceptGrouping.js)
+        window.cytoscapeInstances.set(containerId, cy);
     };
 
     // Clean up old instance if it exists
@@ -694,6 +700,11 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
         container.renderTimeout = null;
         initializeGraph();
     }, 50);
+};
+
+// Check if a graph instance is fully initialized
+window.isGraphInitialized = function(containerId) {
+    return window.cytoscapeInstances && window.cytoscapeInstances.has(containerId);
 };
 
 // Download a text file

@@ -1,12 +1,17 @@
 @using Eidos.Models
 @using Eidos.Models.Enums
+@using Eidos.Services
 @using Eidos.Services.Interfaces
 @using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IJSRuntime JS
 @inject IUserPreferencesService PreferencesService
 @inject IConceptService ConceptService
 @inject IOntologyLinkService OntologyLinkService
+@inject IConceptGroupService ConceptGroupService
 @inject ILogger<GraphVisualization> Logger
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ToastService ToastService
 
 <div style="position: relative; width: 100%; height: @Height;">
     <div id="@GraphId" style="width: 100%; height: 100%; border: 1px solid var(--border-color); border-radius: 0.375rem; background-color: var(--canvas-bg);"></div>
@@ -579,6 +584,40 @@
 
         var dotNetHelper = DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("renderOntologyGraph", GraphId, elements, dotNetHelper, displayOptions);
+
+        // Wait for Cytoscape instance to be fully initialized and stored
+        // This prevents race conditions where grouping initializes before the graph is ready
+        var initialized = false;
+        var maxAttempts = 20; // Try for up to 2 seconds (20 * 100ms)
+        var attempts = 0;
+
+        while (!initialized && attempts < maxAttempts)
+        {
+            try
+            {
+                initialized = await JS.InvokeAsync<bool>("isGraphInitialized", GraphId);
+                if (!initialized)
+                {
+                    await Task.Delay(100);
+                    attempts++;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error checking graph initialization status for {GraphId}, attempt {Attempt}", GraphId, attempts);
+                await Task.Delay(100);
+                attempts++;
+            }
+        }
+
+        if (initialized)
+        {
+            await InitializeConceptGrouping();
+        }
+        else
+        {
+            Logger.LogError("Graph failed to initialize within timeout period for {GraphId}", GraphId);
+        }
     }
 
     [JSInvokable]
@@ -685,11 +724,17 @@
         try
         {
             // Separate concepts and ontology links
+            // Use GroupBy to handle duplicate IDs (take the last update for each node)
             var conceptUpdates = updates
                 .Where(u => u.Type == "concept")
-                .ToDictionary(u => u.Id, u => (u.X, u.Y));
+                .GroupBy(u => u.Id)
+                .ToDictionary(g => g.Key, g => (g.Last().X, g.Last().Y));
 
-            var linkUpdates = updates.Where(u => u.Type == "ontologyLink").ToList();
+            var linkUpdates = updates
+                .Where(u => u.Type == "ontologyLink")
+                .GroupBy(u => u.Id)
+                .Select(g => g.Last())
+                .ToList();
 
             // Batch update concepts (more efficient)
             if (conceptUpdates.Any())
@@ -739,5 +784,220 @@
         public string Type { get; set; } = string.Empty; // "concept" or "ontologyLink"
         public double X { get; set; }
         public double Y { get; set; }
+    }
+
+    // ====================================================================================
+    // Concept Grouping Functionality
+    // ====================================================================================
+
+    /// <summary>
+    /// Initializes the concept grouping system for this graph instance.
+    /// Loads existing groups from the database and sets up drag-and-drop handlers.
+    /// </summary>
+    private async Task InitializeConceptGrouping()
+    {
+        if (Ontology == null)
+            return;
+
+        try
+        {
+            // Get current user ID
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                Logger.LogWarning("Cannot initialize concept grouping - user not authenticated");
+                return;
+            }
+
+            // Load existing groups for this ontology and user
+            var groups = await ConceptGroupService.GetGroupsForOntologyAsync(Ontology.Id, userId);
+
+            // Convert groups to JavaScript-friendly format
+            var groupsData = groups.Select(g => new
+            {
+                id = g.Id,
+                parentConceptId = g.ParentConceptId,
+                childConceptIds = g.ChildConceptIds,
+                collapsedRelationships = g.CollapsedRelationships,
+                isCollapsed = g.IsCollapsed,
+                groupName = g.GroupName,
+                maxDepth = g.MaxDepth
+            }).ToList();
+
+            // Initialize grouping in JavaScript
+            var dotNetHelper = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("initializeConceptGrouping", GraphId, null, dotNetHelper, groupsData);
+
+            Logger.LogInformation("Initialized concept grouping for ontology {OntologyId} with {GroupCount} groups",
+                Ontology.Id, groups.Count);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing concept grouping for ontology {OntologyId}", Ontology?.Id ?? 0);
+        }
+    }
+
+    /// <summary>
+    /// Checks if a concept group can be created (used for client-side validation).
+    /// Called from JavaScript via JSInvokable.
+    /// </summary>
+    [JSInvokable("CanCreateGroup")]
+    public async Task<bool> CanCreateGroup(int parentConceptId, int[] childConceptIds)
+    {
+        if (Ontology == null)
+            return false;
+
+        try
+        {
+            // Get current user ID
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return false;
+
+            return await ConceptGroupService.CanCreateGroupAsync(Ontology.Id, userId, parentConceptId, childConceptIds.ToList());
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error checking if group can be created");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Creates a new concept group when a node is dragged onto another.
+    /// Called from JavaScript via JSInvokable.
+    /// </summary>
+    [JSInvokable]
+    public async Task CreateConceptGroup(int parentConceptId, int[] childConceptIds)
+    {
+        if (Ontology == null)
+            return;
+
+        try
+        {
+            // Get current user ID
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                Logger.LogWarning("Cannot create concept group - user not authenticated");
+                return;
+            }
+
+            // Check if nesting depth is allowed
+            var canNest = await ConceptGroupService.CanNestGroup(Ontology.Id, userId, parentConceptId);
+            if (!canNest)
+            {
+                Logger.LogWarning("Cannot create group - maximum nesting depth exceeded");
+                return;
+            }
+
+            // Create the group
+            Logger.LogInformation("Creating concept group with parent {ParentId} and children {Children}",
+                parentConceptId, string.Join(",", childConceptIds));
+
+            var group = await ConceptGroupService.CreateGroupAsync(
+                Ontology.Id,
+                userId,
+                parentConceptId,
+                childConceptIds.ToList());
+
+            Logger.LogInformation("Created concept group {GroupId} with parent {ParentId} and {ChildCount} children",
+                group.Id, parentConceptId, childConceptIds.Length);
+
+            // Update groups in JavaScript instead of full graph refresh
+            Logger.LogInformation("Updating groups in JavaScript for graph {GraphId}", GraphId);
+            var allGroups = await ConceptGroupService.GetGroupsForOntologyAsync(Ontology.Id, userId);
+            var groupsData = allGroups.Select(g => new
+            {
+                id = g.Id,
+                parentConceptId = g.ParentConceptId,
+                childConceptIds = g.ChildConceptIds,
+                collapsedRelationships = g.CollapsedRelationships,
+                isCollapsed = g.IsCollapsed,
+                groupName = g.GroupName,
+                maxDepth = g.MaxDepth
+            }).ToList();
+
+            await JS.InvokeVoidAsync("updateConceptGroups", GraphId, groupsData);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("circular reference"))
+        {
+            Logger.LogWarning(ex, "Circular reference prevented when creating concept group");
+            ToastService.ShowWarning("Cannot group these concepts - would create a circular reference");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating concept group for ontology {OntologyId}", Ontology?.Id ?? 0);
+            ToastService.ShowError("Failed to create concept group");
+        }
+    }
+
+    /// <summary>
+    /// Toggles the collapse/expand state of a concept group.
+    /// Called from JavaScript via JSInvokable.
+    /// </summary>
+    [JSInvokable]
+    public async Task ToggleConceptGroup(int groupId)
+    {
+        if (Ontology == null)
+            return;
+
+        try
+        {
+            await ConceptGroupService.ToggleCollapseAsync(groupId);
+
+            Logger.LogInformation("Toggled concept group {GroupId}", groupId);
+
+            // Get current user ID
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                Logger.LogWarning("Cannot update groups - user not authenticated");
+                return;
+            }
+
+            // Update groups in JavaScript instead of re-rendering the entire graph
+            var allGroups = await ConceptGroupService.GetGroupsForOntologyAsync(Ontology.Id, userId);
+            var groupsData = allGroups.Select(g => new
+            {
+                id = g.Id,
+                parentConceptId = g.ParentConceptId,
+                childConceptIds = g.ChildConceptIds,
+                collapsedRelationships = g.CollapsedRelationships,
+                isCollapsed = g.IsCollapsed,
+                groupName = g.GroupName,
+                maxDepth = g.MaxDepth
+            }).ToList();
+
+            await JS.InvokeVoidAsync("updateConceptGroups", GraphId, groupsData);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error toggling concept group {GroupId}", groupId);
+        }
+    }
+
+    /// <summary>
+    /// Shows a context menu for managing a concept group.
+    /// Called from JavaScript via JSInvokable.
+    /// </summary>
+    [JSInvokable]
+    public async Task ShowGroupContextMenu(int groupId, double x, double y)
+    {
+        // For now, just log - we can implement a context menu UI later
+        Logger.LogInformation("Context menu requested for group {GroupId} at ({X}, {Y})", groupId, x, y);
+        await Task.CompletedTask;
     }
 }

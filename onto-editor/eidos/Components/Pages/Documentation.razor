@@ -39,6 +39,9 @@
                     <button class="nav-link @(activeSection == "collaboration" ? "active" : "")" @onclick='async () => await ScrollToSection("collaboration")'>
                         <i class="bi bi-people"></i> Collaboration
                     </button>
+                    <button class="nav-link @(activeSection == "workspaces" ? "active" : "")" @onclick='async () => await ScrollToSection("workspaces")'>
+                        <i class="bi bi-journal-text"></i> Workspaces
+                    </button>
                     <button class="nav-link @(activeSection == "ui-components" ? "active" : "")" @onclick='async () => await ScrollToSection("ui-components")'>
                         <i class="bi bi-layout-text-sidebar"></i> UI Components
                     </button>
@@ -971,7 +974,209 @@
                 </div>
             </section>
 
-            <!-- Section 9: UI Components -->
+            <!-- Section 9: Workspaces & Notes -->
+            <section id="workspaces" class="mb-5">
+                <h2 class="border-bottom pb-2 mb-4">
+                    <i class="bi bi-journal-text text-success me-2"></i>
+                    Workspaces & Notes System
+                </h2>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <strong>Overview</strong>
+                    </div>
+                    <div class="card-body">
+                        <p>The Workspace and Notes system transforms Eidos into a complete knowledge management platform by integrating wiki-style note-taking with structured ontology building.</p>
+
+                        <h6>Key Capabilities:</h6>
+                        <ul>
+                            <li><strong>Integrated Environment:</strong> One workspace contains both an ontology and unlimited markdown notes</li>
+                            <li><strong>Wiki-Link Syntax:</strong> Double-bracket syntax (<code>[[Concept]]</code>) for automatic concept creation</li>
+                            <li><strong>Bidirectional Linking:</strong> Backlinks show which notes reference each concept</li>
+                            <li><strong>Auto-Concept Creation:</strong> Referencing a non-existent concept creates it automatically</li>
+                            <li><strong>Seamless Navigation:</strong> Jump between workspace (notes) and graph views</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <strong>Database Schema</strong>
+                    </div>
+                    <div class="card-body">
+                        <h6>New Tables:</h6>
+                        <pre class="bg-light p-3 rounded small"><code>Workspace
+  ├── Id (PK)
+  ├── Name
+  ├── Description
+  ├── UserId (FK)
+  ├── Visibility (Private/Group/Public)
+  └── CreatedAt
+
+Note
+  ├── Id (PK)
+  ├── Title
+  ├── WorkspaceId (FK)
+  ├── IsConceptNote (bool)
+  ├── LinkedConceptId (FK, nullable)
+  ├── CreatedAt
+  └── UpdatedAt
+
+NoteContent (separated for performance)
+  ├── Id (PK)
+  ├── NoteId (FK)
+  ├── Content (text)
+  └── Version
+
+NoteLink
+  ├── Id (PK)
+  ├── SourceNoteId (FK)
+  ├── TargetConceptName
+  ├── DisplayText (nullable)
+  ├── Position (int)
+  ├── ContextSnippet
+  └── CreatedAt</code></pre>
+
+                        <h6 class="mt-3">Relationships:</h6>
+                        <pre class="bg-light p-3 rounded small"><code>Workspace (1) ←→ (1) Ontology
+Workspace (1) →  (*) Notes
+Note (1) → (0..1) Concept (via LinkedConceptId)
+Note (*) → (*) Concepts (via NoteLinks)</code></pre>
+
+                        <h6 class="mt-3">Performance Optimization:</h6>
+                        <ul class="small">
+                            <li>NoteContent separated from Note metadata for faster list queries</li>
+                            <li>Indexed foreign keys on WorkspaceId, LinkedConceptId, SourceNoteId</li>
+                            <li>AsNoTracking() for read-only note list operations</li>
+                            <li>Efficient eager loading with Include() for navigation properties</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <strong>WikiLinkParser Service</strong>
+                    </div>
+                    <div class="card-body">
+                        <p>Robust regex-based parser for extracting and processing wiki-style concept links.</p>
+
+                        <h6>Core Methods:</h6>
+                        <ul class="small">
+                            <li><code>ExtractConceptNames(content)</code> - Returns distinct concept names from [[links]]</li>
+                            <li><code>ExtractLinksWithContext(content)</code> - Extracts links with position and context snippets</li>
+                            <li><code>ConvertLinksToHtml(content)</code> - Converts [[links]] to HTML anchors for preview</li>
+                            <li><code>CountLinks(content)</code> - Counts total wiki-links in content</li>
+                            <li><code>IsValidConceptName(name)</code> - Validates concept name format</li>
+                            <li><code>EscapeConceptName(name)</code> - Sanitizes invalid characters</li>
+                        </ul>
+
+                        <h6>Supported Syntax:</h6>
+                        <ul class="small">
+                            <li><code>[[Simple Concept]]</code> - Basic link</li>
+                            <li><code>[[Concept|Display Text]]</code> - Custom display text</li>
+                            <li><code>[[Multi Word Concept]]</code> - Concepts with spaces</li>
+                            <li><code>[[Concept-With-Dashes]]</code> - Special characters</li>
+                        </ul>
+
+                        <h6>Test Coverage:</h6>
+                        <p class="mb-0"><strong>45+ unit tests</strong> covering all edge cases including nested brackets, multiline content, special characters, whitespace handling, and context extraction.</p>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <strong>Services Layer</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>WorkspaceService</h6>
+                                <ul class="small">
+                                    <li><code>CreateWorkspaceAsync()</code></li>
+                                    <li><code>GetWorkspaceByIdAsync()</code></li>
+                                    <li><code>EnsureWorkspaceForOntologyAsync()</code></li>
+                                    <li><code>GetUserWorkspacesAsync()</code></li>
+                                    <li><code>DeleteWorkspaceAsync()</code></li>
+                                </ul>
+                                <p class="small text-muted mb-0">Handles workspace lifecycle and legacy ontology migration.</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>NoteService</h6>
+                                <ul class="small">
+                                    <li><code>CreateNoteAsync()</code></li>
+                                    <li><code>UpdateNoteContentAsync()</code></li>
+                                    <li><code>GetWorkspaceNotesAsync()</code></li>
+                                    <li><code>ProcessWikiLinksAsync()</code></li>
+                                    <li><code>GetBacklinksAsync()</code></li>
+                                </ul>
+                                <p class="small text-muted mb-0">Manages notes and automatic concept creation from wiki-links.</p>
+                            </div>
+                        </div>
+
+                        <h6 class="mt-3">Key Workflow - Auto-Concept Creation:</h6>
+                        <pre class="bg-light p-3 rounded small"><code>1. User types [[New Concept]] in note
+2. NoteService.UpdateNoteContentAsync() called
+3. WikiLinkParser.ExtractConceptNames() finds "New Concept"
+4. NoteService checks if concept exists in ontology
+5. If not exists: ConceptService.CreateAsync() creates concept
+6. NoteService creates NoteLink record for backlinks
+7. If IsConceptNote: auto-creates concept note
+8. Returns updated note with links processed</code></pre>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <strong>Legacy Migration & Compatibility</strong>
+                    </div>
+                    <div class="card-body">
+                        <h6>Automatic Workspace Creation:</h6>
+                        <p>When a user accesses an ontology without a workspace:</p>
+                        <ol class="small">
+                            <li><code>EnsureWorkspaceForOntologyAsync()</code> detects missing workspace</li>
+                            <li>Creates new workspace with matching name/description</li>
+                            <li>Links ontology via <code>WorkspaceId</code> foreign key</li>
+                            <li>Auto-creates concept notes for all existing concepts</li>
+                            <li>Returns workspace with Ontology navigation property loaded</li>
+                        </ol>
+
+                        <h6 class="mt-3">Critical Bug Fix (November 15, 2025):</h6>
+                        <div class="alert alert-danger small">
+                            <strong>Issue:</strong> OntologyRepository.UpdateAsync() wasn't persisting WorkspaceId changes.
+                            <br><strong>Fix:</strong> Added <code>existingOntology.WorkspaceId = ontology.WorkspaceId;</code> at line 269.
+                            <br><strong>Impact:</strong> Ensures "View in Graph" button appears and prevents duplicate workspace creation.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header" style="background-color: #6f42c1; color: white;">
+                        <strong>UI Components</strong>
+                    </div>
+                    <div class="card-body">
+                        <h6>New Components:</h6>
+                        <ul class="small">
+                            <li><strong>WorkspaceView.razor:</strong> Main three-pane workspace interface</li>
+                            <li><strong>WorkspaceQuickSwitcher.razor:</strong> Cmd/Ctrl+K note search dialog</li>
+                            <li><strong>WorkspaceView.razor.css:</strong> Wiki-style workspace styling</li>
+                        </ul>
+
+                        <h6>Features:</h6>
+                        <ul class="small">
+                            <li>Three-pane layout (notes list | editor | backlinks)</li>
+                            <li>Markdown editor with live preview toggle</li>
+                            <li>Condensed/Comfortable view modes</li>
+                            <li>Auto-save with visual feedback</li>
+                            <li>Keyboard shortcuts (Cmd/Ctrl+K, Cmd/Ctrl+E)</li>
+                            <li>Concept/Note badges for visual distinction</li>
+                            <li>Clickable wiki-links in preview mode</li>
+                            <li>Real-time note search</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 10: UI Components -->
             <section id="ui-components" class="mb-5">
                 <h2 class="border-bottom pb-2 mb-4">
                     <i class="bi bi-layout-text-sidebar text-primary me-2"></i>

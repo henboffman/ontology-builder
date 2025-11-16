@@ -147,6 +147,11 @@
                 <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Hierarchy ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Hierarchy)">
                     <i class="bi bi-diagram-2 me-2"></i> Hierarchy
                 </button></li>
+                @* DISABLED - Mind Map view (work in progress)
+                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.MindMap ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.MindMap)">
+                    <i class="bi bi-share me-2"></i> Mind Map
+                </button></li>
+                *@
                 <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Instances ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Instances)">
                     <i class="bi bi-person me-2"></i> Instances
                 </button></li>
