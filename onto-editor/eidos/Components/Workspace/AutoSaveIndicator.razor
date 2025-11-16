@@ -1,11 +1,12 @@
 @using Eidos.Models
+@implements IDisposable
 
 <div class="autosave-indicator @GetStatusClass()">
     @switch (Status)
     {
         case AutoSaveStatus.Idle:
             <span class="text-muted" style="font-size: 0.75rem;">
-                <i class="bi bi-check-circle"></i> Saved
+                <i class="bi bi-check-circle"></i> Saved @GetElapsedTime()
             </span>
             break;
         case AutoSaveStatus.Saving:
@@ -16,7 +17,7 @@
             break;
         case AutoSaveStatus.Saved:
             <span class="text-success" style="font-size: 0.75rem;">
-                <i class="bi bi-cloud-check-fill"></i> Saved
+                <i class="bi bi-cloud-check-fill"></i> Saved @GetElapsedTime()
             </span>
             break;
         case AutoSaveStatus.Error:
@@ -31,6 +32,37 @@
     [Parameter]
     public AutoSaveStatus Status { get; set; } = AutoSaveStatus.Idle;
 
+    [Parameter]
+    public DateTime? LastSavedTime { get; set; }
+
+    private System.Threading.Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        // Update the elapsed time display every 30 seconds
+        _timer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private string GetElapsedTime()
+    {
+        if (LastSavedTime == null || Status == AutoSaveStatus.Saving)
+            return string.Empty;
+
+        var elapsed = DateTime.UtcNow - LastSavedTime.Value;
+
+        if (elapsed.TotalMinutes < 1)
+            return "just now";
+        else if (elapsed.TotalMinutes < 60)
+            return $"{(int)elapsed.TotalMinutes} minute{((int)elapsed.TotalMinutes == 1 ? "" : "s")} ago";
+        else if (elapsed.TotalHours < 24)
+            return $"{(int)elapsed.TotalHours} hour{((int)elapsed.TotalHours == 1 ? "" : "s")} ago";
+        else
+            return $"{(int)elapsed.TotalDays} day{((int)elapsed.TotalDays == 1 ? "" : "s")} ago";
+    }
+
     private string GetStatusClass()
     {
         return Status switch
@@ -40,5 +72,10 @@
             AutoSaveStatus.Error => "error",
             _ => "idle"
         };
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
     }
 }

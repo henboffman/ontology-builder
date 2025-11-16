@@ -171,30 +171,43 @@ namespace Eidos.Data.Repositories
         }
 
         /// <summary>
-        /// Update denormalized note counts
+        /// Update denormalized note counts (optimized with single query)
         /// </summary>
         public async Task UpdateNoteCountsAsync(int workspaceId)
         {
             try
             {
                 await using var context = await _contextFactory.CreateDbContextAsync();
-                var workspace = await context.Workspaces.FindAsync(workspaceId);
-                if (workspace == null) return;
 
-                workspace.NoteCount = await context.Notes
-                    .CountAsync(n => n.WorkspaceId == workspaceId);
+                // Calculate all counts in a single query and update directly
+                // This is much more efficient than loading the entity and making 3 separate count queries
+                var counts = await context.Notes
+                    .Where(n => n.WorkspaceId == workspaceId)
+                    .GroupBy(n => 1) // Group all records together
+                    .Select(g => new
+                    {
+                        TotalCount = g.Count(),
+                        ConceptNoteCount = g.Count(n => n.IsConceptNote),
+                        UserNoteCount = g.Count(n => !n.IsConceptNote)
+                    })
+                    .FirstOrDefaultAsync();
 
-                workspace.ConceptNoteCount = await context.Notes
-                    .CountAsync(n => n.WorkspaceId == workspaceId && n.IsConceptNote);
+                // If no notes exist, set counts to 0
+                var totalCount = counts?.TotalCount ?? 0;
+                var conceptNoteCount = counts?.ConceptNoteCount ?? 0;
+                var userNoteCount = counts?.UserNoteCount ?? 0;
 
-                workspace.UserNoteCount = await context.Notes
-                    .CountAsync(n => n.WorkspaceId == workspaceId && !n.IsConceptNote);
+                // Update workspace counts directly in database without loading entity
+                await context.Workspaces
+                    .Where(w => w.Id == workspaceId)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(w => w.NoteCount, totalCount)
+                        .SetProperty(w => w.ConceptNoteCount, conceptNoteCount)
+                        .SetProperty(w => w.UserNoteCount, userNoteCount)
+                        .SetProperty(w => w.UpdatedAt, DateTime.UtcNow));
 
-                workspace.UpdatedAt = DateTime.UtcNow;
-
-                await context.SaveChangesAsync();
-
-                _logger.LogDebug("Updated note counts for workspace {WorkspaceId}", workspaceId);
+                _logger.LogDebug("Updated note counts for workspace {WorkspaceId}: Total={TotalCount}, Concept={ConceptCount}, User={UserCount}",
+                    workspaceId, totalCount, conceptNoteCount, userNoteCount);
             }
             catch (Exception ex)
             {
@@ -204,7 +217,7 @@ namespace Eidos.Data.Repositories
         }
 
         /// <summary>
-        /// Check if user has access to workspace
+        /// Check if user has access to workspace (optimized to single query)
         /// </summary>
         public async Task<bool> UserHasAccessAsync(int workspaceId, string userId)
         {
@@ -212,37 +225,24 @@ namespace Eidos.Data.Repositories
             {
                 await using var context = await _contextFactory.CreateDbContextAsync();
 
-                // Owner check
-                var isOwner = await context.Workspaces
-                    .AnyAsync(w => w.Id == workspaceId && w.UserId == userId);
+                // Single query with all access checks combined
+                var hasAccess = await context.Workspaces
+                    .Where(w => w.Id == workspaceId)
+                    .Select(w =>
+                        // Owner check
+                        w.UserId == userId ||
+                        // Public check
+                        w.Visibility == "public" ||
+                        // Direct user access
+                        w.UserAccesses.Any(ua => ua.SharedWithUserId == userId) ||
+                        // Group access (user is member of group that has permission)
+                        w.GroupPermissions.Any(gp =>
+                            gp.UserGroup.Members.Any(m => m.UserId == userId)
+                        )
+                    )
+                    .FirstOrDefaultAsync();
 
-                if (isOwner) return true;
-
-                // Direct user access check
-                var hasDirectAccess = await context.WorkspaceUserAccesses
-                    .AnyAsync(wua => wua.WorkspaceId == workspaceId && wua.SharedWithUserId == userId);
-
-                if (hasDirectAccess) return true;
-
-                // Group access check
-                var userGroupIds = await context.UserGroupMembers
-                    .Where(ugm => ugm.UserId == userId)
-                    .Select(ugm => ugm.UserGroupId)
-                    .ToListAsync();
-
-                if (userGroupIds.Any())
-                {
-                    var hasGroupAccess = await context.WorkspaceGroupPermissions
-                        .AnyAsync(wgp => wgp.WorkspaceId == workspaceId && userGroupIds.Contains(wgp.UserGroupId));
-
-                    if (hasGroupAccess) return true;
-                }
-
-                // Public workspace check
-                var isPublic = await context.Workspaces
-                    .AnyAsync(w => w.Id == workspaceId && w.Visibility == "public");
-
-                return isPublic;
+                return hasAccess;
             }
             catch (Exception ex)
             {

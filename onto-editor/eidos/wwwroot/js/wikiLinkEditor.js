@@ -2,11 +2,22 @@
 // Provides syntax highlighting and click-to-navigate functionality
 
 window.WikiLinkEditor = {
-    // Initialize the wiki-link editor on a textarea
-    initialize: function (elementId, dotNetHelper) {
+    // Initialize the wiki-link editor on a textarea with retry logic
+    initialize: function (elementId, dotNetHelper, retryCount = 0) {
         const textareaElement = document.getElementById(elementId);
+
         if (!textareaElement) {
-            console.error('WikiLinkEditor: textarea element not found:', elementId);
+            // Retry up to 3 times with increasing delays (50ms, 100ms, 150ms)
+            if (retryCount < 3) {
+                const delay = (retryCount + 1) * 50;
+                setTimeout(() => {
+                    this.initialize(elementId, dotNetHelper, retryCount + 1);
+                }, delay);
+                return;
+            }
+
+            // Element not found after retries - this is normal if in preview mode
+            // No logging needed as this is expected behavior
             return;
         }
 

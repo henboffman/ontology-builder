@@ -31,14 +31,17 @@ public class ConceptRepository : BaseRepository<Concept>, IConceptRepository
     public async Task<IEnumerable<Concept>> SearchAsync(string query)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        var lowerQuery = query.ToLower();
+
+        // Use EF.Functions.Like for case-insensitive search that can leverage indexes
+        // Pattern: %query% for "contains" behavior
+        var searchPattern = $"%{query}%";
 
         return await context.Concepts
             .Where(c =>
-                c.Name.ToLower().Contains(lowerQuery) ||
-                (c.Definition != null && c.Definition.ToLower().Contains(lowerQuery)) ||
-                (c.SimpleExplanation != null && c.SimpleExplanation.ToLower().Contains(lowerQuery)) ||
-                (c.Category != null && c.Category.ToLower().Contains(lowerQuery)))
+                EF.Functions.Like(c.Name, searchPattern) ||
+                (c.Definition != null && EF.Functions.Like(c.Definition, searchPattern)) ||
+                (c.SimpleExplanation != null && EF.Functions.Like(c.SimpleExplanation, searchPattern)) ||
+                (c.Category != null && EF.Functions.Like(c.Category, searchPattern)))
             .AsNoTracking()
             .ToListAsync();
     }

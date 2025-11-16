@@ -84,6 +84,16 @@
                     <p class="text-muted small mb-0">@workspace.Description</p>
                 }
             </div>
+            <div class="workspace-actions ms-auto">
+                @if (workspace.Ontology != null)
+                {
+                    <button class="btn btn-sm btn-outline-light"
+                            @onclick="@(() => Navigation.NavigateTo($"/ontology/{workspace.Ontology.Id}"))"
+                            title="Switch to Ontology Graph View">
+                        <i class="bi bi-diagram-3 me-1"></i> Switch to Ontology
+                    </button>
+                }
+            </div>
         </div>
 
         <!-- Keyboard Shortcuts Hint Banner -->
@@ -130,38 +140,12 @@
                                 title="Import Markdown Files">
                             <i class="bi bi-file-earmark-arrow-up"></i>
                         </button>
-                        @if (selectedNote != null && !showPreview)
-                        {
-                            <button class="btn btn-sm btn-link text-decoration-none p-1 text-success"
-                                    @onclick="SaveNote"
-                                    disabled="@saving"
-                                    title="Save">
-                                @if (saving)
-                                {
-                                    <span class="spinner-border spinner-border-sm"></span>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-check-lg"></i>
-                                }
-                            </button>
-                            <AutoSaveIndicator Status="@autoSaveStatus" />
-                        }
                         @if (workspace.Ontology != null)
                         {
                             <button class="btn btn-sm btn-link text-decoration-none p-1"
                                     @onclick="@(() => Navigation.NavigateTo($"/ontology/{workspace.Ontology.Id}"))"
                                     title="View in Graph">
                                 <i class="bi bi-diagram-3"></i>
-                            </button>
-                        }
-                        @if (selectedNote != null)
-                        {
-                            <div class="edit-toggle-divider"></div>
-                            <button class="btn btn-sm btn-link text-decoration-none edit-toggle-btn @(showPreview ? "" : "active")"
-                                    @onclick="TogglePreview">
-                                <i class="bi @(showPreview ? "bi-pencil" : "bi-eye")"></i>
-                                <span class="ms-1">@(showPreview ? "Edit" : "Preview")</span>
                             </button>
                         }
                     </div>
@@ -174,15 +158,25 @@
                                @bind:after="OnSearchChanged" />
                     </div>
                     <div class="pane-tags-section">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted text-uppercase" style="font-weight: 600; font-size: 0.7rem; letter-spacing: 0.05em;">Tags</small>
-                            <button class="btn btn-sm btn-link text-decoration-none p-0"
-                                    @onclick="() => showTagManagement = true"
-                                    title="Manage Tags">
-                                <i class="bi bi-gear-fill" style="font-size: 0.75rem;"></i>
-                            </button>
+                            <div class="d-flex gap-2">
+                                @if (workspaceTags.Any())
+                                {
+                                    <button class="btn btn-sm btn-link text-decoration-none p-0"
+                                            @onclick="ToggleTagsExpanded"
+                                            title="@(isTagsExpanded ? "Collapse tags" : "Expand tags")">
+                                        <i class="bi @(isTagsExpanded ? "bi-chevron-up" : "bi-chevron-down")" style="font-size: 0.75rem;"></i>
+                                    </button>
+                                }
+                                <button class="btn btn-sm btn-link text-decoration-none p-0"
+                                        @onclick="() => showTagManagement = true"
+                                        title="Manage Tags">
+                                    <i class="bi bi-gear-fill" style="font-size: 0.75rem;"></i>
+                                </button>
+                            </div>
                         </div>
-                        @if (workspaceTags.Any())
+                        @if (workspaceTags.Any() && isTagsExpanded)
                         {
                             <div class="workspace-tags-list">
                                 @foreach (var tagWithCount in workspaceTags)
@@ -203,11 +197,38 @@
                                 </button>
                             }
                         }
-                        else
-                        {
-                            <small class="text-muted" style="font-size: 0.75rem;">No tags yet</small>
-                        }
                     </div>
+                    <div class="note-filters-section">
+                        <div class="note-type-filter">
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <button type="button"
+                                        class="btn @(noteTypeFilter == NoteTypeFilter.All ? "btn-primary" : "btn-outline-secondary")"
+                                        @onclick="() => SetNoteTypeFilter(NoteTypeFilter.All)">
+                                    All
+                                </button>
+                                <button type="button"
+                                        class="btn @(noteTypeFilter == NoteTypeFilter.Notes ? "btn-primary" : "btn-outline-secondary")"
+                                        @onclick="() => SetNoteTypeFilter(NoteTypeFilter.Notes)">
+                                    Notes
+                                </button>
+                                <button type="button"
+                                        class="btn @(noteTypeFilter == NoteTypeFilter.Concepts ? "btn-primary" : "btn-outline-secondary")"
+                                        @onclick="() => SetNoteTypeFilter(NoteTypeFilter.Concepts)">
+                                    Concepts
+                                </button>
+                            </div>
+                        </div>
+                        <div class="note-sort-dropdown">
+                            <select class="form-select form-select-sm"
+                                    @bind="noteSortOption"
+                                    @bind:after="OnSortChanged">
+                                <option value="@NoteSortOption.TitleAsc">Title (A-Z)</option>
+                                <option value="@NoteSortOption.TitleDesc">Title (Z-A)</option>
+                                <option value="@NoteSortOption.ModifiedDesc">Modified (Newest)</option>
+                                <option value="@NoteSortOption.ModifiedAsc">Modified (Oldest)</option>
+                            </select>
+                        </div>
+                    </div> 
                 </div>
                 <div class="pane-content">
                     @if (notes.Any())
@@ -275,6 +296,17 @@
                                class="form-control note-title-input"
                                @bind="selectedNote.Title"
                                placeholder="Note title..." />
+                        <div class="d-flex align-items-center gap-2">
+                            @if (!showPreview)
+                            {
+                                <AutoSaveIndicator Status="@autoSaveStatus" />
+                            }
+                            <button class="btn btn-sm btn-link text-decoration-none edit-toggle-btn @(showPreview ? "" : "active")"
+                                    @onclick="TogglePreview">
+                                <i class="bi @(showPreview ? "bi-pencil" : "bi-eye")"></i>
+                                <span class="ms-1">@(showPreview ? "Edit" : "Preview")</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="pane-content">
                         @if (!showPreview)
@@ -335,8 +367,42 @@
                 }
             </div>
 
-            <!-- Right Pane: Related Concepts & Backlinks -->
-            <div class="pane pane-right">
+            <!-- Right Pane: Tags, Related Concepts & Backlinks -->
+            <div class="pane pane-right @(isRightPaneCollapsed ? "collapsed" : "")">
+                @if (isRightPaneCollapsed)
+                {
+                    <div class="collapsed-sidebar-label">
+                        <span>Tags & Backlinks</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary collapse-toggle-btn collapsed-btn"
+                            @onclick="ToggleRightPane"
+                            title="Show sidebar">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                }
+
+                <!-- Tags Section -->
+                @if (selectedNote != null && currentUserId != null)
+                {
+                    <div class="pane-header">
+                        <h5>Tags</h5>
+                        @if (!isRightPaneCollapsed)
+                        {
+                            <button class="btn btn-sm btn-outline-secondary collapse-toggle-btn"
+                                    @onclick="ToggleRightPane"
+                                    title="Hide sidebar">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        }
+                    </div>
+                    <div class="pane-content" style="border-bottom: 1px solid var(--bs-border-color); padding: 1rem;">
+                        <TagSelector WorkspaceId="@WorkspaceId"
+                                     UserId="@currentUserId"
+                                     SelectedTags="@selectedNoteTags"
+                                     SelectedTagsChanged="@HandleNoteTagsChanged" />
+                    </div>
+                }
+
                 <!-- Related Concepts Section (for concept notes only) -->
                 @if (selectedNote?.IsConceptNote == true && selectedNote.LinkedConceptId.HasValue)
                 {
@@ -346,20 +412,14 @@
                     <div class="pane-content" style="border-bottom: 1px solid var(--border-color, #dee2e6);">
                         @if (relatedConcepts.Any())
                         {
-                            <div class="backlinks-list">
+                            <div class="note-list">
                                 @foreach (var concept in relatedConcepts)
                                 {
-                                    <div class="backlink-item" @onclick="@(() => NavigateToConceptNote(concept.Name))">
-                                        <div class="backlink-source">
-                                            <i class="bi bi-circle-fill text-primary me-1" style="font-size: 0.5rem;"></i>
-                                            @concept.Name
+                                    <div class="note-item condensed" @onclick="@(() => NavigateToConceptNote(concept.Name))">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-primary" style="font-size: 0.5rem; padding: 0.1rem 0.3rem;">C</span>
+                                            <span class="note-item-title">@concept.Name</span>
                                         </div>
-                                        @if (!string.IsNullOrWhiteSpace(concept.Definition))
-                                        {
-                                            <div class="backlink-context">
-                                                <small class="text-muted">@concept.Definition</small>
-                                            </div>
-                                        }
                                     </div>
                                 }
                             </div>
@@ -370,20 +430,6 @@
                                 <p class="text-muted small">No related concepts</p>
                             </div>
                         }
-                    </div>
-                }
-
-                <!-- Tags Section -->
-                @if (selectedNote != null && currentUserId != null)
-                {
-                    <div class="pane-header">
-                        <h5>Tags</h5>
-                    </div>
-                    <div class="pane-content" style="border-bottom: 1px solid var(--bs-border-color); padding: 1rem;">
-                        <TagSelector WorkspaceId="@WorkspaceId"
-                                     UserId="@currentUserId"
-                                     SelectedTags="@selectedNoteTags"
-                                     SelectedTagsChanged="@HandleNoteTagsChanged" />
                     </div>
                 }
 
@@ -434,6 +480,21 @@
 </div>
 
 @code {
+    private enum NoteTypeFilter
+    {
+        All,
+        Notes,
+        Concepts
+    }
+
+    private enum NoteSortOption
+    {
+        TitleAsc,
+        TitleDesc,
+        ModifiedDesc,
+        ModifiedAsc
+    }
+
     [Parameter]
     public int WorkspaceId { get; set; }
 
@@ -453,11 +514,14 @@
     private bool creatingNote = false;
     private bool isCondensedView = true; // Default to condensed view (VS Code style)
     private bool hideKeyboardHints = false;
+    private bool isRightPaneCollapsed = false;
+    private bool isTagsExpanded = true; // Default to expanded
 
     private string? currentUserId;
 
     // Auto-save
     private AutoSaveStatus autoSaveStatus = AutoSaveStatus.Idle;
+    private DateTime? lastSavedTime = null;
 
     // Quick Switcher
     private WorkspaceQuickSwitcher? quickSwitcher;
@@ -468,6 +532,10 @@
     private bool showTagManagement = false;
     private bool showMarkdownImport = false;
     private List<Tag> selectedNoteTags = new();
+
+    // Note type filter and sorting
+    private NoteTypeFilter noteTypeFilter = NoteTypeFilter.All;
+    private NoteSortOption noteSortOption = NoteSortOption.ModifiedDesc;
 
     // Element references for JavaScript interop
     private ElementReference editorTextArea;
@@ -481,6 +549,16 @@
         {
             var filtered = notes.AsEnumerable();
 
+            // Apply note type filter
+            if (noteTypeFilter == NoteTypeFilter.Notes)
+            {
+                filtered = filtered.Where(n => !n.IsConceptNote);
+            }
+            else if (noteTypeFilter == NoteTypeFilter.Concepts)
+            {
+                filtered = filtered.Where(n => n.IsConceptNote);
+            }
+
             // Apply search filter
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -492,6 +570,16 @@
             {
                 filtered = filtered.Where(n => noteTagsCache.ContainsKey(n.Id) && noteTagsCache[n.Id].Any(t => t.Id == selectedTagFilter.Value));
             }
+
+            // Apply sorting
+            filtered = noteSortOption switch
+            {
+                NoteSortOption.TitleAsc => filtered.OrderBy(n => n.Title),
+                NoteSortOption.TitleDesc => filtered.OrderByDescending(n => n.Title),
+                NoteSortOption.ModifiedDesc => filtered.OrderByDescending(n => n.UpdatedAt),
+                NoteSortOption.ModifiedAsc => filtered.OrderBy(n => n.UpdatedAt),
+                _ => filtered.OrderByDescending(n => n.UpdatedAt)
+            };
 
             return filtered;
         }
@@ -770,6 +858,13 @@
         if (selectedNote != null && e.NoteId == selectedNote.Id)
         {
             autoSaveStatus = e.Status;
+
+            // Update last saved time when status changes to Saved
+            if (e.Status == AutoSaveStatus.Saved)
+            {
+                lastSavedTime = DateTime.UtcNow;
+            }
+
             InvokeAsync(StateHasChanged);
         }
     }
@@ -783,6 +878,16 @@
     private void ToggleCondensedView()
     {
         isCondensedView = !isCondensedView;
+    }
+
+    private void ToggleRightPane()
+    {
+        isRightPaneCollapsed = !isRightPaneCollapsed;
+    }
+
+    private void ToggleTagsExpanded()
+    {
+        isTagsExpanded = !isTagsExpanded;
     }
 
     private void DismissKeyboardHints()
@@ -994,6 +1099,17 @@
     private void ClearTagFilter()
     {
         selectedTagFilter = null;
+        StateHasChanged();
+    }
+
+    private void SetNoteTypeFilter(NoteTypeFilter filter)
+    {
+        noteTypeFilter = filter;
+        StateHasChanged();
+    }
+
+    private void OnSortChanged()
+    {
         StateHasChanged();
     }
 

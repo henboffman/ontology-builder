@@ -185,49 +185,49 @@ public class OntologyRepository : BaseRepository<Ontology>, IOntologyRepository
     public async Task IncrementConceptCountAsync(int ontologyId)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        var ontology = await context.Ontologies.FindAsync(ontologyId);
-        if (ontology != null)
-        {
-            ontology.ConceptCount++;
-            ontology.UpdatedAt = DateTime.UtcNow;
-            await context.SaveChangesAsync();
-        }
+
+        // Use ExecuteUpdate for direct database update without loading entity
+        await context.Ontologies
+            .Where(o => o.Id == ontologyId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(o => o.ConceptCount, o => o.ConceptCount + 1)
+                .SetProperty(o => o.UpdatedAt, DateTime.UtcNow));
     }
 
     public async Task DecrementConceptCountAsync(int ontologyId)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        var ontology = await context.Ontologies.FindAsync(ontologyId);
-        if (ontology != null)
-        {
-            ontology.ConceptCount = Math.Max(0, ontology.ConceptCount - 1);
-            ontology.UpdatedAt = DateTime.UtcNow;
-            await context.SaveChangesAsync();
-        }
+
+        // Use ExecuteUpdate with conditional to prevent negative counts
+        await context.Ontologies
+            .Where(o => o.Id == ontologyId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(o => o.ConceptCount, o => o.ConceptCount > 0 ? o.ConceptCount - 1 : 0)
+                .SetProperty(o => o.UpdatedAt, DateTime.UtcNow));
     }
 
     public async Task IncrementRelationshipCountAsync(int ontologyId)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        var ontology = await context.Ontologies.FindAsync(ontologyId);
-        if (ontology != null)
-        {
-            ontology.RelationshipCount++;
-            ontology.UpdatedAt = DateTime.UtcNow;
-            await context.SaveChangesAsync();
-        }
+
+        // Use ExecuteUpdate for direct database update without loading entity
+        await context.Ontologies
+            .Where(o => o.Id == ontologyId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(o => o.RelationshipCount, o => o.RelationshipCount + 1)
+                .SetProperty(o => o.UpdatedAt, DateTime.UtcNow));
     }
 
     public async Task DecrementRelationshipCountAsync(int ontologyId)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        var ontology = await context.Ontologies.FindAsync(ontologyId);
-        if (ontology != null)
-        {
-            ontology.RelationshipCount = Math.Max(0, ontology.RelationshipCount - 1);
-            ontology.UpdatedAt = DateTime.UtcNow;
-            await context.SaveChangesAsync();
-        }
+
+        // Use ExecuteUpdate with conditional to prevent negative counts
+        await context.Ontologies
+            .Where(o => o.Id == ontologyId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(o => o.RelationshipCount, o => o.RelationshipCount > 0 ? o.RelationshipCount - 1 : 0)
+                .SetProperty(o => o.UpdatedAt, DateTime.UtcNow));
     }
 
     public override async Task<Ontology> AddAsync(Ontology ontology)

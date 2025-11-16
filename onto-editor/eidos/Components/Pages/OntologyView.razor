@@ -196,6 +196,7 @@ else
                            OnSettingsClick="@ShowSettingsDialog"
                            OnImportClick="@ShowImportDialog"
                            OnExportClick="@ShowExportDialog"
+                           OnNotesClick="@NavigateToWorkspaceNotes"
                            OnAddConceptClick="@ShowAddConceptDialog"
                            OnAddRelationshipClick="@ShowAddRelationshipDialog"
                            OnBulkCreateClick="@ShowBulkCreateDialog"
@@ -2274,6 +2275,35 @@ else
         {
             Logger.LogError(ex, "Error navigating to concept note for concept {ConceptId}", concept.Id);
             ToastService.ShowError($"Error navigating to note: {ex.Message}");
+        }
+    }
+
+    private async Task NavigateToWorkspaceNotes()
+    {
+        if (ontology == null)
+        {
+            ToastService.ShowWarning("Ontology not loaded");
+            return;
+        }
+
+        try
+        {
+            // Ensure the ontology has a workspace (for backwards compatibility with legacy ontologies)
+            var workspace = await WorkspaceService.EnsureWorkspaceForOntologyAsync(ontology.Id);
+
+            if (workspace == null)
+            {
+                ToastService.ShowError("Unable to create or access workspace for this ontology");
+                return;
+            }
+
+            // Navigate to the workspace notes view
+            Navigation.NavigateTo($"/workspace/{workspace.Id}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error navigating to workspace notes for ontology {OntologyId}", ontology.Id);
+            ToastService.ShowError($"Error navigating to workspace notes: {ex.Message}");
         }
     }
 
