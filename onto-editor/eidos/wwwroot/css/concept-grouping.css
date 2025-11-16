@@ -392,20 +392,22 @@
 .group-indicator-container {
     position: absolute;
     pointer-events: none;
-    z-index: 100;
+    z-index: 1000; /* Increased z-index to ensure visibility */
+    width: 0;
+    height: 0;
 }
 
 .group-indicator-circle {
     position: absolute;
     width: 10px;
     height: 10px;
-    background: #0d6efd;
-    border: 2px solid white;
+    background: #0d6efd; /* Will be overridden by JS to match node color */
+    border: 2px solid rgba(255, 255, 255, 0.9);
     border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2),
-                0 0 0 2px rgba(13, 110, 253, 0.1);
     pointer-events: none;
-    animation: floatIndicator 2s ease-in-out infinite;
+    animation: floatIndicator 1.5s ease-in-out infinite;
+    opacity: 0.9;
+    transition: all 0.3s ease; /* Smooth transitions for any style changes */
 }
 
 /* Stagger the animation for each circle */
@@ -431,11 +433,11 @@
 
 @keyframes floatIndicator {
     0%, 100% {
-        transform: translateY(0px) scale(1);
-        opacity: 0.9;
+        transform: scale(0.9);
+        opacity: 0.8;
     }
     50% {
-        transform: translateY(-3px) scale(1.1);
+        transform: scale(1.3);
         opacity: 1;
     }
 }

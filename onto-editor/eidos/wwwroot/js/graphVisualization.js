@@ -353,6 +353,10 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
 
     // Add hover highlighting to show relationships
     // Wrap handlers in try-catch to prevent errors during graph transitions
+    let hoverTimeout = null;
+    let hideTimeout = null;
+    let editButton = null;
+
     cy.on('mouseover', 'node', function (event) {
         try {
             const node = event.target;
@@ -380,6 +384,107 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
             node.removeClass('faded').addClass('highlighted');
             connectedNodes.removeClass('faded').addClass('highlighted');
             connectedEdges.removeClass('faded').addClass('highlighted');
+
+            // Clear any existing timeouts
+            if (hoverTimeout) {
+                clearTimeout(hoverTimeout);
+            }
+            if (hideTimeout) {
+                clearTimeout(hideTimeout);
+                hideTimeout = null;
+            }
+
+            // Set a timeout to show the Edit button after 600ms
+            hoverTimeout = setTimeout(() => {
+                try {
+                    // Don't show edit button for virtual/linked nodes
+                    if (data.nodeType === 'virtual' || data.nodeType === 'individual') {
+                        return;
+                    }
+
+                    // Get node position on screen
+                    const nodePosition = node.renderedPosition();
+                    const nodeWidth = node.renderedWidth();
+
+                    // Remove any existing edit button
+                    if (editButton) {
+                        editButton.remove();
+                    }
+
+                    // Create edit button
+                    editButton = document.createElement('button');
+                    editButton.textContent = 'Edit';
+                    editButton.className = 'graph-node-edit-btn';
+                    editButton.style.position = 'absolute';
+                    editButton.style.left = (nodePosition.x - 25) + 'px';
+                    editButton.style.top = (nodePosition.y - nodeWidth / 2 - 35) + 'px';
+                    editButton.style.zIndex = '9999';
+                    editButton.style.padding = '4px 12px';
+                    editButton.style.backgroundColor = '#4A90E2';
+                    editButton.style.color = 'white';
+                    editButton.style.border = 'none';
+                    editButton.style.borderRadius = '4px';
+                    editButton.style.cursor = 'pointer';
+                    editButton.style.fontSize = '12px';
+                    editButton.style.fontWeight = 'bold';
+                    editButton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+                    editButton.style.transition = 'background-color 0.2s';
+                    editButton.style.pointerEvents = 'auto';
+
+                    // Keep button visible when hovering over it
+                    editButton.onmouseenter = () => {
+                        editButton.style.backgroundColor = '#357ABD';
+                        // Cancel hide timeout when mouse enters button
+                        if (hideTimeout) {
+                            clearTimeout(hideTimeout);
+                            hideTimeout = null;
+                        }
+                    };
+                    editButton.onmouseleave = () => {
+                        editButton.style.backgroundColor = '#4A90E2';
+                        // Hide button when mouse leaves it
+                        if (editButton) {
+                            editButton.remove();
+                            editButton = null;
+                        }
+                    };
+
+                    // Handle mousedown on button area - if it's not directly on the button,
+                    // hide it to allow drag to work
+                    editButton.onmousedown = (e) => {
+                        // Only handle click events, not drag attempts
+                        // The button click will be handled by onclick
+                        e.stopPropagation();
+                    };
+
+                    // Handle click to open edit dialog
+                    editButton.onclick = (e) => {
+                        e.stopPropagation();
+
+                        // Parse the numeric concept ID from the string (e.g., "concept-7" -> 7)
+                        const conceptIdStr = data.id;
+                        const conceptId = parseInt(conceptIdStr.replace('concept-', ''), 10);
+
+                        console.log('Edit button clicked for concept:', conceptIdStr, '-> ID:', conceptId);
+
+                        // Call the .NET helper to open the edit dialog
+                        if (dotNetHelper && !isNaN(conceptId)) {
+                            dotNetHelper.invokeMethodAsync('OnNodeEditClick', conceptId);
+                        }
+
+                        // Remove the button after click
+                        if (editButton) {
+                            editButton.remove();
+                            editButton = null;
+                        }
+                    };
+
+                    container.appendChild(editButton);
+                } catch (err) {
+                    console.error('Error showing edit button:', err);
+                }
+            }, 600);
+
         } catch (e) {
             // Silently ignore errors during graph transitions
         }
@@ -387,8 +492,25 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
 
     cy.on('mouseout', 'node', function (event) {
         try {
-            // Remove all highlighting and fading
-            cy.elements().removeClass('faded highlighted');
+            // Clear hover timeout
+            if (hoverTimeout) {
+                clearTimeout(hoverTimeout);
+                hoverTimeout = null;
+            }
+
+            // Delay removal of edit button and highlighting to allow moving to button
+            hideTimeout = setTimeout(() => {
+                // Remove edit button if not hovering over it
+                if (editButton && !editButton.matches(':hover')) {
+                    editButton.remove();
+                    editButton = null;
+                }
+
+                // Remove all highlighting and fading
+                cy.elements().removeClass('faded highlighted');
+                hideTimeout = null;
+            }, 700);
+
         } catch (e) {
             // Silently ignore errors during graph transitions
         }
@@ -457,6 +579,36 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
             console.error('❌ dotNetHelper is not available!');
         }
     };
+
+    // Listen for mousedown to hide edit button when user tries to grab/drag
+    cy.on('mousedown', 'node', function(event) {
+        // Clear any hover timeout
+        if (hoverTimeout) {
+            clearTimeout(hoverTimeout);
+            hoverTimeout = null;
+        }
+
+        // Immediately hide the edit button when user clicks/grabs node
+        if (editButton) {
+            editButton.remove();
+            editButton = null;
+        }
+    });
+
+    // Listen for drag event to hide edit button when user starts dragging
+    cy.on('drag', 'node', function(event) {
+        // Clear any hover timeout
+        if (hoverTimeout) {
+            clearTimeout(hoverTimeout);
+            hoverTimeout = null;
+        }
+
+        // Immediately hide the edit button when dragging starts
+        if (editButton) {
+            editButton.remove();
+            editButton = null;
+        }
+    });
 
     // Listen for dragfree event (fired when user releases node after dragging)
     cy.on('dragfree', 'node', function(event) {

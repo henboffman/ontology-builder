@@ -127,6 +127,7 @@ public class UserPreferencesService : IUserPreferencesService
         existing.ShowEdgeLabels = preferences.ShowEdgeLabels;
         existing.AutoColorByCategory = preferences.AutoColorByCategory;
         existing.TextSizeScale = preferences.TextSizeScale;
+        existing.GroupingRadius = preferences.GroupingRadius;
         existing.Theme = preferences.Theme;
         existing.LayoutStyle = preferences.LayoutStyle;
         existing.ShowKeyboardShortcuts = preferences.ShowKeyboardShortcuts;
@@ -182,6 +183,7 @@ public class UserPreferencesService : IUserPreferencesService
         preferences.ShowEdgeLabels = defaults.ShowEdgeLabels;
         preferences.AutoColorByCategory = defaults.AutoColorByCategory;
         preferences.TextSizeScale = defaults.TextSizeScale;
+        preferences.GroupingRadius = defaults.GroupingRadius;
         preferences.Theme = defaults.Theme;
         preferences.LayoutStyle = defaults.LayoutStyle;
         preferences.ShowKeyboardShortcuts = defaults.ShowKeyboardShortcuts;
@@ -275,6 +277,40 @@ public class UserPreferencesService : IUserPreferencesService
         await context.SaveChangesAsync();
 
         _logger.LogInformation("Updated ShowKeyboardShortcuts to {ShowShortcuts} for user {UserId}", showShortcuts, userId);
+
+        // Invalidate cache
+        _cache.Remove($"{CACHE_KEY_PREFIX}{userId}");
+    }
+
+    public async Task UpdateShowGlobalSearchBannerAsync(string userId, bool showBanner)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        var preferences = await context.UserPreferences
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (preferences == null)
+        {
+            // Create new preferences with the setting
+            preferences = new UserPreferences
+            {
+                UserId = userId,
+                ShowGlobalSearchBanner = showBanner,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            context.UserPreferences.Add(preferences);
+        }
+        else
+        {
+            preferences.ShowGlobalSearchBanner = showBanner;
+            preferences.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await context.SaveChangesAsync();
+
+        _logger.LogInformation("Updated ShowGlobalSearchBanner to {ShowBanner} for user {UserId}", showBanner, userId);
 
         // Invalidate cache
         _cache.Remove($"{CACHE_KEY_PREFIX}{userId}");

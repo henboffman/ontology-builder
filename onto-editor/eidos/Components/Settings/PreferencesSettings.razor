@@ -134,6 +134,21 @@ else
                 <small class="text-muted">Adjust the size of text labels on nodes and edges</small>
             </div>
 
+            <div class="mb-3">
+                <label class="form-label">Grouping Radius: <strong>@preferences.GroupingRadius px</strong></label>
+                <input type="range" class="form-range" min="25" max="200" step="5"
+                       value="@preferences.GroupingRadius"
+                       @oninput="@((e) => UpdateGroupingRadiusPreview(e))" />
+                <small class="text-muted">Distance nodes must be within to group when dragging (smaller = more precise)</small>
+                <div class="mt-2 position-relative" style="height: 120px; background: var(--bs-secondary-bg); border-radius: 8px; overflow: hidden;">
+                    <svg width="100%" height="120" style="position: absolute; top: 0; left: 0;">
+                        <circle cx="60" cy="60" r="20" fill="var(--bs-primary)" opacity="0.8" stroke="white" stroke-width="2" />
+                        <circle cx="60" cy="60" r="@previewRadius" fill="none" stroke="var(--bs-primary)" stroke-width="2" stroke-dasharray="5,5" opacity="0.5" />
+                        <text x="70" y="15" fill="var(--bs-body-color)" font-size="11" font-family="monospace">@preferences.GroupingRadius px</text>
+                    </svg>
+                </div>
+            </div>
+
             <div class="mb-3 form-check">
                 <input class="form-check-input" type="checkbox" id="showEdgeLabels" @bind="preferences.ShowEdgeLabels" />
                 <label class="form-check-label" for="showEdgeLabels">
@@ -176,6 +191,7 @@ else
 
     private UserPreferences? preferences;
     private bool isSaving = false;
+    private double previewRadius = 50; // Default preview radius (half of 100px default for better display)
 
     protected override async Task OnInitializedAsync()
     {
@@ -187,10 +203,23 @@ else
         try
         {
             preferences = await PreferencesService.GetCurrentUserPreferencesAsync();
+            // Initialize preview radius (scale to half for better visual display in the preview)
+            previewRadius = preferences.GroupingRadius / 2.0;
         }
         catch (Exception ex)
         {
             ToastService.ShowError($"Failed to load preferences: {ex.Message}");
+        }
+    }
+
+    private void UpdateGroupingRadiusPreview(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int value))
+        {
+            // Update the actual preference value
+            preferences.GroupingRadius = value;
+            // Update the preview radius (scale to half for better display)
+            previewRadius = value / 2.0;
         }
     }
 

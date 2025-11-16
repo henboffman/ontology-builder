@@ -126,6 +126,12 @@ public class UserPreferences
     /// </summary>
     public int TextSizeScale { get; set; } = 100;
 
+    /// <summary>
+    /// Grouping radius in pixels for drag-to-group nodes functionality (25-200, default 100)
+    /// Smaller values require nodes to be closer together to group, larger values make grouping easier
+    /// </summary>
+    public int GroupingRadius { get; set; } = 100;
+
     // === Theme Preferences ===
 
     /// <summary>
@@ -146,6 +152,11 @@ public class UserPreferences
     /// Whether to show the keyboard shortcuts banner
     /// </summary>
     public bool ShowKeyboardShortcuts { get; set; } = true;
+
+    /// <summary>
+    /// Whether to show the global search banner (Cmd+K tip)
+    /// </summary>
+    public bool ShowGlobalSearchBanner { get; set; } = true;
 
     // === Metadata ===
 

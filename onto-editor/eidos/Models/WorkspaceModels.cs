@@ -74,6 +74,11 @@ namespace Eidos.Models
         public ICollection<WorkspaceUserAccess> UserAccesses { get; set; } = new List<WorkspaceUserAccess>();
 
         /// <summary>
+        /// Tags defined in this workspace (for organizing notes)
+        /// </summary>
+        public ICollection<Tag> Tags { get; set; } = new List<Tag>();
+
+        /// <summary>
         /// Denormalized stats for performance
         /// </summary>
         public int NoteCount { get; set; } = 0;
@@ -157,6 +162,39 @@ namespace Eidos.Models
         /// Only applicable if IsConceptNote=true
         /// </summary>
         public ICollection<NoteLink> IncomingLinks { get; set; } = new List<NoteLink>();
+
+        /// <summary>
+        /// Tag assignments for this note (many-to-many via NoteTagAssignment)
+        /// </summary>
+        public ICollection<NoteTagAssignment> TagAssignments { get; set; } = new List<NoteTagAssignment>();
+
+        // === Import Metadata (for markdown file imports) ===
+
+        /// <summary>
+        /// Original file path if this note was imported from a markdown file
+        /// </summary>
+        [StringLength(500)]
+        public string? ImportedFrom { get; set; }
+
+        /// <summary>
+        /// When this note was imported (null if not imported)
+        /// </summary>
+        public DateTime? ImportedAt { get; set; }
+
+        /// <summary>
+        /// Original YAML frontmatter from imported file (for re-export)
+        /// </summary>
+        public string? Frontmatter { get; set; }
+
+        /// <summary>
+        /// Last auto-save timestamp (for auto-save feature)
+        /// </summary>
+        public DateTime? LastAutoSaveAt { get; set; }
+
+        /// <summary>
+        /// Whether auto-save is enabled for this note (user preference per note)
+        /// </summary>
+        public bool AutoSaveEnabled { get; set; } = true;
     }
 
     /// <summary>

@@ -11,6 +11,7 @@
           OnColorModeChanged="@HandleColorModeChanged"
           OnNodeCtrlClicked="@HandleNodeCtrlClick"
           OnNodeClicked="@HandleNodeClick"
+          OnNodeEditClicked="@HandleNodeEditClick"
           OnEdgeClicked="@HandleEdgeClick"
           OnIndividualClicked="@HandleIndividualClick"
           OnOntologyLinkClicked="@HandleOntologyLinkClick"
@@ -55,6 +56,13 @@
     /// </summary>
     [Parameter]
     public EventCallback<int> OnNodeClick { get; set; }
+
+    /// <summary>
+    /// Callback invoked when the edit button on a node is clicked.
+    /// Passes the concept ID.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnNodeEditClick { get; set; }
 
     /// <summary>
     /// Callback invoked when a node is Ctrl+clicked in the graph for quick relationship creation.
@@ -183,6 +191,16 @@
     {
         // Let the parent handle the selection to avoid double-setting state
         await OnNodeClick.InvokeAsync(conceptId);
+    }
+
+    /// <summary>
+    /// Handles edit button clicks on nodes.
+    /// Invokes the parent callback to handle concept editing.
+    /// </summary>
+    /// <param name="conceptId">The ID of the concept to edit.</param>
+    private async Task HandleNodeEditClick(int conceptId)
+    {
+        await OnNodeEditClick.InvokeAsync(conceptId);
     }
 
     /// <summary>

@@ -132,6 +132,31 @@
                             }
                         </div>
                     }
+
+                    @if (results.Notes.Any())
+                    {
+                        <div class="global-search-group">
+                            <div class="global-search-group-header">
+                                <i class="bi bi-journal-text"></i> Notes (@results.Notes.Count)
+                            </div>
+                            @foreach (var result in results.Notes)
+                            {
+                                var index = allResults.IndexOf(result);
+                                <div class="global-search-result @(selectedIndex == index ? "selected" : "")"
+                                     @onclick="() => NavigateToResult(result)"
+                                     @onmouseenter="() => selectedIndex = index">
+                                    <div class="global-search-result-icon">
+                                        <i class="@result.Icon"></i>
+                                    </div>
+                                    <div class="global-search-result-content">
+                                        <div class="global-search-result-title">@result.Title</div>
+                                        <div class="global-search-result-subtitle">@result.Subtitle</div>
+                                    </div>
+                                    <div class="global-search-result-badge">@result.MatchedText</div>
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
             }
             else if (!string.IsNullOrWhiteSpace(searchQuery))
@@ -151,6 +176,7 @@
                         <ul class="list-unstyled small text-start text-muted">
                             <li><i class="bi bi-diagram-3"></i> Concepts & Relationships</li>
                             <li><i class="bi bi-person-fill"></i> Individuals</li>
+                            <li><i class="bi bi-journal-text"></i> Notes</li>
                             <li><i class="bi bi-lightning-charge"></i> Actions (add, export, import, settings...)</li>
                         </ul>
                         <p class="small text-muted mt-3 mb-0">
@@ -174,6 +200,9 @@
 @code {
     [CascadingParameter(Name = "Ontology")]
     public Models.Ontology? Ontology { get; set; }
+
+    [Parameter]
+    public List<Models.Note>? Notes { get; set; }
 
     [Parameter]
     public EventCallback<SearchResult> OnResultSelected { get; set; }
@@ -261,7 +290,7 @@
             return;
         }
 
-        results = SearchService.Search(Ontology, searchQuery);
+        results = SearchService.Search(Ontology, searchQuery, notes: Notes);
         allResults = results.All();
         selectedIndex = 0;
         StateHasChanged();

@@ -87,6 +87,11 @@ else
                                 OnDismissTemporarily="@DismissKeyboardShortcutsTemporarily"
                                 OnDismissPermanently="@DismissKeyboardShortcutsPermanently" />
 
+        <!-- Global Search Banner -->
+        <GlobalSearchBanner IsVisible="@showGlobalSearchBanner"
+                           OnDismissTemporarily="@DismissGlobalSearchBannerTemporarily"
+                           OnDismissPermanently="@DismissGlobalSearchBannerPermanently" />
+
         <!-- Header -->
         <OntologyHeader Name="@ontology.Name"
                        Description="@ontology.Description"
@@ -217,6 +222,7 @@ else
                                        OnAddConceptClick="@GetConditionalCallback(CanAdd(), ShowAddConceptDialog)"
                                        OnAddRelationshipClick="@GetConditionalCallback(CanAdd(), ShowAddRelationshipDialog)"
                                        OnNodeClick="@HandleNodeClick"
+                                       OnNodeEditClick="@HandleNodeEditClick"
                                        OnNodeCtrlClick="@GetConditionalCallback(CanAdd(), HandleNodeCtrlClick)"
                                        OnEdgeClick="@HandleEdgeClick"
                                        OnIndividualClick="@HandleIndividualClick"
@@ -681,6 +687,7 @@ else
     <!-- Global Search -->
     <CascadingValue Name="Ontology" Value="@ontology">
         <GlobalSearch @ref="globalSearch"
+                     Notes="@workspaceNotes"
                      OnResultSelected="@HandleSearchResultSelected"
                      OnActionExecuted="@HandleActionExecuted"
                      OnHide="@RestoreFocusAfterSearch" />
@@ -872,10 +879,14 @@ else
 
     // Keyboard shortcuts banner
     private bool showKeyboardShortcutsBanner = true;
+    private bool showGlobalSearchBanner = true;
 
     // What's New feature
     private WhatsNewDto? whatsNew = null;
     private string currentSessionId = Guid.NewGuid().ToString(); // Generate unique session ID for this browser session
+
+    // Notes for search
+    private List<Note> workspaceNotes = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -894,6 +905,7 @@ else
             {
                 var preferences = await PreferencesService.GetPreferencesAsync(currentUserId);
                 showKeyboardShortcutsBanner = preferences.ShowKeyboardShortcuts;
+                showGlobalSearchBanner = preferences.ShowGlobalSearchBanner;
             }
 
             ontology = await OntologyService.GetOntologyAsync(Id);
@@ -902,6 +914,29 @@ else
             {
                 loadError = $"Ontology with ID {Id} was not found. You may not have permission to access this ontology, or it may have been deleted.";
                 return;
+            }
+
+            // Load workspace notes for search (with content for searchability)
+            try
+            {
+                Logger.LogInformation("[OnParametersSetAsync] Fetching workspace for ontology {OntologyId}", Id);
+                var workspace = await WorkspaceService.EnsureWorkspaceForOntologyAsync(Id);
+                if (workspace != null)
+                {
+                    Logger.LogInformation("[OnParametersSetAsync] Workspace found: {WorkspaceId}, loading notes with content", workspace.Id);
+                    workspaceNotes = await NoteRepository.GetByWorkspaceIdWithContentAsync(workspace.Id);
+                    Logger.LogInformation("[OnParametersSetAsync] Loaded {Count} workspace notes for search in ontology {OntologyId}", workspaceNotes.Count, Id);
+                }
+                else
+                {
+                    Logger.LogWarning("[OnParametersSetAsync] Workspace is null for ontology {OntologyId}", Id);
+                    workspaceNotes = new List<Note>();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "[OnParametersSetAsync] Failed to load workspace notes for ontology {OntologyId}", Id);
+                workspaceNotes = new List<Note>();
             }
 
             // IMPORTANT: Check share permissions FIRST before regular permissions
@@ -987,7 +1022,31 @@ else
 
     private async Task LoadOntology()
     {
+        Logger.LogInformation("[LoadOntology] Starting LoadOntology for ontology {OntologyId}", Id);
         ontology = await OntologyService.GetOntologyAsync(Id);
+
+        // Load workspace notes for search (with content for searchability)
+        try
+        {
+            Logger.LogInformation("[LoadOntology] Fetching workspace for ontology {OntologyId}", Id);
+            var workspace = await WorkspaceService.EnsureWorkspaceForOntologyAsync(Id);
+            if (workspace != null)
+            {
+                Logger.LogInformation("[LoadOntology] Workspace found: {WorkspaceId}, loading notes with content", workspace.Id);
+                workspaceNotes = await NoteRepository.GetByWorkspaceIdWithContentAsync(workspace.Id);
+                Logger.LogInformation("[LoadOntology] Loaded {Count} workspace notes for search in ontology {OntologyId}", workspaceNotes.Count, Id);
+            }
+            else
+            {
+                Logger.LogWarning("[LoadOntology] Workspace is null for ontology {OntologyId}", Id);
+                workspaceNotes = new List<Note>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[LoadOntology] Failed to load workspace notes for ontology {OntologyId}", Id);
+            workspaceNotes = new List<Note>();
+        }
 
         // Reload merge request count
         await LoadPendingMergeRequestCount();
@@ -1146,6 +1205,20 @@ else
                     viewMode = ViewMode.List;
                     selectedIndividual = ontology?.Individuals.FirstOrDefault(i => i.Id == result.Id);
                     ToastService.ShowSuccess($"Navigated to individual: {result.Title}");
+                    break;
+
+                case "Note":
+                    // Navigate to workspace view with the note selected
+                    var note = workspaceNotes.FirstOrDefault(n => n.Id == result.Id);
+                    if (note != null)
+                    {
+                        Navigation.NavigateTo($"/workspace/{note.WorkspaceId}?noteId={note.Id}");
+                        ToastService.ShowSuccess($"Opening note: {result.Title}");
+                    }
+                    else
+                    {
+                        ToastService.ShowWarning($"Note not found: {result.Title}");
+                    }
                     break;
             }
 
@@ -2303,6 +2376,15 @@ else
         if (concept != null)
         {
             await SelectConcept(concept);
+        }
+    }
+
+    private void HandleNodeEditClick(int conceptId)
+    {
+        var concept = ontology?.Concepts.FirstOrDefault(c => c.Id == conceptId);
+        if (concept != null)
+        {
+            EditConcept(concept);
         }
     }
 
@@ -3608,6 +3690,30 @@ else
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Failed to save keyboard shortcuts preference for user {UserId}", currentUserId);
+                ToastService.ShowError("Failed to save preference");
+            }
+        }
+    }
+
+    private void DismissGlobalSearchBannerTemporarily()
+    {
+        showGlobalSearchBanner = false;
+    }
+
+    private async Task DismissGlobalSearchBannerPermanently()
+    {
+        showGlobalSearchBanner = false;
+
+        if (!string.IsNullOrEmpty(currentUserId))
+        {
+            try
+            {
+                await PreferencesService.UpdateShowGlobalSearchBannerAsync(currentUserId, false);
+                ToastService.ShowSuccess("Global search banner will no longer be shown");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to save global search banner preference for user {UserId}", currentUserId);
                 ToastService.ShowError("Failed to save preference");
             }
         }

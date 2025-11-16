@@ -89,6 +89,7 @@
                                       ShowIndividuals="@showIndividuals"
                                       OnNodeCtrlClicked="@OnNodeCtrlClicked"
                                       OnNodeClicked="@OnNodeClicked"
+                                      OnNodeEditClicked="@OnNodeEditClicked"
                                       OnEdgeClicked="@OnEdgeClicked"
                                       OnIndividualClicked="@OnIndividualClicked"
                                       OnOntologyLinkClicked="@OnOntologyLinkClicked"
@@ -148,6 +149,9 @@
 
     [Parameter]
     public EventCallback<int> OnNodeClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnNodeEditClicked { get; set; }
 
     [Parameter]
     public EventCallback<int> OnEdgeClicked { get; set; }

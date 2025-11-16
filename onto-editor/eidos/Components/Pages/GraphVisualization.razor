@@ -72,6 +72,9 @@
     public EventCallback<int> OnNodeClicked { get; set; }
 
     [Parameter]
+    public EventCallback<int> OnNodeEditClicked { get; set; }
+
+    [Parameter]
     public EventCallback<int> OnEdgeClicked { get; set; }
 
     [Parameter]
@@ -633,6 +636,23 @@
     }
 
     [JSInvokable]
+    public async Task OnNodeEditClick(int conceptId)
+    {
+        // If parent hasn't wired up the event, handle it here
+        if (OnNodeEditClicked.HasDelegate)
+        {
+            await OnNodeEditClicked.InvokeAsync(conceptId);
+        }
+        else
+        {
+            // Fallback: Show a toast indicating the feature is working
+            // but the parent component needs to wire up the edit handler
+            ToastService.ShowInfo($"Edit concept {conceptId} - Parent component needs to wire up OnNodeEditClicked event");
+            Logger.LogWarning("OnNodeEditClicked event not handled by parent component for concept {ConceptId}", conceptId);
+        }
+    }
+
+    [JSInvokable]
     public async Task OnEdgeClick(int relationshipId)
     {
         await OnEdgeClicked.InvokeAsync(relationshipId);
@@ -815,6 +835,10 @@
             // Load existing groups for this ontology and user
             var groups = await ConceptGroupService.GetGroupsForOntologyAsync(Ontology.Id, userId);
 
+            // Get user preferences for grouping radius
+            var preferences = await PreferencesService.GetCurrentUserPreferencesAsync();
+            var groupingRadius = preferences?.GroupingRadius ?? 100; // Default to 100px if not set
+
             // Convert groups to JavaScript-friendly format
             var groupsData = groups.Select(g => new
             {
@@ -829,7 +853,7 @@
 
             // Initialize grouping in JavaScript
             var dotNetHelper = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("initializeConceptGrouping", GraphId, null, dotNetHelper, groupsData);
+            await JS.InvokeVoidAsync("initializeConceptGrouping", GraphId, null, dotNetHelper, groupsData, groupingRadius);
 
             Logger.LogInformation("Initialized concept grouping for ontology {OntologyId} with {GroupCount} groups",
                 Ontology.Id, groups.Count);

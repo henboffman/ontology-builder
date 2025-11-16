@@ -51,6 +51,47 @@ There are two types of notes in Eidos:
 - Also created when adding concepts via the graph view
 - Marked with a "Concept" badge
 
+### Importing Markdown Files
+
+You can import existing markdown files (including those from Obsidian or other tools) into your workspace:
+
+1. Click the upload icon (📄↑) in the note explorer toolbar
+2. Select one or more `.md` or `.markdown` files (up to 50 files, 5MB each)
+3. Review the selected files
+4. Click "Import" to add them to your workspace
+
+**YAML Frontmatter Support:**
+
+Eidos automatically parses YAML frontmatter in your markdown files to extract metadata:
+
+```markdown
+---
+title: My Imported Note
+tags: [knowledge-graphs, semantic-web]
+created: 2025-11-15
+---
+
+# Note Content
+Your markdown content here...
+```
+
+**Supported Frontmatter Fields:**
+- `title:` - Note title (defaults to filename if not present)
+- `tags:` - Tags in array format `[tag1, tag2]` or comma-separated `"tag1, tag2"`
+- Other fields are preserved but currently not used
+
+**What Happens During Import:**
+- Notes are created with titles from frontmatter or filenames
+- Tags are automatically created if they don't exist
+- Tags are assigned to the imported notes
+- Import results show success/failure for each file
+- Your note list and tag list refresh automatically
+
+**Tips:**
+- Use consistent tag naming across files for better organization
+- The frontmatter block must be delimited by `---` at the start and end
+- Files without frontmatter are imported with the filename as the title
+
 ### Writing in Markdown
 
 Notes support full markdown syntax including:

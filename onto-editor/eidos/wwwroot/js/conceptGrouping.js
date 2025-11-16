@@ -10,9 +10,13 @@ const groupingState = new Map();
  * @param {object} cyOrNull - Cytoscape instance (optional, will be found by graphId if null)
  * @param {object} dotNetHelper - Blazor interop object
  * @param {array} groups - Existing groups from database
+ * @param {number} groupingRadius - Radius in pixels for grouping proximity (default: 100)
  */
-window.initializeConceptGrouping = function(graphId, cyOrNull, dotNetHelper, groups) {
-    console.log('🚀 initializeConceptGrouping called for', graphId, 'with', groups ? groups.length : 0, 'groups');
+window.initializeConceptGrouping = function(graphId, cyOrNull, dotNetHelper, groups, groupingRadius) {
+    // Default to 100px if not provided
+    const radius = groupingRadius || 100;
+
+    console.log('🚀 initializeConceptGrouping called for', graphId, 'with', groups ? groups.length : 0, 'groups', 'radius:', radius + 'px');
     console.log('   cyOrNull:', !!cyOrNull, 'window.cytoscapeInstances:', !!window.cytoscapeInstances);
 
     // Find Cytoscape instance if not provided
@@ -34,6 +38,7 @@ window.initializeConceptGrouping = function(graphId, cyOrNull, dotNetHelper, gro
         hoverTarget: null,
         groups: groups || [],
         maxDepth: 5,
+        groupingRadius: radius,      // Store the grouping radius for this graph
         dotNetHelper: dotNetHelper,  // Store the .NET reference for later use
         handlersInitialized: false   // Track if event handlers have been set up
     };
@@ -138,34 +143,58 @@ function addFloatingIndicators(cy, node, childCount) {
     const container = cy.container();
     const nodeId = node.id();
 
-    // Remove existing indicators for this node
-    const existingIndicators = container.querySelectorAll(`.group-indicator-container[data-node-id="${nodeId}"]`);
-    existingIndicators.forEach(ind => ind.remove());
+    console.log('🎨 Adding floating indicators for node', nodeId, 'with', childCount, 'children');
+
+    // Remove existing indicators for this node from the document
+    const existingIndicators = document.querySelectorAll(`.group-indicator-container[data-node-id="${nodeId}"]`);
+    existingIndicators.forEach(ind => {
+        console.log('   Removing existing indicator');
+        ind.remove();
+    });
 
     // Don't show indicators if there are no children
-    if (childCount === 0) return;
+    if (childCount === 0) {
+        console.log('   No children, skipping indicators');
+        return;
+    }
 
     // Limit to showing max 5 circles to avoid clutter
     const displayCount = Math.min(childCount, 5);
+    console.log('   Creating', displayCount, 'indicator circles');
 
-    // Create container for indicators
+    // Create container for indicators - append to the cy container's parent to avoid clipping
     const indicatorContainer = document.createElement('div');
     indicatorContainer.className = 'group-indicator-container';
     indicatorContainer.dataset.nodeId = nodeId;
+    indicatorContainer.style.position = 'absolute';
+    indicatorContainer.style.pointerEvents = 'none';
+    indicatorContainer.style.zIndex = '9999'; // Very high z-index to be above everything
+    indicatorContainer.style.top = '0';
+    indicatorContainer.style.left = '0';
+    indicatorContainer.style.width = '100%';
+    indicatorContainer.style.height = '100%';
+
+    // Append to container (not container's parent, but ensure it's visible)
     container.appendChild(indicatorContainer);
+
+    console.log('   Created indicator container:', indicatorContainer);
+    console.log('   Container parent:', container);
+    console.log('   Container dimensions:', container.getBoundingClientRect());
 
     // Create individual circle indicators positioned around the node
     for (let i = 0; i < displayCount; i++) {
         const indicator = document.createElement('div');
         indicator.className = 'group-indicator-circle';
         indicator.dataset.index = i;
+        indicator.style.position = 'absolute'; // Ensure absolute positioning
         indicatorContainer.appendChild(indicator);
+        console.log('   Created circle', i);
     }
 
     // Position indicators around the node
     updateIndicatorPositions(cy, node, indicatorContainer, displayCount);
 
-    // Update positions on pan/zoom
+    // Update positions on pan/zoom and also on node position changes
     const updateHandler = () => {
         const container = document.querySelector(`.group-indicator-container[data-node-id="${nodeId}"]`);
         if (container && node.length) {
@@ -175,9 +204,12 @@ function addFloatingIndicators(cy, node, childCount) {
 
     // Store handler for cleanup
     if (!node.data('indicatorUpdateHandler')) {
-        cy.on('pan zoom', updateHandler);
+        cy.on('pan zoom position', updateHandler); // Listen to position changes too
         node.data('indicatorUpdateHandler', updateHandler);
+        console.log('   Added pan/zoom/position handler');
     }
+
+    console.log('✅ Floating indicators added for', nodeId);
 }
 
 /**
@@ -186,23 +218,52 @@ function addFloatingIndicators(cy, node, childCount) {
 function updateIndicatorPositions(cy, node, container, count) {
     const renderedPos = node.renderedPosition();
     const nodeWidth = node.renderedWidth();
-    const radius = nodeWidth / 2 + 20; // Orbit 20px outside the node
+    const radius = nodeWidth / 2 + 15; // Closer orbit - just outside the node border
 
     const circles = container.querySelectorAll('.group-indicator-circle');
 
+    // Get the node's background color
+    const nodeColor = node.style('background-color') || '#0d6efd';
+
+    console.log('📍 Updating indicator positions:', {
+        nodeId: node.id(),
+        renderedPos,
+        nodeWidth,
+        radius,
+        nodeColor,
+        circleCount: circles.length
+    });
+
     circles.forEach((circle, i) => {
         // Calculate angle for this indicator (spread them around the node)
-        // Start from top-right and go clockwise
-        const angleOffset = 45; // Start angle in degrees
-        const angleSpace = count > 1 ? 90 / (count - 1) : 0; // Spread over 90 degrees
+        // Start from top and go clockwise, full 360 degrees
+        const angleOffset = -90; // Start at top (12 o'clock position)
+        const angleSpace = 360 / count; // Evenly distribute around full circle
         const angle = (angleOffset + (i * angleSpace)) * (Math.PI / 180);
 
         // Calculate position
         const x = renderedPos.x + Math.cos(angle) * radius;
         const y = renderedPos.y + Math.sin(angle) * radius;
 
+        // Set position and ensure visibility
         circle.style.left = (x - 5) + 'px'; // Center the 10px circle
         circle.style.top = (y - 5) + 'px';
+        circle.style.display = 'block';
+        circle.style.visibility = 'visible';
+        circle.style.opacity = '1';
+
+        // Match the node's color with a slightly lighter/more saturated version
+        circle.style.width = '10px';
+        circle.style.height = '10px';
+        circle.style.backgroundColor = nodeColor;
+        circle.style.border = '2px solid rgba(255, 255, 255, 0.9)';
+        circle.style.boxShadow = `0 2px 6px rgba(0, 0, 0, 0.3), 0 0 0 2px ${nodeColor}40, 0 0 10px ${nodeColor}60`;
+        circle.style.zIndex = '9999';
+
+        // Add orbit animation delay based on index
+        circle.style.animationDelay = (i * 0.15) + 's';
+
+        console.log(`   Circle ${i}: angle=${angle.toFixed(2)}, pos=(${x.toFixed(1)}, ${y.toFixed(1)})`);
     });
 }
 
@@ -331,7 +392,7 @@ function setupDragHandlers(graphId, cy, dotNetHelper) {
                     Math.pow(n.position().y - position.y, 2)
                 );
 
-                return dist < 100; // Within 100px = nearby (matches visual preview better)
+                return dist < state.groupingRadius; // Within configured radius = nearby
             });
 
             // Clear previous hover effects
@@ -729,16 +790,19 @@ window.expandConceptGroup = function(graphId, groupId) {
     const collapsedRelationships = group.collapsedRelationships ?
         JSON.parse(group.collapsedRelationships) : [];
 
-    // Remove floating indicators
-    const container = cy.container();
-    const indicators = container.querySelectorAll(`.group-indicator-container[data-node-id="${parentNode.id()}"]`);
-    indicators.forEach(ind => ind.remove());
+    // Remove floating indicators from anywhere in the document
+    const indicators = document.querySelectorAll(`.group-indicator-container[data-node-id="${parentNode.id()}"]`);
+    indicators.forEach(ind => {
+        console.log('🗑️ Removing indicator container for', parentNode.id());
+        ind.remove();
+    });
 
     // Remove event handler for indicator updates
     const updateHandler = parentNode.data('indicatorUpdateHandler');
     if (updateHandler) {
-        cy.off('pan zoom', updateHandler);
+        cy.off('pan zoom position', updateHandler);
         parentNode.removeData('indicatorUpdateHandler');
+        console.log('🗑️ Removed update handler for', parentNode.id());
     }
 
     // Remove grouped class from parent
@@ -756,11 +820,75 @@ window.expandConceptGroup = function(graphId, groupId) {
     });
 
     // Show child nodes and restore their edges
-    childIds.forEach(childId => {
+    // Position them intelligently to avoid overlaps with other nodes
+    const parentPos = parentNode.position();
+    const spawnRadius = 150; // Distance from parent to spawn children (px)
+    const minNodeDistance = 80; // Minimum distance from other nodes
+
+    // Get all other visible nodes to avoid
+    const otherNodes = cy.nodes().filter(n =>
+        n.id() !== parentNode.id() &&
+        !childIds.includes(parseInt(n.id().replace('concept-', ''))) &&
+        n.visible()
+    );
+
+    childIds.forEach((childId, index) => {
         const childNode = cy.getElementById('concept-' + childId);
         if (childNode.length) {
             childNode.removeClass('grouped-hidden');
             childNode.style('visibility', 'visible');
+
+            // Find the best position for this child node
+            const angleStep = (2 * Math.PI) / childIds.length;
+            let bestAngle = index * angleStep;
+            let bestPos = {
+                x: parentPos.x + Math.cos(bestAngle) * spawnRadius,
+                y: parentPos.y + Math.sin(bestAngle) * spawnRadius
+            };
+            let bestScore = -Infinity;
+
+            // Try different angles to find the position with least overlap
+            for (let angleOffset = 0; angleOffset < 2 * Math.PI; angleOffset += Math.PI / 8) {
+                const testAngle = bestAngle + angleOffset;
+                const testPos = {
+                    x: parentPos.x + Math.cos(testAngle) * spawnRadius,
+                    y: parentPos.y + Math.sin(testAngle) * spawnRadius
+                };
+
+                // Calculate score based on distance to other nodes (higher is better)
+                let score = 0;
+                let tooClose = false;
+
+                otherNodes.forEach(otherNode => {
+                    const otherPos = otherNode.position();
+                    const dist = Math.sqrt(
+                        Math.pow(testPos.x - otherPos.x, 2) +
+                        Math.pow(testPos.y - otherPos.y, 2)
+                    );
+
+                    if (dist < minNodeDistance) {
+                        tooClose = true;
+                        score -= 1000; // Heavy penalty for being too close
+                    } else {
+                        score += dist; // Reward for being far away
+                    }
+                });
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestPos = testPos;
+                }
+            }
+
+            console.log(`📍 Positioning child ${childId} at (${bestPos.x.toFixed(1)}, ${bestPos.y.toFixed(1)}) with score ${bestScore.toFixed(1)}`);
+
+            // Animate the node to its new position
+            childNode.animate({
+                position: { x: bestPos.x, y: bestPos.y }
+            }, {
+                duration: 400,
+                easing: 'ease-out'
+            });
 
             // Restore ALL edges connected to this child node
             const connectedEdges = childNode.connectedEdges();
@@ -838,8 +966,22 @@ window.updateConceptGroups = function(graphId, groups) {
 
     console.log('🧹 Clearing existing group styles...');
 
-    // Clear all existing group styles
+    // Clear all existing group styles and remove indicators
     cy.nodes('.grouped').forEach(node => {
+        // Remove floating indicators for this node
+        const indicators = document.querySelectorAll(`.group-indicator-container[data-node-id="${node.id()}"]`);
+        indicators.forEach(ind => {
+            console.log('🗑️ Removing indicator container for', node.id());
+            ind.remove();
+        });
+
+        // Remove event handler for indicator updates
+        const updateHandler = node.data('indicatorUpdateHandler');
+        if (updateHandler) {
+            cy.off('pan zoom position', updateHandler);
+            node.removeData('indicatorUpdateHandler');
+        }
+
         node.removeClass('grouped');
         node.removeData('groupedChildren');
         node.removeData('groupCount');
@@ -847,7 +989,85 @@ window.updateConceptGroups = function(graphId, groups) {
         node.removeData('collapsedRelationships');
     });
 
-    cy.nodes('.grouped-hidden').removeClass('grouped-hidden').style('visibility', 'visible');
+    // Show previously hidden nodes and position them intelligently
+    const hiddenNodes = cy.nodes('.grouped-hidden');
+
+    hiddenNodes.forEach(hiddenNode => {
+        hiddenNode.removeClass('grouped-hidden').style('visibility', 'visible');
+
+        // Find the parent node (the grouped node this was hidden under)
+        // We need to position this node away from others
+        const connectedNodes = hiddenNode.connectedEdges().connectedNodes();
+        let parentNode = null;
+
+        // Try to find a parent that was recently ungrouped
+        connectedNodes.forEach(node => {
+            if (!node.hasClass('grouped-hidden') && node.visible()) {
+                parentNode = node;
+            }
+        });
+
+        if (!parentNode && connectedNodes.length > 0) {
+            parentNode = connectedNodes[0];
+        }
+
+        if (parentNode) {
+            const parentPos = parentNode.position();
+            const spawnRadius = 150;
+            const minNodeDistance = 80;
+
+            // Get all visible nodes to avoid
+            const otherNodes = cy.nodes().filter(n =>
+                n.id() !== hiddenNode.id() &&
+                n.id() !== parentNode.id() &&
+                n.visible()
+            );
+
+            let bestPos = null;
+            let bestScore = -Infinity;
+
+            // Try 16 different angles around the parent
+            for (let i = 0; i < 16; i++) {
+                const angle = (i / 16) * 2 * Math.PI;
+                const testPos = {
+                    x: parentPos.x + Math.cos(angle) * spawnRadius,
+                    y: parentPos.y + Math.sin(angle) * spawnRadius
+                };
+
+                let score = 0;
+
+                otherNodes.forEach(otherNode => {
+                    const otherPos = otherNode.position();
+                    const dist = Math.sqrt(
+                        Math.pow(testPos.x - otherPos.x, 2) +
+                        Math.pow(testPos.y - otherPos.y, 2)
+                    );
+
+                    if (dist < minNodeDistance) {
+                        score -= 1000;
+                    } else {
+                        score += dist;
+                    }
+                });
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestPos = testPos;
+                }
+            }
+
+            if (bestPos) {
+                console.log(`📍 Repositioning ${hiddenNode.id()} to (${bestPos.x.toFixed(1)}, ${bestPos.y.toFixed(1)}) with score ${bestScore.toFixed(1)}`);
+                hiddenNode.animate({
+                    position: { x: bestPos.x, y: bestPos.y }
+                }, {
+                    duration: 400,
+                    easing: 'ease-out'
+                });
+            }
+        }
+    });
+
     cy.edges('.grouped-edge-hidden').removeClass('grouped-edge-hidden').style('visibility', 'visible');
 
     // Remove any rerouted edges

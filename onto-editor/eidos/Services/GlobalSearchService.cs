@@ -22,8 +22,9 @@ public class GlobalSearchService
     /// <param name="ontology">The ontology to search within</param>
     /// <param name="query">The search query (case-insensitive substring match)</param>
     /// <param name="maxResults">Maximum number of results per category (default: 10)</param>
+    /// <param name="notes">Optional list of notes to search (from workspace)</param>
     /// <returns>Grouped search results</returns>
-    public SearchResults Search(Ontology ontology, string query, int maxResults = 10)
+    public SearchResults Search(Ontology ontology, string query, int maxResults = 10, List<Note>? notes = null)
     {
         if (ontology == null)
         {
@@ -43,11 +44,12 @@ public class GlobalSearchService
             Actions = SearchActions(normalizedQuery, maxResults),
             Concepts = SearchConcepts(ontology, normalizedQuery, maxResults),
             Relationships = SearchRelationships(ontology, normalizedQuery, maxResults),
-            Individuals = SearchIndividuals(ontology, normalizedQuery, maxResults)
+            Individuals = SearchIndividuals(ontology, normalizedQuery, maxResults),
+            Notes = SearchNotes(notes, normalizedQuery, maxResults)
         };
 
-        _logger.LogDebug("Global search for '{Query}' returned {TotalCount} results",
-            query, results.TotalCount);
+        _logger.LogInformation("Global search for '{Query}' - Notes param: {NotesCount}, Note results: {NoteResults}, Total: {TotalCount}",
+            query, notes?.Count ?? 0, results.Notes.Count, results.TotalCount);
 
         return results;
     }
@@ -251,6 +253,33 @@ public class GlobalSearchService
     }
 
     /// <summary>
+    /// Searches notes by title and content.
+    /// </summary>
+    private List<SearchResult> SearchNotes(List<Note>? notes, string query, int maxResults)
+    {
+        if (notes == null || !notes.Any())
+        {
+            return new List<SearchResult>();
+        }
+
+        return notes
+            .Where(n =>
+                (n.Title?.ToLowerInvariant().Contains(query) == true) ||
+                (n.Content?.MarkdownContent?.ToLowerInvariant().Contains(query) == true))
+            .Take(maxResults)
+            .Select(n => new SearchResult
+            {
+                Type = "Note",
+                Id = n.Id,
+                Title = n.Title ?? "Untitled Note",
+                Subtitle = GetNoteSubtitle(n, query),
+                MatchedText = GetNoteMatchedField(n, query),
+                Icon = n.IsConceptNote ? "bi-file-earmark-text" : "bi-journal-text"
+            })
+            .ToList();
+    }
+
+    /// <summary>
     /// Gets a subtitle for a concept based on what matched.
     /// </summary>
     private string GetConceptSubtitle(Concept concept, string query)
@@ -310,6 +339,38 @@ public class GlobalSearchService
         if (individual.Description?.ToLowerInvariant().Contains(query) == true)
             return "Description";
         return "Name";
+    }
+
+    /// <summary>
+    /// Gets a subtitle for a note based on what matched.
+    /// </summary>
+    private string GetNoteSubtitle(Note note, string query)
+    {
+        // If content matches, show a preview
+        if (note.Content?.MarkdownContent?.ToLowerInvariant().Contains(query) == true)
+        {
+            return TruncateText(note.Content.MarkdownContent, 80);
+        }
+
+        // Otherwise show note type
+        if (note.IsConceptNote)
+        {
+            return "Concept Note";
+        }
+
+        return "Note";
+    }
+
+    /// <summary>
+    /// Gets which field matched for a note.
+    /// </summary>
+    private string GetNoteMatchedField(Note note, string query)
+    {
+        if (note.Title?.ToLowerInvariant().Contains(query) == true)
+            return "Title";
+        if (note.Content?.MarkdownContent?.ToLowerInvariant().Contains(query) == true)
+            return "Content";
+        return "Title";
     }
 
     /// <summary>
@@ -398,9 +459,14 @@ public class SearchResults
     public List<SearchResult> Individuals { get; set; } = new();
 
     /// <summary>
+    /// Note search results
+    /// </summary>
+    public List<SearchResult> Notes { get; set; } = new();
+
+    /// <summary>
     /// Total count of all results
     /// </summary>
-    public int TotalCount => Actions.Count + Concepts.Count + Relationships.Count + Individuals.Count;
+    public int TotalCount => Actions.Count + Concepts.Count + Relationships.Count + Individuals.Count + Notes.Count;
 
     /// <summary>
     /// Gets all results flattened into a single list (for keyboard navigation)
@@ -412,6 +478,7 @@ public class SearchResults
         all.AddRange(Concepts);
         all.AddRange(Relationships);
         all.AddRange(Individuals);
+        all.AddRange(Notes);
         return all;
     }
 }

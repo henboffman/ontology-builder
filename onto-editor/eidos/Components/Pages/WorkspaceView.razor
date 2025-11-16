@@ -7,6 +7,8 @@
 @using Microsoft.JSInterop
 @inject WorkspaceService WorkspaceService
 @inject NoteService NoteService
+@inject TagService TagService
+@inject AutoSaveService AutoSaveService
 @inject IConceptService ConceptService
 @inject IRelationshipService RelationshipService
 @inject MarkdownRenderingService MarkdownRenderer
@@ -30,6 +32,26 @@
                         WorkspaceId="@WorkspaceId"
                         OnNoteSelected="HandleQuickSwitcherNoteSelected"
                         OnHide="HandleQuickSwitcherHide" />
+
+<!-- Tag Management Dialog -->
+@if (currentUserId != null)
+{
+    <TagManagementDialog IsOpen="@showTagManagement"
+                         IsOpenChanged="@((value) => showTagManagement = value)"
+                         WorkspaceId="@WorkspaceId"
+                         UserId="@currentUserId"
+                         OnTagsChanged="@HandleTagsChanged" />
+}
+
+<!-- Markdown Import Dialog -->
+@if (currentUserId != null)
+{
+    <MarkdownImportDialog IsOpen="@showMarkdownImport"
+                          IsOpenChanged="@((value) => showMarkdownImport = value)"
+                          WorkspaceId="@WorkspaceId"
+                          UserId="@currentUserId"
+                          OnImportComplete="@HandleImportComplete" />
+}
 
 <div class="workspace-container">
     @if (loading)
@@ -103,6 +125,11 @@
                                 title="New Note">
                             <i class="bi bi-plus-lg"></i>
                         </button>
+                        <button class="btn btn-sm btn-link text-decoration-none p-1"
+                                @onclick="() => showMarkdownImport = true"
+                                title="Import Markdown Files">
+                            <i class="bi bi-file-earmark-arrow-up"></i>
+                        </button>
                         @if (selectedNote != null && !showPreview)
                         {
                             <button class="btn btn-sm btn-link text-decoration-none p-1 text-success"
@@ -118,6 +145,7 @@
                                     <i class="bi bi-check-lg"></i>
                                 }
                             </button>
+                            <AutoSaveIndicator Status="@autoSaveStatus" />
                         }
                         @if (workspace.Ontology != null)
                         {
@@ -144,6 +172,41 @@
                                @bind="searchTerm"
                                @bind:event="oninput"
                                @bind:after="OnSearchChanged" />
+                    </div>
+                    <div class="pane-tags-section">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="text-muted text-uppercase" style="font-weight: 600; font-size: 0.7rem; letter-spacing: 0.05em;">Tags</small>
+                            <button class="btn btn-sm btn-link text-decoration-none p-0"
+                                    @onclick="() => showTagManagement = true"
+                                    title="Manage Tags">
+                                <i class="bi bi-gear-fill" style="font-size: 0.75rem;"></i>
+                            </button>
+                        </div>
+                        @if (workspaceTags.Any())
+                        {
+                            <div class="workspace-tags-list">
+                                @foreach (var tagWithCount in workspaceTags)
+                                {
+                                    <div class="workspace-tag-item @(selectedTagFilter == tagWithCount.Tag.Id ? "active" : "")"
+                                         @onclick="() => ToggleTagFilter(tagWithCount.Tag.Id)">
+                                        <TagBadge Tag="@tagWithCount.Tag" Size="small" />
+                                        <span class="tag-count-badge">@tagWithCount.NoteCount</span>
+                                    </div>
+                                }
+                            </div>
+                            @if (selectedTagFilter != null)
+                            {
+                                <button class="btn btn-sm btn-link text-decoration-none p-0 mt-2"
+                                        @onclick="ClearTagFilter"
+                                        style="font-size: 0.75rem;">
+                                    <i class="bi bi-x-circle me-1"></i>Clear filter
+                                </button>
+                            }
+                        }
+                        else
+                        {
+                            <small class="text-muted" style="font-size: 0.75rem;">No tags yet</small>
+                        }
                     </div>
                 </div>
                 <div class="pane-content">
@@ -221,6 +284,7 @@
                                       class="markdown-editor"
                                       @bind="noteContent"
                                       @bind:event="oninput"
+                                      @bind:after="OnNoteContentChanged"
                                       placeholder="Start typing... Use [[concept name]] to link to concepts"></textarea>
                         }
                         else
@@ -309,6 +373,20 @@
                     </div>
                 }
 
+                <!-- Tags Section -->
+                @if (selectedNote != null && currentUserId != null)
+                {
+                    <div class="pane-header">
+                        <h5>Tags</h5>
+                    </div>
+                    <div class="pane-content" style="border-bottom: 1px solid var(--bs-border-color); padding: 1rem;">
+                        <TagSelector WorkspaceId="@WorkspaceId"
+                                     UserId="@currentUserId"
+                                     SelectedTags="@selectedNoteTags"
+                                     SelectedTagsChanged="@HandleNoteTagsChanged" />
+                    </div>
+                }
+
                 <!-- Backlinks Section -->
                 <div class="pane-header">
                     <h5>Backlinks</h5>
@@ -378,8 +456,18 @@
 
     private string? currentUserId;
 
+    // Auto-save
+    private AutoSaveStatus autoSaveStatus = AutoSaveStatus.Idle;
+
     // Quick Switcher
     private WorkspaceQuickSwitcher? quickSwitcher;
+
+    // Tags
+    private List<(Tag Tag, int NoteCount)> workspaceTags = new();
+    private int? selectedTagFilter = null;
+    private bool showTagManagement = false;
+    private bool showMarkdownImport = false;
+    private List<Tag> selectedNoteTags = new();
 
     // Element references for JavaScript interop
     private ElementReference editorTextArea;
@@ -387,10 +475,30 @@
     private IJSObjectReference? wikiLinkEditorModule;
     private DotNetObjectReference<WorkspaceView>? dotNetHelper;
 
-    private IEnumerable<Note> FilteredNotes =>
-        string.IsNullOrWhiteSpace(searchTerm)
-            ? notes
-            : notes.Where(n => n.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+    private IEnumerable<Note> FilteredNotes
+    {
+        get
+        {
+            var filtered = notes.AsEnumerable();
+
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                filtered = filtered.Where(n => n.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Apply tag filter
+            if (selectedTagFilter.HasValue)
+            {
+                filtered = filtered.Where(n => noteTagsCache.ContainsKey(n.Id) && noteTagsCache[n.Id].Any(t => t.Id == selectedTagFilter.Value));
+            }
+
+            return filtered;
+        }
+    }
+
+    // Cache of note tags for filtering
+    private Dictionary<int, List<Tag>> noteTagsCache = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -404,6 +512,9 @@
         }
 
         await LoadWorkspaceAsync();
+
+        // Subscribe to auto-save status changes
+        AutoSaveService.StatusChanged += OnAutoSaveStatusChanged;
 
         // Check for noteId query parameter and auto-select that note
         var uri = new Uri(Navigation.Uri);
@@ -444,6 +555,7 @@
                 }
 
                 await LoadNotesAsync();
+                await LoadTagsAsync();
             }
         }
         catch (Exception ex)
@@ -472,9 +584,12 @@
     {
         try
         {
+            Console.WriteLine($"[SelectNote] Selecting note ID: {noteId}");
+
             // Save current note if it was being edited
             if (selectedNote != null && !string.IsNullOrEmpty(noteContent))
             {
+                Console.WriteLine($"[SelectNote] Saving current note first");
                 await SaveNote();
             }
 
@@ -482,10 +597,13 @@
 
             if (note != null)
             {
+                Console.WriteLine($"[SelectNote] Loaded note: {note.Title} (ID: {note.Id})");
                 selectedNote = note;
                 noteContent = note.Content?.MarkdownContent ?? string.Empty;
                 showPreview = true; // Default to preview mode
                 creatingNote = false;
+
+                Console.WriteLine($"[SelectNote] Set selectedNote, calling StateHasChanged");
 
                 // Load backlinks and related concepts
                 // If this is a concept note, get backlinks via the concept
@@ -522,10 +640,30 @@
                         backlinks = new List<NoteLink>();
                     }
                 }
+
+                // Load tags for the selected note from cache (or load if not cached)
+                if (noteTagsCache.ContainsKey(note.Id))
+                {
+                    selectedNoteTags = noteTagsCache[note.Id];
+                }
+                else
+                {
+                    selectedNoteTags = await TagService.GetNoteTagsAsync(note.Id);
+                    noteTagsCache[note.Id] = selectedNoteTags;
+                }
+
+                // Force UI update
+                Console.WriteLine($"[SelectNote] Calling StateHasChanged to update UI");
+                StateHasChanged();
+            }
+            else
+            {
+                Console.WriteLine($"[SelectNote] Note not found for ID: {noteId}");
             }
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[SelectNote] Error: {ex.Message}");
             ToastService.ShowError($"Error loading note: {ex.Message}");
         }
     }
@@ -614,6 +752,25 @@
         finally
         {
             saving = false;
+        }
+    }
+
+    private void OnNoteContentChanged()
+    {
+        if (selectedNote != null && currentUserId != null)
+        {
+            // Queue auto-save
+            AutoSaveService.QueueSave(selectedNote.Id, selectedNote.Title, noteContent, currentUserId);
+        }
+    }
+
+    private void OnAutoSaveStatusChanged(object? sender, AutoSaveStatusChangedEventArgs e)
+    {
+        // Only update UI for the currently selected note
+        if (selectedNote != null && e.NoteId == selectedNote.Id)
+        {
+            autoSaveStatus = e.Status;
+            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -736,6 +893,9 @@
     {
         try
         {
+            Console.WriteLine($"[NavigateToConceptNote] Looking for concept note: '{conceptName}'");
+            Console.WriteLine($"[NavigateToConceptNote] Total notes: {notes.Count}, Concept notes: {notes.Count(n => n.IsConceptNote)}");
+
             // Find the concept note by name
             var note = notes.FirstOrDefault(n =>
                 n.IsConceptNote &&
@@ -743,15 +903,23 @@
 
             if (note != null)
             {
+                Console.WriteLine($"[NavigateToConceptNote] Found note: {note.Title} (ID: {note.Id})");
                 await SelectNote(note.Id);
             }
             else
             {
+                Console.WriteLine($"[NavigateToConceptNote] Note not found for: '{conceptName}'");
+                Console.WriteLine($"[NavigateToConceptNote] Available concept notes:");
+                foreach (var n in notes.Where(n => n.IsConceptNote))
+                {
+                    Console.WriteLine($"  - '{n.Title}' (ID: {n.Id})");
+                }
                 ToastService.ShowInfo($"Note for '{conceptName}' not found");
             }
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[NavigateToConceptNote] Error: {ex.Message}");
             ToastService.ShowError($"Error navigating to concept note: {ex.Message}");
         }
     }
@@ -764,27 +932,8 @@
     {
         try
         {
-            if (workspace?.Ontology == null)
-            {
-                ToastService.ShowWarning("Workspace has no ontology");
-                return;
-            }
-
-            // Find the concept by name
-            var concepts = await ConceptService.GetByOntologyIdAsync(workspace.Ontology.Id);
-            var concept = concepts.FirstOrDefault(c =>
-                c.Name.Equals(conceptName, StringComparison.OrdinalIgnoreCase));
-
-            if (concept != null)
-            {
-                // Navigate to the ontology view with this concept selected
-                Navigation.NavigateTo($"/ontology/{workspace.Ontology.Id}?selectedConcept={concept.Id}");
-                ToastService.ShowInfo($"Opening concept: {conceptName}");
-            }
-            else
-            {
-                ToastService.ShowWarning($"Concept '{conceptName}' not found");
-            }
+            // First, try to find a note for this concept
+            await NavigateToConceptNote(conceptName);
         }
         catch (Exception ex)
         {
@@ -816,11 +965,94 @@
         StateHasChanged();
     }
 
+    // Tag management methods
+    private async Task LoadTagsAsync()
+    {
+        try
+        {
+            workspaceTags = await TagService.GetWorkspaceTagsWithCountsAsync(WorkspaceId, currentUserId!);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load tags: {ex.Message}");
+        }
+    }
+
+    private void ToggleTagFilter(int tagId)
+    {
+        if (selectedTagFilter == tagId)
+        {
+            selectedTagFilter = null;
+        }
+        else
+        {
+            selectedTagFilter = tagId;
+        }
+        StateHasChanged();
+    }
+
+    private void ClearTagFilter()
+    {
+        selectedTagFilter = null;
+        StateHasChanged();
+    }
+
+    private async Task HandleTagsChanged()
+    {
+        await LoadTagsAsync();
+        StateHasChanged();
+    }
+
+    private async Task HandleImportComplete()
+    {
+        // Reload notes and tags after import
+        await LoadNotesAsync();
+        await LoadTagsAsync();
+        ToastService.ShowSuccess("Markdown files imported successfully");
+        StateHasChanged();
+    }
+
+    private async Task HandleNoteTagsChanged(List<Tag> newTags)
+    {
+        if (selectedNote == null || string.IsNullOrEmpty(currentUserId))
+            return;
+
+        try
+        {
+            // Update the tag assignments
+            await TagService.ReplaceNoteTagsAsync(selectedNote.Id, newTags.Select(t => t.Id).ToList(), currentUserId, WorkspaceId);
+
+            // Update local state
+            selectedNoteTags = newTags;
+
+            // Update the cache
+            noteTagsCache[selectedNote.Id] = newTags;
+
+            // Reload workspace tags to update counts
+            await LoadTagsAsync();
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to update tags: {ex.Message}");
+        }
+    }
+
     // Cleanup
     public async ValueTask DisposeAsync()
     {
         try
         {
+            // Unsubscribe from auto-save status changes
+            AutoSaveService.StatusChanged -= OnAutoSaveStatusChanged;
+
+            // Force save any pending auto-save before disposing
+            if (selectedNote != null && currentUserId != null)
+            {
+                await AutoSaveService.ForceSaveAsync(selectedNote.Id, selectedNote.Title, noteContent, currentUserId);
+            }
+
             if (dotNetHelper != null)
             {
                 // Dispose JavaScript handlers

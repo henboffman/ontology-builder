@@ -36,4 +36,9 @@ public interface IUserPreferencesService
     /// Update ShowKeyboardShortcuts preference for a specific user
     /// </summary>
     Task UpdateShowKeyboardShortcutsAsync(string userId, bool showShortcuts);
+
+    /// <summary>
+    /// Update ShowGlobalSearchBanner preference for a specific user
+    /// </summary>
+    Task UpdateShowGlobalSearchBannerAsync(string userId, bool showBanner);
 }
