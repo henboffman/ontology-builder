@@ -302,4 +302,82 @@ namespace Eidos.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
+
+    /// <summary>
+    /// NoteAttachment - Stores image attachments for notes
+    /// Images are stored as BLOB data in the database for simplicity
+    /// Security: Only workspace members can upload/access attachments
+    /// Size limit: 1MB per image, validated on upload
+    /// </summary>
+    public class NoteAttachment
+    {
+        public int Id { get; set; }
+
+        /// <summary>
+        /// Note this attachment belongs to
+        /// </summary>
+        public int NoteId { get; set; }
+        public Note Note { get; set; } = null!;
+
+        /// <summary>
+        /// Workspace ID (denormalized for permission checks)
+        /// </summary>
+        public int WorkspaceId { get; set; }
+        public Workspace Workspace { get; set; } = null!;
+
+        /// <summary>
+        /// Original filename (sanitized)
+        /// </summary>
+        [Required]
+        [StringLength(255)]
+        public string FileName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// MIME content type (validated to be image/* only)
+        /// Allowed: image/png, image/jpeg, image/gif, image/webp, image/svg+xml
+        /// </summary>
+        [Required]
+        [StringLength(100)]
+        public string ContentType { get; set; } = "image/png";
+
+        /// <summary>
+        /// File size in bytes (max 1MB = 1,048,576 bytes)
+        /// </summary>
+        public int FileSizeBytes { get; set; }
+
+        /// <summary>
+        /// Binary image data
+        /// </summary>
+        [Required]
+        public byte[] Data { get; set; } = Array.Empty<byte>();
+
+        /// <summary>
+        /// User who uploaded this attachment
+        /// </summary>
+        [Required]
+        public string UploadedByUserId { get; set; } = string.Empty;
+        public ApplicationUser UploadedBy { get; set; } = null!;
+
+        /// <summary>
+        /// Alt text for accessibility (extracted from markdown or set by user)
+        /// </summary>
+        [StringLength(500)]
+        public string? AltText { get; set; }
+
+        /// <summary>
+        /// SHA256 hash of file content (for deduplication and integrity)
+        /// </summary>
+        [StringLength(64)]
+        public string? ContentHash { get; set; }
+
+        /// <summary>
+        /// Metadata
+        /// </summary>
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Track when attachment was last accessed (for cleanup)
+        /// </summary>
+        public DateTime LastAccessedAt { get; set; } = DateTime.UtcNow;
+    }
 }

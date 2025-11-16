@@ -81,6 +81,9 @@ namespace Eidos.Data
         public DbSet<Tag> Tags { get; set; }
         public DbSet<NoteTagAssignment> NoteTagAssignments { get; set; }
 
+        // Note attachments (images in markdown)
+        public DbSet<NoteAttachment> NoteAttachments { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

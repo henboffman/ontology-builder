@@ -52,8 +52,17 @@
                     <h2><i class="bi bi-heart-pulse"></i> System Health</h2>
                     <span class="badge bg-@GetHealthBadgeClass()">@healthStatus</span>
                 </div>
+                <!-- Environment Callout -->
+                <div class="alert alert-info d-flex align-items-center mb-3" role="alert">
+                    <i class="bi bi-server fs-4 me-3"></i>
+                    <div class="flex-grow-1">
+                        <strong>Environment:</strong> @environment
+                        <span class="text-muted ms-3">@RuntimeInformation.OSDescription</span>
+                    </div>
+                </div>
+
                 <div class="row g-3">
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <div class="stat-card @(databaseHealthy ? "stat-card-success" : "stat-card-danger")">
                             <div class="stat-icon">
                                 <i class="bi bi-database"></i>
@@ -65,19 +74,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="stat-card stat-card-info">
-                            <div class="stat-icon">
-                                <i class="bi bi-server"></i>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-label">Environment</div>
-                                <div class="stat-value">@environment</div>
-                                <div class="stat-meta">@RuntimeInformation.OSDescription</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <div class="stat-card stat-card-warning">
                             <div class="stat-icon">
                                 <i class="bi bi-clock-history"></i>
@@ -89,7 +86,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <div class="stat-card stat-card-primary">
                             <div class="stat-icon">
                                 <i class="bi bi-memory"></i>
@@ -247,6 +244,62 @@
                                 <div class="metric">
                                     <span class="metric-value">@avgNoteSize KB</span>
                                     <span class="metric-label">Avg note size</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3 mt-2">
+                    <div class="col-md-4">
+                        <div class="info-card">
+                            <div class="info-card-header">
+                                <i class="bi bi-image"></i>
+                                <h3>Image Attachments</h3>
+                            </div>
+                            <div class="info-card-body">
+                                <div class="metric">
+                                    <span class="metric-value">@totalAttachmentCount</span>
+                                    <span class="metric-label">Total images</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-value">@FormatStorageSize(totalAttachmentSize)</span>
+                                    <span class="metric-label">Total size</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-card">
+                            <div class="info-card-header">
+                                <i class="bi bi-file-earmark-image"></i>
+                                <h3>Attachment Stats</h3>
+                            </div>
+                            <div class="info-card-body">
+                                <div class="metric">
+                                    <span class="metric-value">@avgAttachmentSize KB</span>
+                                    <span class="metric-label">Avg image size</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-value">@notesWithAttachmentsCount</span>
+                                    <span class="metric-label">Notes with images</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-card">
+                            <div class="info-card-header">
+                                <i class="bi bi-hdd"></i>
+                                <h3>Storage Usage</h3>
+                            </div>
+                            <div class="info-card-body">
+                                <div class="metric">
+                                    <span class="metric-value">@largestWorkspaceSize MB</span>
+                                    <span class="metric-label">Largest workspace</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-value">@FormatStorageSize(totalWorkspaceAttachmentSize)</span>
+                                    <span class="metric-label">All workspace images</span>
                                 </div>
                             </div>
                         </div>
@@ -462,6 +515,14 @@
     private long totalContentSize = 0;
     private int avgNoteSize = 0;
 
+    // Image attachment metrics
+    private int totalAttachmentCount = 0;
+    private long totalAttachmentSize = 0;
+    private int avgAttachmentSize = 0;
+    private int notesWithAttachmentsCount = 0;
+    private decimal largestWorkspaceSize = 0;
+    private long totalWorkspaceAttachmentSize = 0;
+
     private bool showCommandModal = false;
     private string commandTitle = "";
     private string commandText = "";
@@ -564,6 +625,41 @@
             {
                 avgNoteSize = (int)((totalContentSize / 1024.0) / totalNotesCount);
             }
+
+            // Image attachment metrics
+            totalAttachmentCount = await DbContext.NoteAttachments.CountAsync();
+
+            var attachmentSizes = await DbContext.NoteAttachments
+                .Select(a => (long)a.FileSizeBytes)
+                .ToListAsync();
+            totalAttachmentSize = attachmentSizes.Any() ? attachmentSizes.Sum() : 0;
+
+            // Calculate average attachment size in KB
+            if (totalAttachmentCount > 0)
+            {
+                avgAttachmentSize = (int)((totalAttachmentSize / 1024.0) / totalAttachmentCount);
+            }
+
+            // Count notes with attachments
+            notesWithAttachmentsCount = await DbContext.NoteAttachments
+                .Select(a => a.NoteId)
+                .Distinct()
+                .CountAsync();
+
+            // Get largest workspace by attachment size
+            var workspaceSizes = await DbContext.NoteAttachments
+                .GroupBy(a => a.WorkspaceId)
+                .Select(g => new { WorkspaceId = g.Key, TotalSize = g.Sum(a => (long)a.FileSizeBytes) })
+                .ToListAsync();
+
+            if (workspaceSizes.Any())
+            {
+                var largestWorkspace = workspaceSizes.OrderByDescending(w => w.TotalSize).FirstOrDefault();
+                largestWorkspaceSize = largestWorkspace != null ? (decimal)(largestWorkspace.TotalSize / 1024.0 / 1024.0) : 0;
+            }
+
+            // Total workspace attachment size (same as totalAttachmentSize, but kept separate for clarity)
+            totalWorkspaceAttachmentSize = totalAttachmentSize;
 
             StateHasChanged();
         }

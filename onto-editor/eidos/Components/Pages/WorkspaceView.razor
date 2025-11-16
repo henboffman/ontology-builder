@@ -3,6 +3,7 @@
 @using Eidos.Services
 @using Eidos.Services.Interfaces
 @using Eidos.Components.Workspace
+@using Eidos.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
 @inject WorkspaceService WorkspaceService
@@ -12,6 +13,7 @@
 @inject IConceptService ConceptService
 @inject IRelationshipService RelationshipService
 @inject MarkdownRenderingService MarkdownRenderer
+@inject MarkdownExportService MarkdownExportService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject ToastService ToastService
@@ -23,9 +25,11 @@
 
 <link href="css/workspace-view.css" rel="stylesheet" />
 <link href="css/components/workspace-quick-switcher.css" rel="stylesheet" />
+<link href="css/image-lightbox.css" rel="stylesheet" />
 <script src="js/wikiLinkEditor.js"></script>
 <script src="js/wikiLinkPreview.js"></script>
 <script src="js/workspaceKeyboardHandler.js"></script>
+<script src="js/fileDownload.js"></script>
 
 <!-- Quick Switcher Component -->
 <WorkspaceQuickSwitcher @ref="quickSwitcher"
@@ -51,6 +55,86 @@
                           WorkspaceId="@WorkspaceId"
                           UserId="@currentUserId"
                           OnImportComplete="@HandleImportComplete" />
+}
+
+<!-- Share Modal -->
+@if (workspace?.Ontology != null)
+{
+    <ShareModal Show="@showShareDialog"
+                ShowChanged="@((bool show) => showShareDialog = show)"
+                OntologyId="@workspace.Ontology.Id"
+                OntologyName="@workspace.Ontology.Name"
+                UserId="@workspace.Ontology.UserId" />
+}
+
+
+<!-- Export Dialog -->
+@if (showExportDialog)
+{
+    <div class="modal show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-download me-2"></i>Export Notes</h5>
+                    <button type="button" class="btn-close" @onclick="CloseExportDialog"></button>
+                </div>
+                <div class="modal-body">
+                    @if (exportInProgress)
+                    {
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-primary mb-2" role="status">
+                                <span class="visually-hidden">Exporting...</span>
+                            </div>
+                            <p class="text-muted">Preparing export...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-primary">
+                            <i class="bi bi-lightbulb me-2"></i>
+                            <strong>Tip:</strong> To export a single note, click the <i class="bi bi-download"></i> button in the note editor.
+                        </div>
+
+                        <p class="mb-3">Export all workspace notes as markdown files with YAML frontmatter in a ZIP archive.</p>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>What's included:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>All notes with their markdown content</li>
+                                <li>YAML frontmatter with metadata (title, tags, dates)</li>
+                                <li>Individual .md files packaged in a ZIP file</li>
+                            </ul>
+                        </div>
+
+                        @if (notes.Any())
+                        {
+                            <p class="mb-2"><strong>@notes.Count</strong> note(s) will be exported</p>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                No notes to export in this workspace.
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseExportDialog" disabled="@exportInProgress">
+                        Cancel
+                    </button>
+                    <button type="button"
+                            class="btn btn-primary"
+                            @onclick="ExportAllNotes"
+                            disabled="@(exportInProgress || !notes.Any())">
+                        <i class="bi bi-download me-1"></i>Export All as ZIP
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop show"></div>
 }
 
 <div class="workspace-container">
@@ -84,7 +168,36 @@
                     <p class="text-muted small mb-0">@workspace.Description</p>
                 }
             </div>
-            <div class="workspace-actions ms-auto">
+            <div class="workspace-actions ms-auto d-flex gap-2">
+                <!-- Share & Settings -->
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-info"
+                            @onclick="ShowShareDialog"
+                            title="Share this workspace with others">
+                        <i class="bi bi-share"></i> Share
+                    </button>
+                    <button class="btn btn-outline-secondary"
+                            @onclick="ShowSettingsDialog"
+                            title="Edit workspace settings">
+                        <i class="bi bi-gear"></i> Settings
+                    </button>
+                </div>
+
+                <!-- Import & Export -->
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-success"
+                            @onclick="() => showMarkdownImport = true"
+                            title="Import markdown files">
+                        <i class="bi bi-upload"></i> Import
+                    </button>
+                    <button class="btn btn-outline-success"
+                            @onclick="ShowExportDialog"
+                            title="Export workspace notes">
+                        <i class="bi bi-download"></i> Export
+                    </button>
+                </div>
+
+                <!-- Switch to Ontology -->
                 @if (workspace.Ontology != null)
                 {
                     <button class="btn btn-sm btn-outline-light"
@@ -301,6 +414,11 @@
                             {
                                 <AutoSaveIndicator Status="@autoSaveStatus" />
                             }
+                            <button class="btn btn-sm btn-link text-decoration-none"
+                                    @onclick="() => ExportSingleNote(selectedNote.Id)"
+                                    title="Export as Markdown">
+                                <i class="bi bi-download"></i>
+                            </button>
                             <button class="btn btn-sm btn-link text-decoration-none edit-toggle-btn @(showPreview ? "" : "active")"
                                     @onclick="TogglePreview">
                                 <i class="bi @(showPreview ? "bi-pencil" : "bi-eye")"></i>
@@ -321,7 +439,7 @@
                         }
                         else
                         {
-                            <div class="markdown-preview">
+                            <div id="markdown-preview" class="markdown-preview">
                                 @((MarkupString)MarkdownRenderer.RenderToHtml(noteContent))
                             </div>
                         }
@@ -541,6 +659,8 @@
     private ElementReference editorTextArea;
     private ElementReference newNoteTextArea;
     private IJSObjectReference? wikiLinkEditorModule;
+    private IJSObjectReference? imageUploadModule;
+    private IJSObjectReference? imageLightboxModule;
     private DotNetObjectReference<WorkspaceView>? dotNetHelper;
 
     private IEnumerable<Note> FilteredNotes
@@ -870,9 +990,16 @@
     }
 
     [JSInvokable]
-    public void TogglePreview()
+    public async Task TogglePreview()
     {
         showPreview = !showPreview;
+
+        // Initialize lightbox when switching to preview mode
+        if (showPreview)
+        {
+            await Task.Delay(50); // Small delay to ensure DOM is updated
+            await InitializeImageLightbox();
+        }
     }
 
     private void ToggleCondensedView()
@@ -931,6 +1058,13 @@
         {
             // Re-initialize when note changes
             await InitializeWikiLinkEditor();
+
+            // Initialize lightbox if in preview mode
+            if (selectedNote != null && showPreview)
+            {
+                await Task.Delay(50); // Small delay to ensure DOM is updated
+                await InitializeImageLightbox();
+            }
         }
     }
 
@@ -945,11 +1079,68 @@
                 elementId,
                 dotNetHelper
             );
+
+            // Initialize image upload for the editor
+            await InitializeImageUpload(elementId);
         }
         catch (Exception ex)
         {
             // Silently fail if editor not ready yet
             Console.WriteLine($"WikiLinkEditor init failed (may retry): {ex.Message}");
+        }
+    }
+
+    private async Task InitializeImageUpload(string elementId)
+    {
+        try
+        {
+            // Load image upload module if not already loaded
+            if (imageUploadModule == null)
+            {
+                imageUploadModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                    "import", "./js/imageUpload.js");
+            }
+
+            // Get the note ID for upload
+            var noteId = creatingNote ? 0 : selectedNote?.Id ?? 0;
+
+            // Initialize image upload for this editor
+            if (noteId > 0 && WorkspaceId > 0)
+            {
+                await imageUploadModule.InvokeVoidAsync(
+                    "initializeImageUpload",
+                    elementId,
+                    noteId,
+                    WorkspaceId
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ImageUpload init failed: {ex.Message}");
+        }
+    }
+
+    private async Task InitializeImageLightbox()
+    {
+        try
+        {
+            // Load image lightbox module if not already loaded
+            if (imageLightboxModule == null)
+            {
+                imageLightboxModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                    "import", "./js/imageLightbox.js");
+            }
+
+            // Initialize lightbox for the markdown preview
+            await imageLightboxModule.InvokeVoidAsync(
+                "initializeImageLightbox",
+                "markdown-preview"
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ImageLightbox init failed: {ex.Message}");
         }
     }
 
@@ -1155,6 +1346,112 @@
         }
     }
 
+    // === Toolbar Actions ===
+
+    private bool showShareDialog = false;
+    private bool showExportDialog = false;
+    private bool exportInProgress = false;
+
+    private void ShowShareDialog()
+    {
+        showShareDialog = true;
+    }
+
+    private void ShowSettingsDialog()
+    {
+        // Navigate to the ontology settings page
+        if (workspace?.Ontology != null)
+        {
+            Navigation.NavigateTo($"/ontology/{workspace.Ontology.Id}/settings");
+        }
+    }
+
+    private void ShowExportDialog()
+    {
+        showExportDialog = true;
+    }
+
+    private void CloseExportDialog()
+    {
+        showExportDialog = false;
+        exportInProgress = false;
+    }
+
+    private async Task ExportAllNotes()
+    {
+        if (string.IsNullOrEmpty(currentUserId) || workspace == null)
+            return;
+
+        try
+        {
+            exportInProgress = true;
+            StateHasChanged();
+
+            // Generate ZIP file with all notes
+            var zipBytes = await MarkdownExportService.ExportNotesAsZipAsync(WorkspaceId, currentUserId);
+
+            // Generate filename
+            var sanitizedWorkspaceName = SanitizeFilename(workspace.Name);
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
+            var filename = $"{sanitizedWorkspaceName}_notes_{timestamp}.zip";
+
+            // Trigger download via JavaScript
+            await JSRuntime.InvokeVoidAsync("downloadFile", filename, "application/zip", zipBytes);
+
+            ToastService.ShowSuccess($"Exported {notes.Count} note(s) successfully");
+            CloseExportDialog();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to export notes: {ex.Message}");
+            exportInProgress = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ExportSingleNote(int noteId)
+    {
+        if (string.IsNullOrEmpty(currentUserId) || workspace == null)
+            return;
+
+        try
+        {
+            // Generate markdown for single note
+            var markdown = await MarkdownExportService.ExportSingleNoteAsync(noteId, WorkspaceId, currentUserId);
+
+            // Find the note to get its title
+            var note = notes.FirstOrDefault(n => n.Id == noteId);
+            if (note == null)
+            {
+                ToastService.ShowError("Note not found");
+                return;
+            }
+
+            // Generate filename
+            var sanitizedTitle = SanitizeFilename(note.Title);
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
+            var filename = $"{sanitizedTitle}_{timestamp}.md";
+
+            // Convert markdown string to byte array for download
+            var markdownBytes = System.Text.Encoding.UTF8.GetBytes(markdown);
+
+            // Trigger download via JavaScript
+            await JSRuntime.InvokeVoidAsync("downloadFile", filename, "text/markdown", markdownBytes);
+
+            ToastService.ShowSuccess($"Exported '{note.Title}' successfully");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to export note: {ex.Message}");
+        }
+    }
+
+    private string SanitizeFilename(string filename)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        return string.Join("_", filename.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
+    }
+
     // Cleanup
     public async ValueTask DisposeAsync()
     {
@@ -1187,6 +1484,17 @@
             if (wikiLinkEditorModule != null)
             {
                 await wikiLinkEditorModule.DisposeAsync();
+            }
+
+            if (imageUploadModule != null)
+            {
+                await imageUploadModule.DisposeAsync();
+            }
+
+            if (imageLightboxModule != null)
+            {
+                await imageLightboxModule.InvokeVoidAsync("disposeImageLightbox");
+                await imageLightboxModule.DisposeAsync();
             }
         }
         catch

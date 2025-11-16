@@ -356,6 +356,13 @@
     outline: none;
 }
 
+/* Image upload drag-over effect */
+.markdown-editor.drag-over {
+    background: var(--bs-primary-bg-subtle);
+    border: 2px dashed var(--bs-primary);
+    border-radius: 4px;
+}
+
 /* Dark mode for editor - Uses data-bs-theme attribute */
 [data-bs-theme="dark"] .note-title-input {
     color: var(--bs-body-color);
@@ -373,6 +380,20 @@
     max-width: 800px;
     color: var(--bs-body-color);
     background: var(--bs-body-bg);
+}
+
+/* Responsive images in markdown preview */
+.markdown-preview img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1rem 0;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+[data-bs-theme="dark"] .markdown-preview img {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* Dark mode for markdown preview - Uses data-bs-theme attribute */

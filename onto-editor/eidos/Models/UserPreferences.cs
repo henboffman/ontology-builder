@@ -158,6 +158,13 @@ public class UserPreferences
     /// </summary>
     public bool ShowGlobalSearchBanner { get; set; } = true;
 
+    /// <summary>
+    /// Default view to open when accessing a workspace: "graph", "list", "hierarchy", "ttl", or "notes"
+    /// Default is "graph" (ontology graph view)
+    /// </summary>
+    [StringLength(20)]
+    public string DefaultWorkspaceView { get; set; } = "graph";
+
     // === Metadata ===
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

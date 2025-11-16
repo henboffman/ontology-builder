@@ -467,13 +467,16 @@ builder.Services.AddScoped<WorkspaceRepository>();
 builder.Services.AddScoped<NoteRepository>();
 builder.Services.AddScoped<TagRepository>();
 builder.Services.AddScoped<NoteTagAssignmentRepository>();
+builder.Services.AddScoped<NoteAttachmentRepository>();
 builder.Services.AddScoped<WorkspaceService>();
 builder.Services.AddScoped<NoteService>();
 builder.Services.AddScoped<TagService>();
+builder.Services.AddScoped<AttachmentService>();
 builder.Services.AddScoped<AutoSaveService>();
 builder.Services.AddScoped<WikiLinkParser>();
 builder.Services.AddScoped<MarkdownRenderingService>();
 builder.Services.AddScoped<MarkdownImportService>();
+builder.Services.AddScoped<MarkdownExportService>();
 
 // Register Import Services (Single Responsibility Principle)
 builder.Services.AddScoped<IRdfParser, RdfParser>();
@@ -606,6 +609,9 @@ app.MapControllers(); // Map API controllers (CommentController, etc.)
 
 // Map additional Identity endpoints
 app.MapAdditionalIdentityEndpoints();
+
+// Map attachment endpoints
+app.MapAttachmentEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

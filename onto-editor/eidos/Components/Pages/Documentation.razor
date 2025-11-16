@@ -1113,6 +1113,27 @@ Note (*) → (*) Concepts (via NoteLinks)</code></pre>
                             </div>
                         </div>
 
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <h6>MarkdownImportService <span class="badge bg-success">New</span></h6>
+                                <ul class="small">
+                                    <li><code>ImportMarkdownFilesAsync()</code></li>
+                                    <li><code>ParseYamlFrontmatter()</code></li>
+                                    <li><code>ExtractTags()</code></li>
+                                </ul>
+                                <p class="small text-muted mb-0">Imports markdown files from Obsidian/Notion with YAML frontmatter parsing and tag extraction.</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>MarkdownExportService <span class="badge bg-success">New</span></h6>
+                                <ul class="small">
+                                    <li><code>ExportNotesAsZipAsync()</code></li>
+                                    <li><code>ExportSingleNoteAsync()</code></li>
+                                    <li><code>GenerateMarkdownWithFrontmatterAsync()</code></li>
+                                </ul>
+                                <p class="small text-muted mb-0">Exports notes as markdown files with YAML frontmatter including tags, timestamps, and concept metadata.</p>
+                            </div>
+                        </div>
+
                         <h6 class="mt-3">Key Workflow - Auto-Concept Creation:</h6>
                         <pre class="bg-light p-3 rounded small"><code>1. User types [[New Concept]] in note
 2. NoteService.UpdateNoteContentAsync() called
@@ -1171,7 +1192,34 @@ Note (*) → (*) Concepts (via NoteLinks)</code></pre>
                             <li>Concept/Note badges for visual distinction</li>
                             <li>Clickable wiki-links in preview mode</li>
                             <li>Real-time note search</li>
+                            <li><strong>Markdown Import:</strong> Upload button for importing .md files with YAML frontmatter <span class="badge bg-success">New</span></li>
+                            <li><strong>Note Export:</strong> Individual note export via download button in editor <span class="badge bg-success">New</span></li>
+                            <li><strong>Batch Export:</strong> Export all workspace notes as ZIP archive <span class="badge bg-success">New</span></li>
+                            <li><strong>Tag Management:</strong> Tag-based virtual folders with import/export support <span class="badge bg-success">New</span></li>
                         </ul>
+
+                        <h6 class="mt-3">Import/Export Workflow <span class="badge bg-success">New</span>:</h6>
+                        <pre class="bg-light p-3 rounded small"><code>Import:
+1. User clicks import button in workspace toolbar
+2. Selects up to 50 .md files (5MB each)
+3. MarkdownImportService parses YAML frontmatter
+4. Extracts title, tags (array or comma-separated)
+5. Auto-creates tags if they don't exist
+6. Creates notes with NoteTagAssignments
+7. Shows results dashboard with success/failure status
+
+Export (Individual):
+1. User clicks download button in note editor
+2. MarkdownExportService.ExportSingleNoteAsync()
+3. Generates YAML frontmatter with metadata
+4. Downloads as .md file via JavaScript interop
+
+Export (Batch):
+1. User clicks Export in workspace toolbar
+2. MarkdownExportService.ExportNotesAsZipAsync()
+3. Generates .md files with frontmatter for all notes
+4. Creates ZIP archive with sanitized filenames
+5. Downloads via JavaScript downloadFile() function</code></pre>
                     </div>
                 </div>
             </section>

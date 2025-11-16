@@ -469,4 +469,113 @@ public class OntologyPermissionService
     }
 
     #endregion
+
+    #region Workspace Permissions
+
+    /// <summary>
+    /// Check if user can view a workspace
+    /// </summary>
+    public async Task<bool> CanViewWorkspaceAsync(int workspaceId, string? userId)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        var workspaceInfo = await context.Workspaces
+            .Where(w => w.Id == workspaceId)
+            .Select(w => new
+            {
+                w.UserId,
+                w.Visibility,
+                w.Id
+            })
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (workspaceInfo == null)
+            return false;
+
+        // Owner can always view
+        if (!string.IsNullOrEmpty(userId) && workspaceInfo.UserId == userId)
+            return true;
+
+        // Check visibility
+        if (workspaceInfo.Visibility == "public")
+            return true;
+
+        if (string.IsNullOrEmpty(userId))
+            return false; // Not logged in
+
+        // Check group permissions
+        var hasGroupPermission = await context.WorkspaceGroupPermissions
+            .Where(gp => gp.WorkspaceId == workspaceId)
+            .Join(context.UserGroupMembers,
+                gp => gp.UserGroupId,
+                ugm => ugm.UserGroupId,
+                (gp, ugm) => new { gp, ugm })
+            .AnyAsync(x => x.ugm.UserId == userId);
+
+        if (hasGroupPermission)
+            return true;
+
+        // Check direct user access
+        return await context.WorkspaceUserAccesses
+            .AnyAsync(ua => ua.WorkspaceId == workspaceId && ua.SharedWithUserId == userId);
+    }
+
+    /// <summary>
+    /// Check if user can edit a workspace
+    /// </summary>
+    public async Task<bool> CanEditWorkspaceAsync(int workspaceId, string? userId)
+    {
+        if (string.IsNullOrEmpty(userId))
+            return false;
+
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        var workspaceInfo = await context.Workspaces
+            .Where(w => w.Id == workspaceId)
+            .Select(w => new
+            {
+                w.UserId,
+                w.Visibility,
+                w.AllowPublicEdit
+            })
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (workspaceInfo == null)
+            return false;
+
+        // Owner can always edit
+        if (workspaceInfo.UserId == userId)
+            return true;
+
+        // Public workspace with public edit enabled
+        if (workspaceInfo.Visibility == "public" && workspaceInfo.AllowPublicEdit)
+            return true;
+
+        // Check group permissions (ViewAddEdit or FullAccess)
+        var hasEditPermission = await context.WorkspaceGroupPermissions
+            .Where(gp => gp.WorkspaceId == workspaceId &&
+                        (gp.PermissionLevel == PermissionLevel.ViewAddEdit ||
+                         gp.PermissionLevel == PermissionLevel.FullAccess))
+            .Join(context.UserGroupMembers,
+                gp => gp.UserGroupId,
+                ugm => ugm.UserGroupId,
+                (gp, ugm) => new { gp, ugm })
+            .AnyAsync(x => x.ugm.UserId == userId);
+
+        if (hasEditPermission)
+            return true;
+
+        // Check direct user access
+        var userAccess = await context.WorkspaceUserAccesses
+            .Where(ua => ua.WorkspaceId == workspaceId && ua.SharedWithUserId == userId)
+            .Select(ua => ua.PermissionLevel)
+            .FirstOrDefaultAsync();
+
+        return userAccess == PermissionLevel.ViewAddEdit ||
+               userAccess == PermissionLevel.FullAccess;
+    }
+
+    #endregion
 }

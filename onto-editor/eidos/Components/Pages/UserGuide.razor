@@ -19,7 +19,7 @@
                         <i class="bi bi-rocket"></i> Getting Started
                     </button>
                     <button class="nav-link @(activeSection == "creating-ontology" ? "active" : "")" @onclick='async () => await ScrollToSection("creating-ontology")'>
-                        <i class="bi bi-plus-circle"></i> Creating an Ontology
+                        <i class="bi bi-plus-circle"></i> Creating a Workspace
                     </button>
                     <button class="nav-link @(activeSection == "concepts" ? "active" : "")" @onclick='async () => await ScrollToSection("concepts")'>
                         <i class="bi bi-box"></i> Working with Concepts
@@ -86,34 +86,60 @@
                     <h3>Your First Login</h3>
                     <ol>
                         <li>Sign in using your preferred method (Google, GitHub, Microsoft, or Entra ID)</li>
-                        <li>You'll see your dashboard with any existing ontologies</li>
-                        <li>Click "Create New Ontology" to get started</li>
+                        <li>You'll see your dashboard with any existing workspaces</li>
+                        <li>Click "Create New Workspace" to get started</li>
                     </ol>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle"></i> <strong>Workspaces vs Ontologies:</strong> Eidos is workspace-first! When you create a workspace, an ontology is automatically created for it. Workspaces combine structured knowledge (ontologies) with flexible note-taking in one integrated environment.
+                    </div>
                 </section>
 
-                <!-- Creating an Ontology -->
+                <!-- Creating a Workspace -->
                 <section id="creating-ontology" class="doc-section">
-                    <h2><i class="bi bi-plus-circle text-primary"></i> Creating an Ontology</h2>
+                    <h2><i class="bi bi-plus-circle text-primary"></i> Creating a Workspace</h2>
 
                     <h3>Step-by-Step</h3>
                     <ol>
-                        <li>Click the <span class="badge bg-success">Create New Ontology</span> button</li>
-                        <li>Enter a descriptive name for your ontology</li>
+                        <li>From your dashboard, click the <span class="badge bg-success">Create New Workspace</span> button</li>
+                        <li>Enter a descriptive name for your workspace (e.g., "E-commerce Product Catalog")</li>
                         <li>Optionally add a description to explain its purpose</li>
                         <li>Click <strong>Create</strong></li>
                     </ol>
 
                     <div class="alert alert-success">
-                        <i class="bi bi-check-circle"></i> <strong>Tip:</strong> Use clear, descriptive names like "E-commerce Product Catalog" instead of generic names like "My Ontology".
+                        <i class="bi bi-check-circle"></i> <strong>What happens next:</strong> Eidos automatically creates an ontology for your workspace, sets up note-taking capabilities, and opens the workspace view where you can start adding concepts and notes!
                     </div>
 
-                    <h3>Ontology Settings</h3>
-                    <p>You can configure your ontology by clicking the <i class="bi bi-gear"></i> Settings tab:</p>
+                    <div class="alert alert-info">
+                        <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> Use clear, descriptive names that reflect the domain or project. Examples: "Healthcare Terminology", "Product Taxonomy", "Research Notes - AI Ethics"
+                    </div>
+
+                    <h3>Workspace Settings</h3>
+                    <p>You can configure your workspace by clicking the <i class="bi bi-gear"></i> Settings button in the toolbar:</p>
                     <ul>
-                        <li><strong>Name & Description</strong> - Update basic information</li>
-                        <li><strong>Visibility</strong> - Make it private, public, or shared with specific users</li>
-                        <li><strong>Permissions</strong> - Control who can view or edit</li>
+                        <li><strong>Name & Description</strong> - Update basic information for both workspace and ontology</li>
+                        <li><strong>Visibility</strong> - Control access:
+                            <ul>
+                                <li><strong>Private</strong> - Only you and users you explicitly share with</li>
+                                <li><strong>Group</strong> - Shared with specific user groups (great for collaboration)</li>
+                                <li><strong>Public</strong> - Anyone can view (optional edit permissions)</li>
+                            </ul>
+                        </li>
+                        <li><strong>Permissions</strong> - Manage who can view, edit, or manage your workspace</li>
+                        <li><strong>Sharing</strong> - Use the <i class="bi bi-share"></i> Share button to invite collaborators</li>
                     </ul>
+
+                    <h3>Navigating Your Workspace</h3>
+                    <p>Once created, you can switch between different views:</p>
+                    <ul>
+                        <li><strong>Workspace View</strong> - Three-pane note-taking interface with concept links</li>
+                        <li><strong>Ontology Graph View</strong> - Visual graph of concepts and relationships (click "Switch to Ontology" button)</li>
+                    </ul>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> <strong>Legacy Note:</strong> If you have older ontologies created before the workspace feature, don't worry! They automatically get workspaces when you access them. All your existing work is preserved.
+                    </div>
                 </section>
 
                 <!-- Working with Concepts -->
@@ -593,7 +619,7 @@
                 <section id="views" class="doc-section">
                     <h2><i class="bi bi-eye text-primary"></i> Different Views</h2>
 
-                    <p>Eidos offers multiple ways to visualize and work with your ontology:</p>
+                    <p>Eidos offers multiple ways to visualize and work with your workspace's ontology. Switch between views using the "Switch to Ontology" button in the workspace toolbar:</p>
 
                     <h3><i class="bi bi-diagram-3"></i> Graph View</h3>
                     <p>Visual network representation of concepts and relationships.</p>
@@ -797,6 +823,102 @@ Key concepts:
                         <li>See all backlinks (notes that reference this concept)</li>
                     </ol>
 
+                    <h3>Importing and Exporting Notes</h3>
+
+                    <h4>📥 Exporting Notes</h4>
+                    <p>Take your notes anywhere with markdown export! All exports include full YAML frontmatter with metadata.</p>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Export Individual Note</h5>
+                            <ol>
+                                <li>Open any note in the editor</li>
+                                <li>Click the <i class="bi bi-download"></i> download button in the editor toolbar (next to Preview/Edit toggle)</li>
+                                <li>Note downloads as a <code>.md</code> file with YAML frontmatter</li>
+                            </ol>
+                            <p class="mb-0 text-muted small">Perfect for sharing single notes, backing up important content, or editing in external tools.</p>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Export All Workspace Notes</h5>
+                            <ol>
+                                <li>Click <strong>Export</strong> in the workspace toolbar</li>
+                                <li>Review the export dialog (shows note count and what's included)</li>
+                                <li>Click <strong>Export All as ZIP</strong></li>
+                                <li>Downloads a ZIP archive with all notes as individual <code>.md</code> files</li>
+                            </ol>
+                            <p class="mb-0 text-muted small">Great for full workspace backups, migration to other systems, or sharing entire projects.</p>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">YAML Frontmatter Format</h5>
+                            <p>Exported notes include metadata in YAML frontmatter:</p>
+                            <pre class="bg-light p-2 rounded small">---
+title: My Note Title
+created: 2025-11-16T10:30:00Z
+updated: 2025-11-16T15:45:00Z
+tags:
+  - productivity
+  - knowledge-management
+concept: Person
+concept_id: 42
+---
+
+# Your markdown content here...</pre>
+                            <p class="mb-0">This format is compatible with Obsidian, Notion, VS Code, and other markdown tools!</p>
+                        </div>
+                    </div>
+
+                    <h4>📤 Importing Markdown Files</h4>
+                    <p>Bring your existing notes from Obsidian, Notion, or any markdown system into Eidos!</p>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Import Process</h5>
+                            <ol>
+                                <li>Click the <i class="bi bi-file-earmark-arrow-up"></i> import button in the note explorer toolbar</li>
+                                <li>Select up to 50 markdown files (<code>.md</code> or <code>.markdown</code>, max 5MB each)</li>
+                                <li>Eidos parses YAML frontmatter to extract:
+                                    <ul>
+                                        <li><strong>Title:</strong> From <code>title:</code> field (or filename if not present)</li>
+                                        <li><strong>Tags:</strong> From <code>tags:</code> field (array or comma-separated)</li>
+                                        <li><strong>Metadata:</strong> Created/updated dates, concept links, etc.</li>
+                                    </ul>
+                                </li>
+                                <li>Review import results showing success/failure for each file</li>
+                                <li>Tags and notes appear immediately in your workspace</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Supported Frontmatter Formats</h5>
+                            <p><strong>Array-style tags:</strong></p>
+                            <pre class="bg-light p-2 rounded small">tags: [knowledge-graphs, semantic-web, ontology]</pre>
+                            <p><strong>Comma-separated tags:</strong></p>
+                            <pre class="bg-light p-2 rounded small">tags: "productivity, note-taking, PKM"</pre>
+                            <p class="mb-0">Both formats work! Tags are automatically created if they don't exist.</p>
+                        </div>
+                    </div>
+
+                    <h4>🔄 Round-Trip Workflow</h4>
+                    <p>Eidos supports seamless export → edit → import workflows:</p>
+                    <ol>
+                        <li><strong>Export</strong> notes from Eidos as markdown files</li>
+                        <li><strong>Edit</strong> in your preferred tool (VS Code, Obsidian, Notion, etc.)</li>
+                        <li><strong>Re-import</strong> to Eidos with all metadata preserved</li>
+                        <li>Tags, titles, and structure remain intact!</li>
+                    </ol>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> <strong>Cross-Platform Knowledge:</strong> Use Eidos as your primary knowledge base while leveraging the power of external markdown tools for specialized tasks like writing, research, or mobile access!
+                    </div>
+
                     <h3>Best Practices</h3>
                     <ul>
                         <li><strong>Start with notes:</strong> Write freely using concept links, refine structure later</li>
@@ -804,6 +926,8 @@ Key concepts:
                         <li><strong>Link liberally:</strong> Don't worry about over-linking, connections are valuable</li>
                         <li><strong>Review backlinks:</strong> Discover unexpected connections in your knowledge</li>
                         <li><strong>Combine workflows:</strong> Bottom-up (notes → concepts) and top-down (concepts → notes)</li>
+                        <li><strong>Regular exports:</strong> Back up your workspace periodically using the Export feature</li>
+                        <li><strong>Tag consistently:</strong> Use consistent tag names for better organization and filtering</li>
                     </ul>
 
                     <div class="alert alert-success">

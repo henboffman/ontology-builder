@@ -137,7 +137,7 @@ namespace Eidos.Services
         /// <summary>
         /// Update workspace metadata
         /// </summary>
-        public async Task<Workspace?> UpdateWorkspaceAsync(int workspaceId, string userId, string? name = null, string? description = null, string? visibility = null)
+        public async Task<Workspace?> UpdateWorkspaceAsync(int workspaceId, string userId, string? name = null, string? description = null, string? visibility = null, bool? allowPublicEdit = null)
         {
             try
             {
@@ -171,6 +171,13 @@ namespace Eidos.Services
                 {
                     workspace.Visibility = visibility;
                 }
+
+                if (allowPublicEdit.HasValue)
+                {
+                    workspace.AllowPublicEdit = allowPublicEdit.Value;
+                }
+
+                workspace.UpdatedAt = DateTime.UtcNow;
 
                 return await _workspaceRepository.UpdateAsync(workspace);
             }
