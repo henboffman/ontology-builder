@@ -7,17 +7,19 @@ namespace Eidos.Data.Repositories
     /// <summary>
     /// Repository for note data access operations
     /// Optimized for performance with separate content loading
+    /// Uses DbContextFactory to ensure each operation gets its own DbContext instance,
+    /// preventing concurrency issues in Blazor Server applications
     /// </summary>
     public class NoteRepository
     {
-        private readonly OntologyDbContext _context;
+        private readonly IDbContextFactory<OntologyDbContext> _contextFactory;
         private readonly ILogger<NoteRepository> _logger;
 
         public NoteRepository(
-            OntologyDbContext context,
+            IDbContextFactory<OntologyDbContext> contextFactory,
             ILogger<NoteRepository> logger)
         {
-            _context = context;
+            _contextFactory = contextFactory;
             _logger = logger;
         }
 
@@ -28,7 +30,8 @@ namespace Eidos.Data.Repositories
         {
             try
             {
-                return await _context.Notes
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                return await context.Notes
                     .AsNoTracking()
                     .FirstOrDefaultAsync(n => n.Id == id);
             }
@@ -46,8 +49,10 @@ namespace Eidos.Data.Repositories
         {
             try
             {
-                return await _context.Notes
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                return await context.Notes
                     .Include(n => n.Content)
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(n => n.Id == id);
             }
             catch (Exception ex)
@@ -64,11 +69,13 @@ namespace Eidos.Data.Repositories
         {
             try
             {
-                return await _context.Notes
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                return await context.Notes
                     .Include(n => n.Content)
                     .Include(n => n.OutgoingLinks)
                         .ThenInclude(nl => nl.TargetConcept)
                     .Include(n => n.LinkedConcept)
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(n => n.Id == id);
             }
             catch (Exception ex)
@@ -85,7 +92,8 @@ namespace Eidos.Data.Repositories
         {
             try
             {
-                var query = _context.Notes
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                var query = context.Notes
                     .Where(n => n.WorkspaceId == workspaceId)
                     .AsNoTracking();
 
@@ -110,14 +118,49 @@ namespace Eidos.Data.Repositories
         }
 
         /// <summary>
+        /// Get all notes in a workspace with content (for search)
+        /// </summary>
+        public async Task<List<Note>> GetByWorkspaceIdWithContentAsync(int workspaceId, bool conceptNotesOnly = false, bool userNotesOnly = false)
+        {
+            try
+            {
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                var query = context.Notes
+                    .Include(n => n.Content)
+                    .Where(n => n.WorkspaceId == workspaceId)
+                    .AsNoTracking();
+
+                if (conceptNotesOnly)
+                {
+                    query = query.Where(n => n.IsConceptNote);
+                }
+                else if (userNotesOnly)
+                {
+                    query = query.Where(n => !n.IsConceptNote);
+                }
+
+                return await query
+                    .OrderByDescending(n => n.UpdatedAt)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting notes with content for workspace {WorkspaceId}", workspaceId);
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Get concept note for a specific concept
         /// </summary>
         public async Task<Note?> GetConceptNoteAsync(int conceptId)
         {
             try
             {
-                return await _context.Notes
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                return await context.Notes
                     .Include(n => n.Content)
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(n => n.LinkedConceptId == conceptId && n.IsConceptNote);
             }
             catch (Exception ex)
@@ -134,7 +177,8 @@ namespace Eidos.Data.Repositories
         {
             try
             {
-                return await _context.Notes
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                return await context.Notes
                     .Where(n => n.WorkspaceId == workspaceId &&
                                EF.Functions.Like(n.Title, $"%{searchTerm}%"))
                     .OrderByDescending(n => n.UpdatedAt)
@@ -156,12 +200,13 @@ namespace Eidos.Data.Repositories
         {
             try
             {
+                await using var context = await _contextFactory.CreateDbContextAsync();
                 note.CreatedAt = DateTime.UtcNow;
                 note.UpdatedAt = DateTime.UtcNow;
                 note.ContentLength = markdownContent?.Length ?? 0;
 
-                _context.Notes.Add(note);
-                await _context.SaveChangesAsync();
+                context.Notes.Add(note);
+                await context.SaveChangesAsync();
 
                 // Create content separately
                 if (!string.IsNullOrEmpty(markdownContent))
@@ -173,8 +218,8 @@ namespace Eidos.Data.Repositories
                         UpdatedAt = DateTime.UtcNow
                     };
 
-                    _context.NoteContents.Add(noteContent);
-                    await _context.SaveChangesAsync();
+                    context.NoteContents.Add(noteContent);
+                    await context.SaveChangesAsync();
                 }
 
                 _logger.LogInformation("Created note {NoteId} in workspace {WorkspaceId}",
@@ -196,8 +241,9 @@ namespace Eidos.Data.Repositories
         {
             try
             {
+                await using var context = await _contextFactory.CreateDbContextAsync();
                 // Use ExecuteUpdate for direct database update without tracking issues
-                await _context.Notes
+                await context.Notes
                     .Where(n => n.Id == noteId)
                     .ExecuteUpdateAsync(setters => setters
                         .SetProperty(n => n.LinkCount, linkCount)
@@ -219,7 +265,8 @@ namespace Eidos.Data.Repositories
         {
             try
             {
-                var note = await _context.Notes.FindAsync(noteId);
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                var note = await context.Notes.FindAsync(noteId);
                 if (note == null)
                 {
                     throw new InvalidOperationException($"Note {noteId} not found");
@@ -230,7 +277,7 @@ namespace Eidos.Data.Repositories
                 note.UpdatedAt = DateTime.UtcNow;
 
                 // Update or create content
-                var noteContent = await _context.NoteContents.FindAsync(noteId);
+                var noteContent = await context.NoteContents.FindAsync(noteId);
                 if (noteContent == null)
                 {
                     noteContent = new NoteContent
@@ -239,7 +286,7 @@ namespace Eidos.Data.Repositories
                         MarkdownContent = markdownContent ?? string.Empty,
                         UpdatedAt = DateTime.UtcNow
                     };
-                    _context.NoteContents.Add(noteContent);
+                    context.NoteContents.Add(noteContent);
                 }
                 else
                 {
@@ -248,7 +295,7 @@ namespace Eidos.Data.Repositories
                     noteContent.UpdatedAt = DateTime.UtcNow;
                 }
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
                 _logger.LogInformation("Updated content for note {NoteId}", noteId);
             }
@@ -266,11 +313,12 @@ namespace Eidos.Data.Repositories
         {
             try
             {
-                var note = await _context.Notes.FindAsync(id);
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                var note = await context.Notes.FindAsync(id);
                 if (note != null)
                 {
-                    _context.Notes.Remove(note);
-                    await _context.SaveChangesAsync();
+                    context.Notes.Remove(note);
+                    await context.SaveChangesAsync();
 
                     _logger.LogInformation("Deleted note {NoteId}", id);
                 }
@@ -289,7 +337,8 @@ namespace Eidos.Data.Repositories
         {
             try
             {
-                return await _context.NoteLinks
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                return await context.NoteLinks
                     .Where(nl => nl.TargetConceptId == conceptId)
                     .Include(nl => nl.SourceNote)
                     .OrderByDescending(nl => nl.CreatedAt)
@@ -310,20 +359,22 @@ namespace Eidos.Data.Repositories
         {
             try
             {
+                await using var context = await _contextFactory.CreateDbContextAsync();
+
                 // Remove existing links
-                var existingLinks = await _context.NoteLinks
+                var existingLinks = await context.NoteLinks
                     .Where(nl => nl.SourceNoteId == noteId)
                     .ToListAsync();
 
-                _context.NoteLinks.RemoveRange(existingLinks);
+                context.NoteLinks.RemoveRange(existingLinks);
 
                 // Add new links
                 if (links.Any())
                 {
-                    _context.NoteLinks.AddRange(links);
+                    context.NoteLinks.AddRange(links);
                 }
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
                 _logger.LogInformation("Updated {Count} links for note {NoteId}", links.Count, noteId);
             }
@@ -341,7 +392,8 @@ namespace Eidos.Data.Repositories
         {
             try
             {
-                return await _context.Notes
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                return await context.Notes
                     .Where(n => n.WorkspaceId == workspaceId)
                     .OrderByDescending(n => n.UpdatedAt)
                     .Take(count)
