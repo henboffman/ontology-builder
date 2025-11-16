@@ -1,0 +1,129 @@
+/* Tag Selector Component Styling */
+.tag-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Header */
+.tag-selector-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tag-selector-header h6 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    color: var(--bs-secondary);
+}
+
+.tag-selector-header .btn-link {
+    padding: 0;
+    font-size: 0.875rem;
+    text-decoration: none;
+}
+
+/* Create Tag Form */
+.create-tag-form {
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-0.5rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Selected Tags */
+.selected-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    min-height: 1.5rem;
+}
+
+/* Available Tags */
+.available-tags {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    background-color: var(--bs-body-bg);
+}
+
+.tag-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* Tag Item */
+.tag-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.375rem 0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.tag-item:hover {
+    background-color: var(--bs-secondary-bg);
+}
+
+.tag-item:active {
+    background-color: var(--bs-tertiary-bg);
+}
+
+.tag-count {
+    font-size: 0.75rem;
+    color: var(--bs-secondary);
+    background-color: var(--bs-secondary-bg);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-weight: 500;
+}
+
+/* Scrollbar styling */
+.available-tags::-webkit-scrollbar {
+    width: 6px;
+}
+
+.available-tags::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.available-tags::-webkit-scrollbar-thumb {
+    background: var(--bs-border-color);
+    border-radius: 3px;
+}
+
+.available-tags::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-secondary);
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    .available-tags {
+        background-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .tag-item:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .tag-item:active {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+}

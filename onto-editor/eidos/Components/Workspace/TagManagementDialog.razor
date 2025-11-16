@@ -1,0 +1,328 @@
+@using Eidos.Models
+@using Eidos.Services
+@inject TagService TagService
+@inject ToastService ToastService
+
+@if (IsOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-labelledby="tagManagementTitle">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tagManagementTitle">Manage Tags</h5>
+                    <button type="button" class="btn-close" @onclick="Close" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_isLoading)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-primary btn-sm" @onclick="ShowCreateForm">
+                                <i class="bi bi-plus-circle me-1"></i> Create New Tag
+                            </button>
+                        </div>
+
+                        @if (_showCreateForm)
+                        {
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h6>Create New Tag</h6>
+                                    <div class="mb-2">
+                                        <label class="form-label">Name</label>
+                                        <input type="text" class="form-control form-control-sm" @bind="_newTag.Name" maxlength="100" placeholder="Tag name" />
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Color (optional)</label>
+                                        <input type="color" class="form-control form-control-sm form-control-color" @bind="_newTag.Color" />
+                                        <small class="text-muted">Leave blank for auto-generated color</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Description (optional)</label>
+                                        <textarea class="form-control form-control-sm" @bind="_newTag.Description" rows="2" maxlength="500"></textarea>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-primary btn-sm" @onclick="CreateTag" disabled="@_isSaving">
+                                            @if (_isSaving)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-1"></span>
+                                            }
+                                            Create
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-sm" @onclick="CancelCreate">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (_tags.Any())
+                        {
+                            <div class="tag-management-list">
+                                @foreach (var tagWithCount in _tags)
+                                {
+                                    <div class="tag-management-item">
+                                        @if (_editingTagId == tagWithCount.Tag.Id)
+                                        {
+                                            <div class="edit-form">
+                                                <div class="mb-2">
+                                                    <label class="form-label">Name</label>
+                                                    <input type="text" class="form-control form-control-sm" @bind="_editTag.Name" maxlength="100" />
+                                                </div>
+                                                <div class="mb-2">
+                                                    <label class="form-label">Color</label>
+                                                    <input type="color" class="form-control form-control-sm form-control-color" @bind="_editTag.Color" />
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Description</label>
+                                                    <textarea class="form-control form-control-sm" @bind="_editTag.Description" rows="2" maxlength="500"></textarea>
+                                                </div>
+                                                <div class="d-flex gap-2">
+                                                    <button type="button" class="btn btn-primary btn-sm" @onclick="() => UpdateTag(tagWithCount.Tag.Id)" disabled="@_isSaving">
+                                                        @if (_isSaving)
+                                                        {
+                                                            <span class="spinner-border spinner-border-sm me-1"></span>
+                                                        }
+                                                        Save
+                                                    </button>
+                                                    <button type="button" class="btn btn-secondary btn-sm" @onclick="CancelEdit">Cancel</button>
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="tag-info">
+                                                <TagBadge Tag="@tagWithCount.Tag" Size="medium" />
+                                                <span class="tag-note-count">@tagWithCount.NoteCount notes</span>
+                                            </div>
+                                            <div class="tag-actions">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => StartEdit(tagWithCount.Tag)">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => DeleteTag(tagWithCount.Tag)" disabled="@_isSaving">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center text-muted py-4">
+                                No tags yet. Create one to get started.
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Close">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public int WorkspaceId { get; set; }
+
+    [Parameter, EditorRequired]
+    public string UserId { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback OnTagsChanged { get; set; }
+
+    private List<(Tag Tag, int NoteCount)> _tags = new();
+    private bool _isLoading = false;
+    private bool _isSaving = false;
+    private bool _showCreateForm = false;
+    private int? _editingTagId = null;
+
+    private TagFormModel _newTag = new();
+    private TagFormModel _editTag = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && WorkspaceId > 0)
+        {
+            await LoadTags();
+        }
+    }
+
+    private async Task LoadTags()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            _tags = await TagService.GetWorkspaceTagsWithCountsAsync(WorkspaceId, UserId);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load tags: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ShowCreateForm()
+    {
+        _showCreateForm = true;
+        _newTag = new TagFormModel();
+    }
+
+    private void CancelCreate()
+    {
+        _showCreateForm = false;
+        _newTag = new TagFormModel();
+    }
+
+    private async Task CreateTag()
+    {
+        if (string.IsNullOrWhiteSpace(_newTag.Name))
+        {
+            ToastService.ShowWarning("Tag name is required");
+            return;
+        }
+
+        try
+        {
+            _isSaving = true;
+            StateHasChanged();
+
+            var color = string.IsNullOrWhiteSpace(_newTag.Color) ? null : _newTag.Color;
+            var description = string.IsNullOrWhiteSpace(_newTag.Description) ? null : _newTag.Description;
+
+            await TagService.CreateTagAsync(WorkspaceId, UserId, _newTag.Name, color, description);
+
+            ToastService.ShowSuccess($"Tag '{_newTag.Name}' created");
+            _showCreateForm = false;
+            _newTag = new TagFormModel();
+
+            await LoadTags();
+            await OnTagsChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to create tag: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void StartEdit(Tag tag)
+    {
+        _editingTagId = tag.Id;
+        _editTag = new TagFormModel
+        {
+            Name = tag.Name,
+            Color = tag.Color ?? tag.GetColor(),
+            Description = tag.Description
+        };
+    }
+
+    private void CancelEdit()
+    {
+        _editingTagId = null;
+        _editTag = new TagFormModel();
+    }
+
+    private async Task UpdateTag(int tagId)
+    {
+        if (string.IsNullOrWhiteSpace(_editTag.Name))
+        {
+            ToastService.ShowWarning("Tag name is required");
+            return;
+        }
+
+        try
+        {
+            _isSaving = true;
+            StateHasChanged();
+
+            await TagService.UpdateTagAsync(tagId, UserId, _editTag.Name, _editTag.Color, _editTag.Description);
+
+            ToastService.ShowSuccess("Tag updated");
+            _editingTagId = null;
+            _editTag = new TagFormModel();
+
+            await LoadTags();
+            await OnTagsChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to update tag: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteTag(Tag tag)
+    {
+        if (!await JSRuntime.InvokeAsync<bool>("confirm", $"Delete tag '{tag.Name}'? This will remove it from all notes."))
+        {
+            return;
+        }
+
+        try
+        {
+            _isSaving = true;
+            StateHasChanged();
+
+            await TagService.DeleteTagAsync(tag.Id, UserId);
+
+            ToastService.ShowSuccess($"Tag '{tag.Name}' deleted");
+
+            await LoadTags();
+            await OnTagsChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to delete tag: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Close()
+    {
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private class TagFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Color { get; set; }
+        public string? Description { get; set; }
+    }
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = null!;
+}

@@ -1,0 +1,47 @@
+@using Eidos.Models
+
+<span class="tag-badge tag-badge-@Size" style="background-color: @GetBackgroundColor(); color: @GetTextColor();" title="@Tag.Description">
+    <span class="tag-name">@Tag.GetDisplayName()</span>
+    @if (ShowClose && OnRemove.HasDelegate)
+    {
+        <button type="button" class="tag-close" @onclick="HandleRemove" @onclick:stopPropagation="true" aria-label="Remove tag">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public Tag Tag { get; set; } = null!;
+
+    [Parameter]
+    public string Size { get; set; } = "medium"; // small, medium, large
+
+    [Parameter]
+    public bool ShowClose { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<Tag> OnRemove { get; set; }
+
+    [Parameter]
+    public bool Interactive { get; set; } = false;
+
+    private string GetBackgroundColor()
+    {
+        var color = Tag.GetColor();
+        return $"{color}22"; // Add 22 (13.3% opacity) for subtle background
+    }
+
+    private string GetTextColor()
+    {
+        return Tag.GetColor();
+    }
+
+    private async Task HandleRemove()
+    {
+        if (OnRemove.HasDelegate)
+        {
+            await OnRemove.InvokeAsync(Tag);
+        }
+    }
+}

@@ -1,0 +1,30 @@
+@if (IsVisible)
+{
+    <div class="alert alert-primary alert-dismissible fade show mb-3" role="alert">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-search me-2 fs-5"></i>
+            <div class="flex-grow-1">
+                <strong>🔍 Quick Tip: Global Search</strong>
+                <p class="mb-2 mt-1">
+                    Press <kbd>Cmd</kbd> + <kbd>K</kbd> (or <kbd>Ctrl</kbd> + <kbd>K</kbd>) to instantly search across
+                    concepts, relationships, notes, and actions from anywhere in the ontology.
+                </p>
+                <button class="btn btn-sm btn-outline-primary" @onclick="OnDismissPermanently">
+                    <i class="bi bi-x-circle me-1"></i> Got it, don't show again
+                </button>
+            </div>
+            <button type="button" class="btn-close" @onclick="OnDismissTemporarily" aria-label="Close"></button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public EventCallback OnDismissTemporarily { get; set; }
+
+    [Parameter]
+    public EventCallback OnDismissPermanently { get; set; }
+}

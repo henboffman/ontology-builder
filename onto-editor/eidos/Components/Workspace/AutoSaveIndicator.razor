@@ -1,0 +1,44 @@
+@using Eidos.Models
+
+<div class="autosave-indicator @GetStatusClass()">
+    @switch (Status)
+    {
+        case AutoSaveStatus.Idle:
+            <span class="text-muted" style="font-size: 0.75rem;">
+                <i class="bi bi-check-circle"></i> Saved
+            </span>
+            break;
+        case AutoSaveStatus.Saving:
+            <span class="text-primary" style="font-size: 0.75rem;">
+                <span class="spinner-border spinner-border-sm me-1" style="width: 0.75rem; height: 0.75rem;"></span>
+                Saving...
+            </span>
+            break;
+        case AutoSaveStatus.Saved:
+            <span class="text-success" style="font-size: 0.75rem;">
+                <i class="bi bi-cloud-check-fill"></i> Saved
+            </span>
+            break;
+        case AutoSaveStatus.Error:
+            <span class="text-danger" style="font-size: 0.75rem;">
+                <i class="bi bi-exclamation-triangle-fill"></i> Save failed
+            </span>
+            break;
+    }
+</div>
+
+@code {
+    [Parameter]
+    public AutoSaveStatus Status { get; set; } = AutoSaveStatus.Idle;
+
+    private string GetStatusClass()
+    {
+        return Status switch
+        {
+            AutoSaveStatus.Saving => "saving",
+            AutoSaveStatus.Saved => "saved",
+            AutoSaveStatus.Error => "error",
+            _ => "idle"
+        };
+    }
+}

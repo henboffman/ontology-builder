@@ -1,0 +1,196 @@
+@using Eidos.Models
+@using Eidos.Services
+@inject TagService TagService
+@inject ToastService ToastService
+
+<div class="tag-selector">
+    <div class="tag-selector-header">
+        <h6 class="mb-2">Tags</h6>
+        <button type="button" class="btn btn-sm btn-link" @onclick="ToggleCreateMode">
+            @if (_isCreating)
+            {
+                <text>Cancel</text>
+            }
+            else
+            {
+                <text>+ New Tag</text>
+            }
+        </button>
+    </div>
+
+    @if (_isCreating)
+    {
+        <div class="create-tag-form mb-3">
+            <div class="input-group input-group-sm">
+                <input type="text"
+                       class="form-control"
+                       placeholder="Tag name"
+                       @bind="_newTagName"
+                       @onkeydown="HandleCreateKeyDown"
+                       maxlength="100" />
+                <button type="button" class="btn btn-primary" @onclick="CreateTag" disabled="@_isLoading">
+                    @if (_isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    Create
+                </button>
+            </div>
+        </div>
+    }
+
+    <div class="selected-tags mb-2">
+        @if (SelectedTags.Any())
+        {
+            @foreach (var tag in SelectedTags)
+            {
+                <TagBadge Tag="@tag" Size="small" ShowClose="true" OnRemove="@HandleRemoveTag" />
+            }
+        }
+        else
+        {
+            <small class="text-muted">No tags selected</small>
+        }
+    </div>
+
+    <div class="available-tags">
+        @if (_isLoadingTags)
+        {
+            <div class="text-center py-2">
+                <span class="spinner-border spinner-border-sm"></span>
+            </div>
+        }
+        else if (_availableTags.Any())
+        {
+            <div class="tag-list">
+                @foreach (var tagWithCount in _availableTags.Where(t => !SelectedTags.Any(st => st.Id == t.Tag.Id)))
+                {
+                    <div class="tag-item" @onclick="() => HandleSelectTag(tagWithCount.Tag)">
+                        <TagBadge Tag="@tagWithCount.Tag" Size="small" />
+                        <span class="tag-count">@tagWithCount.NoteCount</span>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <small class="text-muted">No tags available. Create one above.</small>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public int WorkspaceId { get; set; }
+
+    [Parameter, EditorRequired]
+    public string UserId { get; set; } = string.Empty;
+
+    [Parameter]
+    public List<Tag> SelectedTags { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<List<Tag>> SelectedTagsChanged { get; set; }
+
+    private List<(Tag Tag, int NoteCount)> _availableTags = new();
+    private bool _isLoadingTags = false;
+    private bool _isCreating = false;
+    private bool _isLoading = false;
+    private string _newTagName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTags();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (WorkspaceId > 0)
+        {
+            await LoadTags();
+        }
+    }
+
+    private async Task LoadTags()
+    {
+        if (WorkspaceId <= 0 || string.IsNullOrEmpty(UserId))
+            return;
+
+        try
+        {
+            _isLoadingTags = true;
+            StateHasChanged();
+
+            var tagsWithCounts = await TagService.GetWorkspaceTagsWithCountsAsync(WorkspaceId, UserId);
+            _availableTags = tagsWithCounts;
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load tags: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingTags = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleCreateMode()
+    {
+        _isCreating = !_isCreating;
+        _newTagName = string.Empty;
+    }
+
+    private async Task CreateTag()
+    {
+        if (string.IsNullOrWhiteSpace(_newTagName))
+            return;
+
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            var tag = await TagService.CreateTagAsync(WorkspaceId, UserId, _newTagName.Trim());
+
+            _availableTags.Add((tag, 0));
+            _newTagName = string.Empty;
+            _isCreating = false;
+
+            ToastService.ShowSuccess($"Tag '{tag.Name}' created");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to create tag: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleCreateKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await CreateTag();
+        }
+        else if (e.Key == "Escape")
+        {
+            ToggleCreateMode();
+        }
+    }
+
+    private async Task HandleSelectTag(Tag tag)
+    {
+        var newSelection = new List<Tag>(SelectedTags) { tag };
+        await SelectedTagsChanged.InvokeAsync(newSelection);
+    }
+
+    private async Task HandleRemoveTag(Tag tag)
+    {
+        var newSelection = SelectedTags.Where(t => t.Id != tag.Id).ToList();
+        await SelectedTagsChanged.InvokeAsync(newSelection);
+    }
+}

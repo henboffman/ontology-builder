@@ -1,0 +1,66 @@
+.autosave-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.autosave-indicator.idle {
+    opacity: 0.7;
+}
+
+.autosave-indicator.saving {
+    background: rgba(var(--bs-primary-rgb), 0.1);
+}
+
+.autosave-indicator.saved {
+    background: rgba(var(--bs-success-rgb), 0.1);
+    animation: pulse-success 0.5s ease;
+}
+
+.autosave-indicator.error {
+    background: rgba(var(--bs-danger-rgb), 0.1);
+    animation: shake 0.5s ease;
+}
+
+@keyframes pulse-success {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-5px);
+    }
+    75% {
+        transform: translateX(5px);
+    }
+}
+
+/* Dark mode support */
+[data-bs-theme="dark"] .autosave-indicator.saving {
+    background: rgba(var(--bs-primary-rgb), 0.2);
+}
+
+[data-bs-theme="dark"] .autosave-indicator.saved {
+    background: rgba(var(--bs-success-rgb), 0.2);
+}
+
+[data-bs-theme="dark"] .autosave-indicator.error {
+    background: rgba(var(--bs-danger-rgb), 0.2);
+}
