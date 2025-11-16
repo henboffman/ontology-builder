@@ -465,10 +465,15 @@ builder.Services.AddScoped<IOntologyViewHistoryService, OntologyViewHistoryServi
 // Register Workspace and Notes Services (Obsidian-style knowledge management)
 builder.Services.AddScoped<WorkspaceRepository>();
 builder.Services.AddScoped<NoteRepository>();
+builder.Services.AddScoped<TagRepository>();
+builder.Services.AddScoped<NoteTagAssignmentRepository>();
 builder.Services.AddScoped<WorkspaceService>();
 builder.Services.AddScoped<NoteService>();
+builder.Services.AddScoped<TagService>();
+builder.Services.AddScoped<AutoSaveService>();
 builder.Services.AddScoped<WikiLinkParser>();
 builder.Services.AddScoped<MarkdownRenderingService>();
+builder.Services.AddScoped<MarkdownImportService>();
 
 // Register Import Services (Single Responsibility Principle)
 builder.Services.AddScoped<IRdfParser, RdfParser>();

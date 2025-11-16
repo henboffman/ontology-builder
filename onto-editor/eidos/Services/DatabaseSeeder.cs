@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Eidos.Data;
 using Eidos.Models;
 
 namespace Eidos.Services;
@@ -12,17 +14,20 @@ public class DatabaseSeeder
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<DatabaseSeeder> _logger;
     private readonly IConfiguration _configuration;
+    private readonly OntologyDbContext _context;
 
     public DatabaseSeeder(
         RoleManager<IdentityRole> roleManager,
         UserManager<ApplicationUser> userManager,
         ILogger<DatabaseSeeder> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        OntologyDbContext context)
     {
         _roleManager = roleManager;
         _userManager = userManager;
         _logger = logger;
         _configuration = configuration;
+        _context = context;
     }
 
     /// <summary>
@@ -32,6 +37,7 @@ public class DatabaseSeeder
     {
         await SeedRolesAsync();
         await SeedAdminUserAsync();
+        await SeedDevelopmentUsersAsync();
     }
 
     /// <summary>
@@ -147,5 +153,130 @@ public class DatabaseSeeder
             await _userManager.AddToRoleAsync(user, AppRoles.User);
             _logger.LogInformation("Assigned default User role to: {Email}", user.Email);
         }
+    }
+
+    /// <summary>
+    /// Seeds development test users for local development
+    /// </summary>
+    private async Task SeedDevelopmentUsersAsync()
+    {
+        _logger.LogInformation("Seeding development users...");
+
+        // Dev user (admin)
+        var devEmail = "dev@localhost.local";
+        var devUser = await _userManager.FindByEmailAsync(devEmail);
+        if (devUser == null)
+        {
+            devUser = new ApplicationUser
+            {
+                Id = "cb7c6b4d-af5d-4ff5-88d0-ba9fc88239fa",
+                UserName = devEmail,
+                Email = devEmail,
+                EmailConfirmed = true,
+                DisplayName = "Dev User",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var result = await _userManager.CreateAsync(devUser);
+            if (result.Succeeded)
+            {
+                await _userManager.AddToRoleAsync(devUser, AppRoles.Admin);
+                await _userManager.AddToRoleAsync(devUser, AppRoles.User);
+
+                // Add preferences
+                if (!await _context.UserPreferences.AnyAsync(p => p.UserId == devUser.Id))
+                {
+                    _context.UserPreferences.Add(new UserPreferences
+                    {
+                        UserId = devUser.Id,
+                        Theme = "dark",
+                        GroupingRadius = 100,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
+                }
+
+                _logger.LogInformation("Created dev user: {Email}", devEmail);
+            }
+        }
+
+        // Test user
+        var testEmail = "test@test.com";
+        var testUser = await _userManager.FindByEmailAsync(testEmail);
+        if (testUser == null)
+        {
+            testUser = new ApplicationUser
+            {
+                Id = "test-user-id-123",
+                UserName = testEmail,
+                Email = testEmail,
+                EmailConfirmed = true,
+                DisplayName = "Test User",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var result = await _userManager.CreateAsync(testUser);
+            if (result.Succeeded)
+            {
+                await _userManager.AddToRoleAsync(testUser, AppRoles.User);
+
+                // Add preferences
+                if (!await _context.UserPreferences.AnyAsync(p => p.UserId == testUser.Id))
+                {
+                    _context.UserPreferences.Add(new UserPreferences
+                    {
+                        UserId = testUser.Id,
+                        Theme = "light",
+                        GroupingRadius = 100,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
+                }
+
+                _logger.LogInformation("Created test user: {Email}", testEmail);
+            }
+        }
+
+        // Collab user
+        var collabEmail = "collab@test.com";
+        var collabUser = await _userManager.FindByEmailAsync(collabEmail);
+        if (collabUser == null)
+        {
+            collabUser = new ApplicationUser
+            {
+                Id = "collab-user-id-456",
+                UserName = collabEmail,
+                Email = collabEmail,
+                EmailConfirmed = true,
+                DisplayName = "Collaborator User",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var result = await _userManager.CreateAsync(collabUser);
+            if (result.Succeeded)
+            {
+                await _userManager.AddToRoleAsync(collabUser, AppRoles.User);
+
+                // Add preferences
+                if (!await _context.UserPreferences.AnyAsync(p => p.UserId == collabUser.Id))
+                {
+                    _context.UserPreferences.Add(new UserPreferences
+                    {
+                        UserId = collabUser.Id,
+                        Theme = "light",
+                        GroupingRadius = 100,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
+                }
+
+                _logger.LogInformation("Created collab user: {Email}", collabEmail);
+            }
+        }
+
+        _logger.LogInformation("Development users seeding complete");
     }
 }

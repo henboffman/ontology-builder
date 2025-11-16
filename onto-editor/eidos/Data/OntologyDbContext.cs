@@ -77,6 +77,10 @@ namespace Eidos.Data
         public DbSet<WorkspaceGroupPermission> WorkspaceGroupPermissions { get; set; }
         public DbSet<WorkspaceUserAccess> WorkspaceUserAccesses { get; set; }
 
+        // Tags for organizing notes
+        public DbSet<Tag> Tags { get; set; }
+        public DbSet<NoteTagAssignment> NoteTagAssignments { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -199,7 +203,7 @@ namespace Eidos.Data
                 entity.HasOne(l => l.LinkedOntology)
                     .WithMany() // No inverse navigation
                     .HasForeignKey(l => l.LinkedOntologyId)
-                    .OnDelete(DeleteBehavior.SetNull); // If linked ontology deleted, set to null
+                    .OnDelete(DeleteBehavior.NoAction); // If linked ontology deleted, manual cleanup needed
 
                 // Indexes for performance
                 entity.HasIndex(l => l.OntologyId);
@@ -370,7 +374,7 @@ namespace Eidos.Data
                 .HasOne(a => a.User)
                 .WithMany()
                 .HasForeignKey(a => a.UserId)
-                .OnDelete(DeleteBehavior.SetNull); // Keep activity record even if user is deleted
+                .OnDelete(DeleteBehavior.NoAction); // Keep activity record even if user is deleted
 
             // Create indexes on OntologyActivity for efficient querying
             modelBuilder.Entity<OntologyActivity>()
@@ -418,7 +422,7 @@ namespace Eidos.Data
                 entity.HasOne(m => m.AddedByUser)
                     .WithMany()
                     .HasForeignKey(m => m.AddedByUserId)
-                    .OnDelete(DeleteBehavior.SetNull);
+                    .OnDelete(DeleteBehavior.NoAction);
             });
 
             // Configure OntologyGroupPermission
@@ -442,7 +446,7 @@ namespace Eidos.Data
                 entity.HasOne(p => p.GrantedByUser)
                     .WithMany()
                     .HasForeignKey(p => p.GrantedByUserId)
-                    .OnDelete(DeleteBehavior.SetNull);
+                    .OnDelete(DeleteBehavior.NoAction);
             });
 
             // Configure CollaborationPost
@@ -456,12 +460,12 @@ namespace Eidos.Data
                 entity.HasOne(p => p.Ontology)
                     .WithMany()
                     .HasForeignKey(p => p.OntologyId)
-                    .OnDelete(DeleteBehavior.SetNull); // Keep post even if ontology is deleted
+                    .OnDelete(DeleteBehavior.NoAction); // Keep post even if ontology is deleted
 
                 entity.HasOne(p => p.CollaborationProjectGroup)
                     .WithMany()
                     .HasForeignKey(p => p.CollaborationProjectGroupId)
-                    .OnDelete(DeleteBehavior.SetNull); // Keep post even if group is deleted
+                    .OnDelete(DeleteBehavior.NoAction); // Keep post even if group is deleted
 
                 // Add indexes for efficient querying
                 entity.HasIndex(p => p.IsActive)
@@ -515,6 +519,34 @@ namespace Eidos.Data
                     .HasDatabaseName("IX_OntologyTag_Tag");
             });
 
+            // Configure ConceptGroup
+            modelBuilder.Entity<ConceptGroup>(entity =>
+            {
+                // Ontology relationship - NoAction to avoid circular cascade
+                entity.HasOne(cg => cg.Ontology)
+                    .WithMany()
+                    .HasForeignKey(cg => cg.OntologyId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                // User relationship - NoAction to avoid circular cascade
+                entity.HasOne(cg => cg.User)
+                    .WithMany()
+                    .HasForeignKey(cg => cg.UserId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                // Parent Concept relationship - NoAction to avoid circular cascade
+                entity.HasOne(cg => cg.ParentConcept)
+                    .WithMany()
+                    .HasForeignKey(cg => cg.ParentConceptId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                // Indexes for efficient queries
+                entity.HasIndex(cg => cg.OntologyId);
+                entity.HasIndex(cg => cg.UserId);
+                entity.HasIndex(cg => cg.ParentConceptId);
+                entity.HasIndex(cg => new { cg.OntologyId, cg.UserId });
+            });
+
             // Configure MergeRequest
             modelBuilder.Entity<MergeRequest>(entity =>
             {
@@ -534,13 +566,13 @@ namespace Eidos.Data
                 entity.HasOne(mr => mr.AssignedReviewer)
                     .WithMany()
                     .HasForeignKey(mr => mr.AssignedReviewerUserId)
-                    .OnDelete(DeleteBehavior.SetNull);
+                    .OnDelete(DeleteBehavior.NoAction);
 
                 // ReviewedBy relationship (optional)
                 entity.HasOne(mr => mr.ReviewedBy)
                     .WithMany()
                     .HasForeignKey(mr => mr.ReviewedByUserId)
-                    .OnDelete(DeleteBehavior.SetNull);
+                    .OnDelete(DeleteBehavior.NoAction);
 
                 // Indexes for efficient queries
                 entity.HasIndex(mr => mr.OntologyId)
@@ -586,7 +618,7 @@ namespace Eidos.Data
                 entity.HasOne(c => c.MergeRequestChange)
                     .WithMany()
                     .HasForeignKey(c => c.MergeRequestChangeId)
-                    .OnDelete(DeleteBehavior.SetNull);
+                    .OnDelete(DeleteBehavior.NoAction);
 
                 // Indexes for efficient queries
                 entity.HasIndex(c => c.MergeRequestId)
@@ -884,7 +916,7 @@ namespace Eidos.Data
                 .HasOne(w => w.Ontology)
                 .WithOne(o => o.Workspace)
                 .HasForeignKey<Ontology>(o => o.WorkspaceId)
-                .OnDelete(DeleteBehavior.SetNull); // If workspace deleted, ontology becomes orphaned (for migration safety)
+                .OnDelete(DeleteBehavior.NoAction); // If workspace deleted, ontology becomes orphaned (for migration safety)
 
             // Configure Workspace indexes
             modelBuilder.Entity<Workspace>()
@@ -918,7 +950,7 @@ namespace Eidos.Data
                 .HasOne(n => n.LinkedConcept)
                 .WithOne(c => c.ConceptNote)
                 .HasForeignKey<Note>(n => n.LinkedConceptId)
-                .OnDelete(DeleteBehavior.SetNull); // If concept deleted, note becomes regular note
+                .OnDelete(DeleteBehavior.NoAction); // If concept deleted, note becomes regular note
 
             // Configure Note indexes
             modelBuilder.Entity<Note>()
@@ -1013,6 +1045,66 @@ namespace Eidos.Data
                 .HasIndex(wua => new { wua.WorkspaceId, wua.SharedWithUserId })
                 .IsUnique()
                 .HasDatabaseName("IX_WorkspaceUserAccess_WorkspaceId_SharedWithUserId");
+
+            // Configure Tag - Workspace relationship
+            modelBuilder.Entity<Tag>()
+                .HasOne(t => t.Workspace)
+                .WithMany(w => w.Tags)
+                .HasForeignKey(t => t.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure Tag - User (Creator) relationship
+            modelBuilder.Entity<Tag>()
+                .HasOne(t => t.Creator)
+                .WithMany()
+                .HasForeignKey(t => t.CreatedBy)
+                .OnDelete(DeleteBehavior.Restrict); // Don't cascade delete tags when user is deleted
+
+            // Configure Tag indexes
+            modelBuilder.Entity<Tag>()
+                .HasIndex(t => t.WorkspaceId)
+                .HasDatabaseName("IX_Tag_WorkspaceId");
+
+            modelBuilder.Entity<Tag>()
+                .HasIndex(t => new { t.WorkspaceId, t.Name })
+                .IsUnique()
+                .HasDatabaseName("IX_Tag_WorkspaceId_Name");
+
+            // Configure NoteTagAssignment - Note relationship
+            modelBuilder.Entity<NoteTagAssignment>()
+                .HasOne(nta => nta.Note)
+                .WithMany(n => n.TagAssignments)
+                .HasForeignKey(nta => nta.NoteId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure NoteTagAssignment - Tag relationship
+            // Use Restrict to avoid multiple cascade paths (Workspace -> Tag -> NoteTagAssignment + Workspace -> Note -> NoteTagAssignment)
+            modelBuilder.Entity<NoteTagAssignment>()
+                .HasOne(nta => nta.Tag)
+                .WithMany(t => t.NoteAssignments)
+                .HasForeignKey(nta => nta.TagId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure NoteTagAssignment - User (Assigner) relationship
+            modelBuilder.Entity<NoteTagAssignment>()
+                .HasOne(nta => nta.Assigner)
+                .WithMany()
+                .HasForeignKey(nta => nta.AssignedBy)
+                .OnDelete(DeleteBehavior.Restrict); // Don't cascade delete assignments when user is deleted
+
+            // Configure NoteTagAssignment indexes
+            modelBuilder.Entity<NoteTagAssignment>()
+                .HasIndex(nta => nta.NoteId)
+                .HasDatabaseName("IX_NoteTagAssignment_NoteId");
+
+            modelBuilder.Entity<NoteTagAssignment>()
+                .HasIndex(nta => nta.TagId)
+                .HasDatabaseName("IX_NoteTagAssignment_TagId");
+
+            modelBuilder.Entity<NoteTagAssignment>()
+                .HasIndex(nta => new { nta.NoteId, nta.TagId })
+                .IsUnique()
+                .HasDatabaseName("IX_NoteTagAssignment_NoteId_TagId");
         }
     }
 }
