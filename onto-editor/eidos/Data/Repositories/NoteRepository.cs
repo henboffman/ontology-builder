@@ -406,5 +406,37 @@ namespace Eidos.Data.Repositories
                 throw;
             }
         }
+
+        /// <summary>
+        /// Search notes by title and content within a workspace
+        /// </summary>
+        public async Task<List<Note>> SearchNotesAsync(int workspaceId, string searchTerm)
+        {
+            try
+            {
+                await using var context = await _contextFactory.CreateDbContextAsync();
+
+                if (string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    return await context.Notes
+                        .AsNoTracking()
+                        .Where(n => n.WorkspaceId == workspaceId)
+                        .ToListAsync();
+                }
+
+                return await context.Notes
+                    .AsNoTracking()
+                    .Include(n => n.Content)
+                    .Where(n => n.WorkspaceId == workspaceId &&
+                        (EF.Functions.Like(n.Title, $"%{searchTerm}%") ||
+                         (n.Content != null && EF.Functions.Like(n.Content.MarkdownContent, $"%{searchTerm}%"))))
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching notes in workspace {WorkspaceId} for term: {SearchTerm}", workspaceId, searchTerm);
+                throw;
+            }
+        }
     }
 }

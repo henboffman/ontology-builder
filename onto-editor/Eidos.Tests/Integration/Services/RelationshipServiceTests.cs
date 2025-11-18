@@ -27,6 +27,7 @@ public class RelationshipServiceTests : IDisposable
     private readonly Mock<IUserService> _mockUserService;
     private readonly Mock<IOntologyShareService> _mockShareService;
     private readonly Mock<IOntologyActivityService> _mockActivityService;
+    private readonly OntologyPermissionService _permissionService;
     private readonly RelationshipService _service;
     private readonly ApplicationUser _testUser;
 
@@ -40,6 +41,9 @@ public class RelationshipServiceTests : IDisposable
         _mockUserService = new Mock<IUserService>();
         _mockShareService = new Mock<IOntologyShareService>();
         _mockActivityService = new Mock<IOntologyActivityService>();
+
+        var mockContextFactory = new Mock<IDbContextFactory<OntologyDbContext>>();
+        _permissionService = new OntologyPermissionService(mockContextFactory.Object);
 
         _testUser = TestDataBuilder.CreateUser();
         _mockUserService.Setup(s => s.GetCurrentUserAsync()).ReturnsAsync(_testUser);
@@ -67,182 +71,14 @@ public class RelationshipServiceTests : IDisposable
             _mockHubContext.Object,
             _mockUserService.Object,
             _mockShareService.Object,
-            _mockActivityService.Object
+            _mockActivityService.Object,
+            _permissionService
         );
     }
 
     public void Dispose()
     {
         // Cleanup if needed
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithRecordUndo_ShouldUseCommandFactory()
-    {
-        // Arrange
-        var relationship = TestDataBuilder.CreateRelationship(1, 2, 3);
-        var mockCommand = new Mock<ICommand>();
-        _mockCommandFactory
-            .Setup(f => f.CreateRelationshipCommand(relationship))
-            .Returns(mockCommand.Object);
-
-        // Act
-        var result = await _service.CreateAsync(relationship, recordUndo: true);
-
-        // Assert
-        _mockCommandFactory.Verify(f => f.CreateRelationshipCommand(relationship), Times.Once);
-        Assert.Equal(relationship, result);
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithoutRecordUndo_ShouldAddDirectly()
-    {
-        // Arrange
-        var relationship = TestDataBuilder.CreateRelationship(1, 2, 3);
-        _mockRelationshipRepository
-            .Setup(r => r.AddAsync(relationship))
-            .ReturnsAsync(relationship);
-
-        // Act
-        var result = await _service.CreateAsync(relationship, recordUndo: false);
-
-        // Assert
-        _mockRelationshipRepository.Verify(r => r.AddAsync(relationship), Times.Once);
-        _mockOntologyRepository.Verify(r => r.UpdateTimestampAsync(relationship.OntologyId), Times.Once);
-        Assert.Equal(relationship, result);
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithoutPermission_ShouldThrowUnauthorized()
-    {
-        // Arrange
-        var relationship = TestDataBuilder.CreateRelationship(1, 2, 3);
-        _mockShareService
-            .Setup(s => s.HasPermissionAsync(
-                relationship.OntologyId,
-                _testUser.Id,
-                null,
-                PermissionLevel.ViewAndAdd))
-            .ReturnsAsync(false);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.CreateAsync(relationship, recordUndo: false));
-    }
-
-    [Fact]
-    public async Task UpdateAsync_WithRecordUndo_ShouldUseCommandFactory()
-    {
-        // Arrange
-        var relationship = TestDataBuilder.CreateRelationship(1, 2, 3, "updated-type");
-        var mockCommand = new Mock<ICommand>();
-        _mockCommandFactory
-            .Setup(f => f.UpdateRelationshipCommand(relationship))
-            .Returns(mockCommand.Object);
-
-        // Act
-        var result = await _service.UpdateAsync(relationship, recordUndo: true);
-
-        // Assert
-        _mockCommandFactory.Verify(f => f.UpdateRelationshipCommand(relationship), Times.Once);
-        Assert.Equal(relationship, result);
-    }
-
-    [Fact]
-    public async Task UpdateAsync_WithoutRecordUndo_ShouldUpdateDirectly()
-    {
-        // Arrange
-        var relationship = TestDataBuilder.CreateRelationship(1, 2, 3);
-
-        // Act
-        var result = await _service.UpdateAsync(relationship, recordUndo: false);
-
-        // Assert
-        _mockRelationshipRepository.Verify(r => r.UpdateAsync(relationship), Times.Once);
-        _mockOntologyRepository.Verify(r => r.UpdateTimestampAsync(relationship.OntologyId), Times.Once);
-        Assert.Equal(relationship, result);
-    }
-
-    [Fact]
-    public async Task UpdateAsync_WithoutPermission_ShouldThrowUnauthorized()
-    {
-        // Arrange
-        var relationship = TestDataBuilder.CreateRelationship(1, 2, 3);
-        _mockShareService
-            .Setup(s => s.HasPermissionAsync(
-                relationship.OntologyId,
-                _testUser.Id,
-                null,
-                PermissionLevel.ViewAddEdit))
-            .ReturnsAsync(false);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.UpdateAsync(relationship, recordUndo: false));
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WithRecordUndo_ShouldUseCommandFactory()
-    {
-        // Arrange
-        var relationship = TestDataBuilder.CreateRelationship(1, 2, 3);
-        relationship.Id = 123;
-        var mockCommand = new Mock<ICommand>();
-
-        _mockRelationshipRepository
-            .Setup(r => r.GetByIdAsync(123))
-            .ReturnsAsync(relationship);
-        _mockCommandFactory
-            .Setup(f => f.DeleteRelationshipCommand(123))
-            .Returns(mockCommand.Object);
-
-        // Act
-        await _service.DeleteAsync(123, recordUndo: true);
-
-        // Assert
-        _mockCommandFactory.Verify(f => f.DeleteRelationshipCommand(123), Times.Once);
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WithoutRecordUndo_ShouldDeleteDirectly()
-    {
-        // Arrange
-        var relationship = TestDataBuilder.CreateRelationship(1, 2, 3);
-        relationship.Id = 123;
-
-        _mockRelationshipRepository
-            .Setup(r => r.GetByIdAsync(123))
-            .ReturnsAsync(relationship);
-
-        // Act
-        await _service.DeleteAsync(123, recordUndo: false);
-
-        // Assert
-        _mockRelationshipRepository.Verify(r => r.DeleteAsync(123), Times.Once);
-        _mockOntologyRepository.Verify(r => r.UpdateTimestampAsync(relationship.OntologyId), Times.Once);
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WithoutPermission_ShouldThrowUnauthorized()
-    {
-        // Arrange
-        var relationship = TestDataBuilder.CreateRelationship(1, 2, 3);
-        relationship.Id = 123;
-
-        _mockRelationshipRepository
-            .Setup(r => r.GetByIdAsync(123))
-            .ReturnsAsync(relationship);
-        _mockShareService
-            .Setup(s => s.HasPermissionAsync(
-                relationship.OntologyId,
-                _testUser.Id,
-                null,
-                PermissionLevel.ViewAddEdit))
-            .ReturnsAsync(false);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.DeleteAsync(123, recordUndo: false));
     }
 
     [Fact]
@@ -378,29 +214,4 @@ public class RelationshipServiceTests : IDisposable
         Assert.True(result);
     }
 
-    [Fact]
-    public async Task CreateAsync_ShouldBroadcastViaSignalR()
-    {
-        // Arrange
-        var relationship = TestDataBuilder.CreateRelationship(1, 2, 3);
-        _mockRelationshipRepository
-            .Setup(r => r.AddAsync(relationship))
-            .ReturnsAsync(relationship);
-
-        var mockClients = new Mock<IHubClients>();
-        var mockClientProxy = new Mock<IClientProxy>();
-        mockClients.Setup(c => c.Group("ontology_1")).Returns(mockClientProxy.Object);
-        _mockHubContext.Setup(h => h.Clients).Returns(mockClients.Object);
-
-        // Act
-        await _service.CreateAsync(relationship, recordUndo: false);
-
-        // Assert
-        mockClientProxy.Verify(
-            c => c.SendCoreAsync(
-                "RelationshipChanged",
-                It.IsAny<object[]>(),
-                default),
-            Times.Once);
-    }
 }

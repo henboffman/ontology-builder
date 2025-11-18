@@ -30,6 +30,7 @@
 <script src="js/wikiLinkPreview.js"></script>
 <script src="js/workspaceKeyboardHandler.js"></script>
 <script src="js/fileDownload.js"></script>
+<script src="js/markdownToolbar.js"></script>
 
 <!-- Quick Switcher Component -->
 <WorkspaceQuickSwitcher @ref="quickSwitcher"
@@ -67,6 +68,39 @@
                 UserId="@workspace.Ontology.UserId" />
 }
 
+
+<!-- Delete Confirmation Dialog -->
+@if (showDeleteConfirmation)
+{
+    <div class="modal show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Note</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <strong>"@noteToDelete?.Title"</strong>?</p>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        This action cannot be undone. The note and all its content will be permanently deleted.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete" disabled="@deleting">
+                        @if (deleting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        <span>Delete</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop show"></div>
+}
 
 <!-- Export Dialog -->
 @if (showExportDialog)
@@ -263,22 +297,33 @@
                         }
                     </div>
                     <div class="pane-search">
-                        <input type="search"
-                               class="form-control form-control-sm"
-                               placeholder="Search notes..."
-                               @bind="searchTerm"
-                               @bind:event="oninput"
-                               @bind:after="OnSearchChanged" />
+                        <div class="position-relative">
+                            <input type="search"
+                                   class="form-control form-control-sm"
+                                   placeholder="Search notes (title & content)..."
+                                   value="@searchTerm"
+                                   @oninput="OnSearchInputChanged" />
+                            @if (searching)
+                            {
+                                <span class="position-absolute top-50 end-0 translate-middle-y me-2" style="pointer-events: none;">
+                                    <span class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Searching...</span>
+                                    </span>
+                                </span>
+                            }
+                        </div>
                     </div>
                     <div class="pane-tags-section">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted text-uppercase" style="font-weight: 600; font-size: 0.7rem; letter-spacing: 0.05em;">Tags</small>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="text-muted text-uppercase" style="font-weight: 600; font-size: 0.7rem; letter-spacing: 0.05em;">
+                                <i class="bi bi-folder2 me-1"></i>Folders
+                            </small>
                             <div class="d-flex gap-2">
                                 @if (workspaceTags.Any())
                                 {
                                     <button class="btn btn-sm btn-link text-decoration-none p-0"
                                             @onclick="ToggleTagsExpanded"
-                                            title="@(isTagsExpanded ? "Collapse tags" : "Expand tags")">
+                                            title="@(isTagsExpanded ? "Collapse folders" : "Expand folders")">
                                         <i class="bi @(isTagsExpanded ? "bi-chevron-up" : "bi-chevron-down")" style="font-size: 0.75rem;"></i>
                                     </button>
                                 }
@@ -289,25 +334,30 @@
                                 </button>
                             </div>
                         </div>
-                        @if (workspaceTags.Any() && isTagsExpanded)
+                        @if (isTagsExpanded)
                         {
-                            <div class="workspace-tags-list">
-                                @foreach (var tagWithCount in workspaceTags)
-                                {
-                                    <div class="workspace-tag-item @(selectedTagFilter == tagWithCount.Tag.Id ? "active" : "")"
-                                         @onclick="() => ToggleTagFilter(tagWithCount.Tag.Id)">
-                                        <TagBadge Tag="@tagWithCount.Tag" Size="small" />
-                                        <span class="tag-count-badge">@tagWithCount.NoteCount</span>
-                                    </div>
-                                }
+                            <!-- All Notes Folder (Always visible) -->
+                            <div class="virtual-folder-item @(selectedTagFilter == null ? "active" : "")"
+                                 @onclick="ClearTagFilter">
+                                <i class="bi bi-folder2 folder-icon"></i>
+                                <span class="folder-name">All Notes</span>
+                                <span class="folder-count">@notes.Count</span>
                             </div>
-                            @if (selectedTagFilter != null)
+
+                            <!-- Tag-based Virtual Folders -->
+                            @if (workspaceTags.Any())
                             {
-                                <button class="btn btn-sm btn-link text-decoration-none p-0 mt-2"
-                                        @onclick="ClearTagFilter"
-                                        style="font-size: 0.75rem;">
-                                    <i class="bi bi-x-circle me-1"></i>Clear filter
-                                </button>
+                                <div class="virtual-folders-list">
+                                    @foreach (var tagWithCount in workspaceTags)
+                                    {
+                                        <div class="virtual-folder-item @(selectedTagFilter == tagWithCount.Tag.Id ? "active" : "")"
+                                             @onclick="() => ToggleTagFilter(tagWithCount.Tag.Id)">
+                                            <i class="bi @(selectedTagFilter == tagWithCount.Tag.Id ? "bi-folder2-open" : "bi-folder2") folder-icon" style="color: @tagWithCount.Tag.Color;"></i>
+                                            <span class="folder-name">@tagWithCount.Tag.Name</span>
+                                            <span class="folder-count">@tagWithCount.NoteCount</span>
+                                        </div>
+                                    }
+                                </div>
                             }
                         }
                     </div>
@@ -419,6 +469,11 @@
                                     title="Export as Markdown">
                                 <i class="bi bi-download"></i>
                             </button>
+                            <button class="btn btn-sm btn-link text-decoration-none text-danger"
+                                    @onclick="ShowDeleteConfirmation"
+                                    title="Delete Note">
+                                <i class="bi bi-trash"></i>
+                            </button>
                             <button class="btn btn-sm btn-link text-decoration-none edit-toggle-btn @(showPreview ? "" : "active")"
                                     @onclick="TogglePreview">
                                 <i class="bi @(showPreview ? "bi-pencil" : "bi-eye")"></i>
@@ -429,6 +484,69 @@
                     <div class="pane-content">
                         @if (!showPreview)
                         {
+                            <!-- Markdown Formatting Toolbar -->
+                            <div class="markdown-toolbar">
+                                <div class="toolbar-group">
+                                    <button type="button" class="toolbar-btn" @onclick="InsertBold" title="Bold (Ctrl+B)">
+                                        <i class="bi bi-type-bold"></i>
+                                    </button>
+                                    <button type="button" class="toolbar-btn" @onclick="InsertItalic" title="Italic (Ctrl+I)">
+                                        <i class="bi bi-type-italic"></i>
+                                    </button>
+                                    <button type="button" class="toolbar-btn" @onclick="InsertStrikethrough" title="Strikethrough">
+                                        <i class="bi bi-type-strikethrough"></i>
+                                    </button>
+                                </div>
+                                <div class="toolbar-divider"></div>
+                                <div class="toolbar-group">
+                                    <button type="button" class="toolbar-btn" @onclick="InsertHeading1" title="Heading 1">
+                                        <i class="bi bi-type-h1"></i>
+                                    </button>
+                                    <button type="button" class="toolbar-btn" @onclick="InsertHeading2" title="Heading 2">
+                                        <i class="bi bi-type-h2"></i>
+                                    </button>
+                                    <button type="button" class="toolbar-btn" @onclick="InsertHeading3" title="Heading 3">
+                                        <i class="bi bi-type-h3"></i>
+                                    </button>
+                                </div>
+                                <div class="toolbar-divider"></div>
+                                <div class="toolbar-group">
+                                    <button type="button" class="toolbar-btn" @onclick="InsertLink" title="Link">
+                                        <i class="bi bi-link-45deg"></i>
+                                    </button>
+                                    <button type="button" class="toolbar-btn" @onclick="InsertInlineCode" title="Inline Code">
+                                        <i class="bi bi-code"></i>
+                                    </button>
+                                    <button type="button" class="toolbar-btn" @onclick="InsertQuote" title="Quote">
+                                        <i class="bi bi-quote"></i>
+                                    </button>
+                                </div>
+                                <div class="toolbar-divider"></div>
+                                <div class="toolbar-group">
+                                    <button type="button" class="toolbar-btn" @onclick="InsertBulletList" title="Bullet List">
+                                        <i class="bi bi-list-ul"></i>
+                                    </button>
+                                    <button type="button" class="toolbar-btn" @onclick="InsertNumberedList" title="Numbered List">
+                                        <i class="bi bi-list-ol"></i>
+                                    </button>
+                                    <button type="button" class="toolbar-btn" @onclick="InsertTaskList" title="Task List">
+                                        <i class="bi bi-check-square"></i>
+                                    </button>
+                                </div>
+                                <div class="toolbar-divider"></div>
+                                <div class="toolbar-group">
+                                    <button type="button" class="toolbar-btn" @onclick="InsertCodeBlock" title="Code Block">
+                                        <i class="bi bi-file-code"></i>
+                                    </button>
+                                    <button type="button" class="toolbar-btn" @onclick="InsertTable" title="Table">
+                                        <i class="bi bi-table"></i>
+                                    </button>
+                                    <button type="button" class="toolbar-btn" @onclick="InsertHorizontalRule" title="Horizontal Rule">
+                                        <i class="bi bi-dash-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+
                             <textarea @ref="editorTextArea"
                                       id="note-editor-@selectedNote.Id"
                                       class="markdown-editor"
@@ -592,6 +710,65 @@
                         </div>
                     }
                 </div>
+
+                <!-- Markdown Tips Section -->
+                <div class="pane-header" style="cursor: pointer;" @onclick="ToggleMarkdownTips">
+                    <h5>
+                        <i class="bi bi-question-circle me-1"></i> Markdown Tips
+                    </h5>
+                    <i class="bi @(showMarkdownTips ? "bi-chevron-down" : "bi-chevron-right")"></i>
+                </div>
+                @if (showMarkdownTips)
+                {
+                    <div class="pane-content">
+                        <div class="markdown-tips">
+                            <div class="tip-item">
+                                <code>**bold**</code>
+                                <span class="tip-result"><strong>bold</strong></span>
+                            </div>
+                            <div class="tip-item">
+                                <code>*italic*</code>
+                                <span class="tip-result"><em>italic</em></span>
+                            </div>
+                            <div class="tip-item">
+                                <code># Heading 1</code>
+                                <span class="tip-result text-muted">Large heading</span>
+                            </div>
+                            <div class="tip-item">
+                                <code>## Heading 2</code>
+                                <span class="tip-result text-muted">Medium heading</span>
+                            </div>
+                            <div class="tip-item">
+                                <code>- List item</code>
+                                <span class="tip-result text-muted">Bullet point</span>
+                            </div>
+                            <div class="tip-item">
+                                <code>1. Numbered</code>
+                                <span class="tip-result text-muted">Numbered list</span>
+                            </div>
+                            <div class="tip-item">
+                                <code>[Link](url)</code>
+                                <span class="tip-result text-muted">Hyperlink</span>
+                            </div>
+                            <div class="tip-item">
+                                <code>[[Concept]]</code>
+                                <span class="tip-result text-muted">Wiki link</span>
+                            </div>
+                            <div class="tip-item">
+                                <code>`code`</code>
+                                <span class="tip-result"><code>inline code</code></span>
+                            </div>
+                            <div class="tip-item">
+                                <code>```code```</code>
+                                <span class="tip-result text-muted">Code block</span>
+                            </div>
+                            <div class="tip-item">
+                                <code>> Quote</code>
+                                <span class="tip-result text-muted">Blockquote</span>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
         </div>
     }
@@ -649,6 +826,7 @@
     private int? selectedTagFilter = null;
     private bool showTagManagement = false;
     private bool showMarkdownImport = false;
+    private bool showMarkdownTips = false;
     private List<Tag> selectedNoteTags = new();
 
     // Note type filter and sorting
@@ -679,11 +857,8 @@
                 filtered = filtered.Where(n => n.IsConceptNote);
             }
 
-            // Apply search filter
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                filtered = filtered.Where(n => n.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
-            }
+            // Search is now handled server-side in OnSearchChanged()
+            // No client-side search filtering needed
 
             // Apply tag filter
             if (selectedTagFilter.HasValue)
@@ -1017,15 +1192,84 @@
         isTagsExpanded = !isTagsExpanded;
     }
 
+    private void ToggleMarkdownTips()
+    {
+        showMarkdownTips = !showMarkdownTips;
+    }
+
     private void DismissKeyboardHints()
     {
         hideKeyboardHints = true;
     }
 
-    private void OnSearchChanged()
+    private bool searching = false;
+    private System.Threading.Timer? searchDebounceTimer;
+    private const int SearchDebounceMilliseconds = 400; // Wait 400ms after user stops typing
+
+    private void OnSearchInputChanged(ChangeEventArgs e)
     {
-        // Search is handled by FilteredNotes property
-        StateHasChanged();
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+
+        // Cancel any pending search
+        searchDebounceTimer?.Dispose();
+
+        // If search is cleared, execute immediately
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            searchDebounceTimer = new System.Threading.Timer(async _ =>
+            {
+                await InvokeAsync(async () => await ExecuteSearchAsync());
+            }, null, 0, Timeout.Infinite);
+        }
+        else
+        {
+            // Show searching indicator immediately
+            searching = true;
+            StateHasChanged();
+
+            // Debounce the actual search
+            searchDebounceTimer = new System.Threading.Timer(async _ =>
+            {
+                await InvokeAsync(async () => await ExecuteSearchAsync());
+            }, null, SearchDebounceMilliseconds, Timeout.Infinite);
+        }
+    }
+
+    private async Task ExecuteSearchAsync()
+    {
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            searching = false;
+            return;
+        }
+
+        try
+        {
+            searching = true;
+            StateHasChanged();
+
+            // If there's a search term, use server-side search
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                // Server-side search that looks through both title and content
+                var searchResults = await NoteService.SearchNotesAsync(WorkspaceId, currentUserId, searchTerm);
+                notes = searchResults;
+            }
+            else
+            {
+                // No search term, reload all notes
+                await LoadNotesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error searching notes: {ex.Message}");
+        }
+        finally
+        {
+            searching = false;
+            StateHasChanged();
+        }
     }
 
     // JavaScript interop for wiki-link editor and preview
@@ -1350,6 +1594,9 @@
 
     private bool showShareDialog = false;
     private bool showExportDialog = false;
+    private bool showDeleteConfirmation = false;
+    private bool deleting = false;
+    private Note? noteToDelete = null;
     private bool exportInProgress = false;
 
     private void ShowShareDialog()
@@ -1375,6 +1622,66 @@
     {
         showExportDialog = false;
         exportInProgress = false;
+    }
+
+    private void ShowDeleteConfirmation()
+    {
+        if (selectedNote != null)
+        {
+            noteToDelete = selectedNote;
+            showDeleteConfirmation = true;
+        }
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirmation = false;
+        noteToDelete = null;
+        deleting = false;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (noteToDelete == null || string.IsNullOrEmpty(currentUserId))
+            return;
+
+        deleting = true;
+        try
+        {
+            var success = await NoteService.DeleteNoteAsync(noteToDelete.Id, currentUserId);
+            if (success)
+            {
+                ToastService.ShowSuccess($"Deleted '{noteToDelete.Title}'");
+
+                // Remove from local list
+                notes.Remove(noteToDelete);
+
+                // Clear selection if we deleted the selected note
+                if (selectedNote?.Id == noteToDelete.Id)
+                {
+                    selectedNote = null;
+                    noteContent = string.Empty;
+                }
+
+                // Close dialog
+                showDeleteConfirmation = false;
+                noteToDelete = null;
+
+                StateHasChanged();
+            }
+            else
+            {
+                ToastService.ShowError("Failed to delete note. You may not have permission.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error deleting note: {ex.Message}");
+        }
+        finally
+        {
+            deleting = false;
+        }
     }
 
     private async Task ExportAllNotes()
@@ -1452,11 +1759,109 @@
         return string.Join("_", filename.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
     }
 
+    // === Markdown Toolbar Actions ===
+
+    private async Task InsertBold() => await InsertMarkdown("**", "**", "bold text");
+    private async Task InsertItalic() => await InsertMarkdown("*", "*", "italic text");
+    private async Task InsertStrikethrough() => await InsertMarkdown("~~", "~~", "strikethrough");
+    private async Task InsertHeading1() => await InsertMarkdownLine("# ", "Heading 1");
+    private async Task InsertHeading2() => await InsertMarkdownLine("## ", "Heading 2");
+    private async Task InsertHeading3() => await InsertMarkdownLine("### ", "Heading 3");
+    private async Task InsertLink() => await InsertMarkdown("[", "](url)", "link text");
+    private async Task InsertInlineCode() => await InsertMarkdown("`", "`", "code");
+    private async Task InsertQuote() => await InsertMarkdown("> ", "", "quote");
+    private async Task InsertBulletList() => await InsertMarkdownLine("- ", "list item");
+    private async Task InsertNumberedList() => await InsertMarkdownLine("1. ", "numbered item");
+    private async Task InsertTaskList() => await InsertMarkdownLine("- [ ] ", "task item");
+
+    /// <summary>
+    /// Insert markdown syntax around selected text or at cursor position
+    /// </summary>
+    private async Task InsertMarkdown(string before, string after, string defaultText)
+    {
+        try
+        {
+            var elementId = creatingNote ? "note-editor-new" : $"note-editor-{selectedNote?.Id}";
+            await JSRuntime.InvokeVoidAsync("insertMarkdownSyntax", elementId, before, after, defaultText);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error inserting markdown: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Insert markdown syntax at the beginning of the current line
+    /// </summary>
+    private async Task InsertMarkdownLine(string prefix, string defaultText)
+    {
+        try
+        {
+            var elementId = creatingNote ? "note-editor-new" : $"note-editor-{selectedNote?.Id}";
+            await JSRuntime.InvokeVoidAsync("insertMarkdownLine", elementId, prefix, defaultText);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error inserting markdown line: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Insert a code block
+    /// </summary>
+    private async Task InsertCodeBlock()
+    {
+        try
+        {
+            var elementId = creatingNote ? "note-editor-new" : $"note-editor-{selectedNote?.Id}";
+            await JSRuntime.InvokeVoidAsync("insertCodeBlock", elementId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error inserting code block: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Insert a markdown table
+    /// </summary>
+    private async Task InsertTable()
+    {
+        try
+        {
+            var elementId = creatingNote ? "note-editor-new" : $"note-editor-{selectedNote?.Id}";
+            await JSRuntime.InvokeVoidAsync("insertTable", elementId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error inserting table: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Insert a horizontal rule
+    /// </summary>
+    private async Task InsertHorizontalRule()
+    {
+        try
+        {
+            var elementId = creatingNote ? "note-editor-new" : $"note-editor-{selectedNote?.Id}";
+            await JSRuntime.InvokeVoidAsync("insertHorizontalRule", elementId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error inserting horizontal rule: {ex.Message}");
+        }
+    }
+
     // Cleanup
     public async ValueTask DisposeAsync()
     {
         try
         {
+            // Dispose search debounce timer
+            searchDebounceTimer?.Dispose();
+
             // Unsubscribe from auto-save status changes
             AutoSaveService.StatusChanged -= OnAutoSaveStatusChanged;
 

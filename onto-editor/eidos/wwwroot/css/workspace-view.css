@@ -282,6 +282,73 @@
     transform: scale(1.1);
 }
 
+/* Virtual Folder Styling (Tag-based folders) */
+.virtual-folder-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    margin: 0.25rem 0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
+    border: 1px solid transparent;
+    user-select: none;
+}
+
+.virtual-folder-item:hover {
+    background: var(--hover-color, rgba(0, 0, 0, 0.05));
+    border-color: var(--border-color, rgba(0, 0, 0, 0.1));
+}
+
+.virtual-folder-item.active {
+    background: var(--bs-primary-bg-subtle, rgba(13, 110, 253, 0.1));
+    border-color: var(--bs-primary, #0d6efd);
+    font-weight: 600;
+}
+
+.virtual-folder-item.active .folder-icon {
+    color: var(--bs-primary, #0d6efd);
+}
+
+.virtual-folder-item .folder-icon {
+    font-size: 1rem;
+    color: var(--bs-secondary, #6c757d);
+    transition: color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.virtual-folder-item .folder-name {
+    flex: 1;
+    font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.virtual-folder-item .folder-count {
+    font-size: 0.75rem;
+    color: var(--bs-secondary, #6c757d);
+    background: var(--count-bg, rgba(0, 0, 0, 0.05));
+    padding: 0.125rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    min-width: 1.5rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.virtual-folder-item.active .folder-count {
+    background: var(--bs-primary, #0d6efd);
+    color: white;
+}
+
+.virtual-folders-list {
+    display: flex;
+    flex-direction: column;
+}
+
 .pane-content {
     flex: 1;
     overflow-y: auto;
@@ -583,6 +650,27 @@
     color: var(--bs-primary);
 }
 
+/* Dark mode - Virtual Folders */
+[data-bs-theme="dark"] .virtual-folder-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-bs-theme="dark"] .virtual-folder-item.active {
+    background: rgba(13, 110, 253, 0.2);
+    border-color: var(--bs-primary);
+}
+
+[data-bs-theme="dark"] .virtual-folder-item .folder-count {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .virtual-folder-item.active .folder-count {
+    background: var(--bs-primary);
+    color: white;
+}
+
 /* Responsive design */
 @media (max-width: 992px) {
     .three-pane-layout {
@@ -628,4 +716,95 @@
 
 .markdown-editor:focus:hover::after {
     opacity: 0.8;
+}
+
+/* Markdown Tips Section */
+.markdown-tips {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.tip-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: var(--bs-secondary-bg);
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.tip-item:hover {
+    background: var(--bs-tertiary-bg);
+}
+
+.tip-item code {
+    font-size: 0.85rem;
+    color: var(--bs-code-color);
+    background: var(--bs-code-bg);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+}
+
+.tip-result {
+    font-size: 0.85rem;
+    color: var(--bs-secondary-color);
+}
+/* === Markdown Toolbar Styling === */
+.markdown-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--bs-secondary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+    flex-wrap: wrap;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.toolbar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--bs-body-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover {
+    background: var(--bs-tertiary-bg);
+    border-color: var(--bs-border-color);
+}
+
+.toolbar-btn:active {
+    background: var(--bs-border-color);
+}
+
+.toolbar-btn i {
+    font-size: 1.1rem;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--bs-border-color);
+    margin: 0 0.25rem;
+}
+
+/* Adjust editor to account for toolbar */
+.pane-content .markdown-editor {
+    height: calc(100% - 45px); /* Subtract toolbar height */
 }

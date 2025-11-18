@@ -456,7 +456,7 @@ namespace Eidos.Services
         }
 
         /// <summary>
-        /// Search notes by title
+        /// Search notes by title and content
         /// </summary>
         public async Task<List<Note>> SearchNotesAsync(int workspaceId, string userId, string searchTerm)
         {
@@ -469,7 +469,7 @@ namespace Eidos.Services
                     return new List<Note>();
                 }
 
-                return await _noteRepository.SearchByTitleAsync(workspaceId, searchTerm);
+                return await _noteRepository.SearchNotesAsync(workspaceId, searchTerm);
             }
             catch (Exception ex)
             {

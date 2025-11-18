@@ -126,6 +126,69 @@ input.navbar-toggler {
     font-size: 1.1rem;
 }
 
+/* Featured navigation link (e.g., What's New) */
+.nav-link-item.nav-link-featured {
+    background: linear-gradient(135deg, var(--bs-primary-bg-subtle) 0%, var(--bs-success-bg-subtle) 100%);
+    border-color: var(--bs-success-border-subtle);
+    font-weight: 600;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-link-item.nav-link-featured::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.nav-link-item.nav-link-featured:hover::before {
+    left: 100%;
+}
+
+.nav-link-item.nav-link-featured:hover {
+    border-color: var(--bs-success);
+    box-shadow: 0 4px 16px var(--bs-success-border-subtle);
+    transform: translateX(6px) scale(1.02);
+}
+
+.nav-link-item.nav-link-featured .badge {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.5rem;
+    font-weight: 600;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(0.95);
+    }
+}
+
+/* Section spacing optimization */
+.sidebar-section + .sidebar-section {
+    padding-top: 0.5rem;
+}
+
+.sidebar-section-title {
+    font-weight: 600;
+    color: var(--bs-secondary-color);
+}
+
+.sidebar-section-title i {
+    color: var(--bs-primary);
+    font-size: 0.85rem;
+}
+
 .ontology-list {
     display: flex;
     flex-direction: column;

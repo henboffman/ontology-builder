@@ -290,8 +290,10 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
         ],
         layout: allNodesHavePositions ? {
             // Use preset layout when all nodes have saved positions
+            // IMPORTANT: fit: false preserves exact node positions when display options change
+            // (e.g., text size, node size adjustments). fit: true would rescale/reposition everything.
             name: 'preset',
-            fit: true,
+            fit: false,
             padding: 50,
             animate: false
         } : {
@@ -655,8 +657,11 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
         }
     });
 
-    // Enable fit to screen
-    cy.fit(50);
+    // Enable fit to screen ONLY on initial layout (when nodes don't have positions)
+    // For preset layouts, preserve exact positions to avoid repositioning nodes when display options change
+    if (!allNodesHavePositions) {
+        cy.fit(50);
+    }
 
         // Mobile-friendly touch support
         const isMobile = window.innerWidth <= 768;
@@ -807,7 +812,11 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
         const resizeObserver = new ResizeObserver(() => {
             if (cy && container.cytoscapeInstance) {
                 cy.resize();
-                cy.fit(50);
+                // Only fit on resize if nodes don't have saved positions
+                // This prevents repositioning when the container size changes
+                if (!allNodesHavePositions) {
+                    cy.fit(50);
+                }
             }
         });
         resizeObserver.observe(container);

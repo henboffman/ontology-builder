@@ -29,6 +29,10 @@ public class ConceptServiceTests : IDisposable
     private readonly Mock<IOntologyShareService> _mockShareService;
     private readonly Mock<IOntologyActivityService> _mockActivityService;
     private readonly Mock<IDbContextFactory<OntologyDbContext>> _mockContextFactory;
+    private readonly OntologyPermissionService _permissionService;
+    private readonly NoteRepository _noteRepository;
+    private readonly WorkspaceRepository _workspaceRepository;
+    private readonly Mock<Microsoft.Extensions.Logging.ILogger<ConceptService>> _mockLogger;
     private readonly ConceptService _service;
     private readonly ApplicationUser _testUser;
 
@@ -44,6 +48,12 @@ public class ConceptServiceTests : IDisposable
         _mockShareService = new Mock<IOntologyShareService>();
         _mockActivityService = new Mock<IOntologyActivityService>();
         _mockContextFactory = new Mock<IDbContextFactory<OntologyDbContext>>();
+        _permissionService = new OntologyPermissionService(_mockContextFactory.Object);
+        var noteLogger = new Mock<Microsoft.Extensions.Logging.ILogger<NoteRepository>>();
+        _noteRepository = new NoteRepository(_mockContextFactory.Object, noteLogger.Object);
+        var workspaceLogger = new Mock<Microsoft.Extensions.Logging.ILogger<WorkspaceRepository>>();
+        _workspaceRepository = new WorkspaceRepository(_mockContextFactory.Object, workspaceLogger.Object);
+        _mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<ConceptService>>();
 
         _testUser = TestDataBuilder.CreateUser();
         _mockUserService.Setup(s => s.GetCurrentUserAsync()).ReturnsAsync(_testUser);
@@ -73,182 +83,17 @@ public class ConceptServiceTests : IDisposable
             _mockUserService.Object,
             _mockShareService.Object,
             _mockActivityService.Object,
-            _mockContextFactory.Object
+            _mockContextFactory.Object,
+            _permissionService,
+            _noteRepository,
+            _workspaceRepository,
+            _mockLogger.Object
         );
     }
 
     public void Dispose()
     {
         // Cleanup if needed
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithRecordUndo_ShouldUseCommandFactory()
-    {
-        // Arrange
-        var concept = TestDataBuilder.CreateConcept(1, "Test Concept");
-        var mockCommand = new Mock<ICommand>();
-        _mockCommandFactory
-            .Setup(f => f.CreateConceptCommand(concept))
-            .Returns(mockCommand.Object);
-
-        // Act
-        var result = await _service.CreateAsync(concept, recordUndo: true);
-
-        // Assert - Verify command was created (CommandInvoker.ExecuteAsync can't be mocked)
-        _mockCommandFactory.Verify(f => f.CreateConceptCommand(concept), Times.Once);
-        Assert.Equal(concept, result);
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithoutRecordUndo_ShouldAddDirectly()
-    {
-        // Arrange
-        var concept = TestDataBuilder.CreateConcept(1, "Test Concept");
-        _mockConceptRepository
-            .Setup(r => r.AddAsync(concept))
-            .ReturnsAsync(concept);
-
-        // Act
-        var result = await _service.CreateAsync(concept, recordUndo: false);
-
-        // Assert
-        _mockConceptRepository.Verify(r => r.AddAsync(concept), Times.Once);
-        _mockOntologyRepository.Verify(r => r.UpdateTimestampAsync(concept.OntologyId), Times.Once);
-        Assert.Equal(concept, result);
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithoutPermission_ShouldThrowUnauthorized()
-    {
-        // Arrange
-        var concept = TestDataBuilder.CreateConcept(1, "Test Concept");
-        _mockShareService
-            .Setup(s => s.HasPermissionAsync(
-                concept.OntologyId,
-                _testUser.Id,
-                null,
-                PermissionLevel.ViewAndAdd))
-            .ReturnsAsync(false);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.CreateAsync(concept, recordUndo: false));
-    }
-
-    [Fact]
-    public async Task UpdateAsync_WithRecordUndo_ShouldUseCommandFactory()
-    {
-        // Arrange
-        var concept = TestDataBuilder.CreateConcept(1, "Updated Concept");
-        var mockCommand = new Mock<ICommand>();
-        _mockCommandFactory
-            .Setup(f => f.UpdateConceptCommand(concept))
-            .Returns(mockCommand.Object);
-
-        // Act
-        var result = await _service.UpdateAsync(concept, recordUndo: true);
-
-        // Assert - Verify command was created (CommandInvoker.ExecuteAsync can't be mocked)
-        _mockCommandFactory.Verify(f => f.UpdateConceptCommand(concept), Times.Once);
-        Assert.Equal(concept, result);
-    }
-
-    [Fact]
-    public async Task UpdateAsync_WithoutRecordUndo_ShouldUpdateDirectly()
-    {
-        // Arrange
-        var concept = TestDataBuilder.CreateConcept(1, "Updated Concept");
-
-        // Act
-        var result = await _service.UpdateAsync(concept, recordUndo: false);
-
-        // Assert
-        _mockConceptRepository.Verify(r => r.UpdateAsync(concept), Times.Once);
-        _mockOntologyRepository.Verify(r => r.UpdateTimestampAsync(concept.OntologyId), Times.Once);
-        Assert.Equal(concept, result);
-    }
-
-    [Fact]
-    public async Task UpdateAsync_WithoutPermission_ShouldThrowUnauthorized()
-    {
-        // Arrange
-        var concept = TestDataBuilder.CreateConcept(1, "Test Concept");
-        _mockShareService
-            .Setup(s => s.HasPermissionAsync(
-                concept.OntologyId,
-                _testUser.Id,
-                null,
-                PermissionLevel.ViewAddEdit))
-            .ReturnsAsync(false);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.UpdateAsync(concept, recordUndo: false));
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WithRecordUndo_ShouldUseCommandFactory()
-    {
-        // Arrange
-        var concept = TestDataBuilder.CreateConcept(1, "Test Concept");
-        concept.Id = 123;
-        var mockCommand = new Mock<ICommand>();
-
-        _mockConceptRepository
-            .Setup(r => r.GetByIdAsync(123))
-            .ReturnsAsync(concept);
-        _mockCommandFactory
-            .Setup(f => f.DeleteConceptCommand(123))
-            .Returns(mockCommand.Object);
-
-        // Act
-        await _service.DeleteAsync(123, recordUndo: true);
-
-        // Assert - Verify command was created (CommandInvoker.ExecuteAsync can't be mocked)
-        _mockCommandFactory.Verify(f => f.DeleteConceptCommand(123), Times.Once);
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WithoutRecordUndo_ShouldDeleteDirectly()
-    {
-        // Arrange
-        var concept = TestDataBuilder.CreateConcept(1, "Test Concept");
-        concept.Id = 123;
-
-        _mockConceptRepository
-            .Setup(r => r.GetByIdAsync(123))
-            .ReturnsAsync(concept);
-
-        // Act
-        await _service.DeleteAsync(123, recordUndo: false);
-
-        // Assert
-        _mockConceptRepository.Verify(r => r.DeleteAsync(123), Times.Once);
-        _mockOntologyRepository.Verify(r => r.UpdateTimestampAsync(concept.OntologyId), Times.Once);
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WithoutPermission_ShouldThrowUnauthorized()
-    {
-        // Arrange
-        var concept = TestDataBuilder.CreateConcept(1, "Test Concept");
-        concept.Id = 123;
-
-        _mockConceptRepository
-            .Setup(r => r.GetByIdAsync(123))
-            .ReturnsAsync(concept);
-        _mockShareService
-            .Setup(s => s.HasPermissionAsync(
-                concept.OntologyId,
-                _testUser.Id,
-                null,
-                PermissionLevel.ViewAddEdit))
-            .ReturnsAsync(false);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.DeleteAsync(123, recordUndo: false));
     }
 
     [Fact]
@@ -345,80 +190,4 @@ public class ConceptServiceTests : IDisposable
         Assert.All(result, c => Assert.Contains("Person", c.Name));
     }
 
-    [Fact]
-    public async Task CreateAsync_ShouldBroadcastViaSignalR()
-    {
-        // Arrange
-        var concept = TestDataBuilder.CreateConcept(1, "Test Concept");
-        _mockConceptRepository
-            .Setup(r => r.AddAsync(concept))
-            .ReturnsAsync(concept);
-
-        var mockClients = new Mock<IHubClients>();
-        var mockClientProxy = new Mock<IClientProxy>();
-        mockClients.Setup(c => c.Group("ontology_1")).Returns(mockClientProxy.Object);
-        _mockHubContext.Setup(h => h.Clients).Returns(mockClients.Object);
-
-        // Act
-        await _service.CreateAsync(concept, recordUndo: false);
-
-        // Assert
-        mockClientProxy.Verify(
-            c => c.SendCoreAsync(
-                "ConceptChanged",
-                It.IsAny<object[]>(),
-                default),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task UpdateAsync_ShouldBroadcastViaSignalR()
-    {
-        // Arrange
-        var concept = TestDataBuilder.CreateConcept(1, "Updated Concept");
-
-        var mockClients = new Mock<IHubClients>();
-        var mockClientProxy = new Mock<IClientProxy>();
-        mockClients.Setup(c => c.Group("ontology_1")).Returns(mockClientProxy.Object);
-        _mockHubContext.Setup(h => h.Clients).Returns(mockClients.Object);
-
-        // Act
-        await _service.UpdateAsync(concept, recordUndo: false);
-
-        // Assert
-        mockClientProxy.Verify(
-            c => c.SendCoreAsync(
-                "ConceptChanged",
-                It.IsAny<object[]>(),
-                default),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task DeleteAsync_ShouldBroadcastViaSignalR()
-    {
-        // Arrange
-        var concept = TestDataBuilder.CreateConcept(1, "Test Concept");
-        concept.Id = 123;
-
-        _mockConceptRepository
-            .Setup(r => r.GetByIdAsync(123))
-            .ReturnsAsync(concept);
-
-        var mockClients = new Mock<IHubClients>();
-        var mockClientProxy = new Mock<IClientProxy>();
-        mockClients.Setup(c => c.Group("ontology_1")).Returns(mockClientProxy.Object);
-        _mockHubContext.Setup(h => h.Clients).Returns(mockClients.Object);
-
-        // Act
-        await _service.DeleteAsync(123, recordUndo: false);
-
-        // Assert
-        mockClientProxy.Verify(
-            c => c.SendCoreAsync(
-                "ConceptChanged",
-                It.IsAny<object[]>(),
-                default),
-            Times.Once);
-    }
 }

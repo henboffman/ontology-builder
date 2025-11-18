@@ -22,6 +22,7 @@ namespace Eidos.Services
         private readonly WorkspaceRepository _workspaceRepository;
         private readonly OntologyPermissionService _permissionService;
         private readonly ILogger<AttachmentService> _logger;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         // Security configuration
         private const int MaxFileSizeBytes = 1048576; // 1MB
@@ -46,12 +47,14 @@ namespace Eidos.Services
             NoteAttachmentRepository attachmentRepository,
             WorkspaceRepository workspaceRepository,
             OntologyPermissionService permissionService,
-            ILogger<AttachmentService> logger)
+            ILogger<AttachmentService> logger,
+            IServiceScopeFactory scopeFactory)
         {
             _attachmentRepository = attachmentRepository;
             _workspaceRepository = workspaceRepository;
             _permissionService = permissionService;
             _logger = logger;
+            _scopeFactory = scopeFactory;
         }
 
         /// <summary>
@@ -203,8 +206,20 @@ namespace Eidos.Services
                     return (false, "Attachment data not found.", null);
                 }
 
-                // Update last accessed timestamp (async, don't await)
-                _ = _attachmentRepository.UpdateLastAccessedAsync(attachmentId);
+                // Update last accessed timestamp in background with its own scope to avoid disposed context errors
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        using var scope = _scopeFactory.CreateScope();
+                        var repository = scope.ServiceProvider.GetRequiredService<NoteAttachmentRepository>();
+                        await repository.UpdateLastAccessedAsync(attachmentId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to update last accessed timestamp for attachment {AttachmentId}", attachmentId);
+                    }
+                });
 
                 return (true, string.Empty, fullAttachment);
             }
