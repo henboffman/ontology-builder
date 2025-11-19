@@ -14,6 +14,7 @@
 @inject IRelationshipService RelationshipService
 @inject MarkdownRenderingService MarkdownRenderer
 @inject MarkdownExportService MarkdownExportService
+@inject IUserPreferencesService UserPreferencesService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject ToastService ToastService
@@ -234,7 +235,7 @@
                 <!-- Switch to Ontology -->
                 @if (workspace.Ontology != null)
                 {
-                    <button class="btn btn-sm btn-outline-light"
+                    <button class="btn btn-sm workspace-switch-btn"
                             @onclick="@(() => Navigation.NavigateTo($"/ontology/{workspace.Ontology.Id}"))"
                             title="Switch to Ontology Graph View">
                         <i class="bi bi-diagram-3 me-1"></i> Switch to Ontology
@@ -569,6 +570,8 @@
                         <input type="text"
                                class="form-control note-title-input"
                                @bind="newNoteTitle"
+                               @bind:event="oninput"
+                               @bind:after="OnNewNoteTitleChanged"
                                placeholder="Note title..." />
                         <div class="pane-actions">
                             <button class="btn btn-sm btn-outline-secondary"
@@ -588,6 +591,7 @@
                                   class="markdown-editor"
                                   @bind="noteContent"
                                   @bind:event="oninput"
+                                  @bind:after="OnNewNoteContentChanged"
                                   placeholder="Start typing... Use [[concept name]] to link to concepts"></textarea>
                     </div>
                 }
@@ -818,6 +822,10 @@
     private AutoSaveStatus autoSaveStatus = AutoSaveStatus.Idle;
     private DateTime? lastSavedTime = null;
 
+    // Auto-create for new notes
+    private System.Threading.Timer? autoCreateTimer;
+    private bool noteAutoCreated = false; // Track if note was auto-created
+
     // Quick Switcher
     private WorkspaceQuickSwitcher? quickSwitcher;
 
@@ -894,6 +902,21 @@
             return;
         }
 
+        // Load user preferences for notes sort order
+        try
+        {
+            var preferences = await UserPreferencesService.GetPreferencesAsync(currentUserId);
+            if (Enum.TryParse<NoteSortOption>(preferences.DefaultNotesSortOrder, out var sortOption))
+            {
+                noteSortOption = sortOption;
+            }
+        }
+        catch (Exception ex)
+        {
+            // If loading preferences fails, just use the default
+            Console.WriteLine($"Failed to load notes sort preference: {ex.Message}");
+        }
+
         await LoadWorkspaceAsync();
 
         // Subscribe to auto-save status changes
@@ -956,6 +979,16 @@
         try
         {
             notes = await NoteService.GetWorkspaceNotesAsync(WorkspaceId, currentUserId!);
+
+            // Preload tags for all notes to enable tag filtering
+            foreach (var note in notes)
+            {
+                if (!noteTagsCache.ContainsKey(note.Id))
+                {
+                    var tags = await TagService.GetNoteTagsAsync(note.Id);
+                    noteTagsCache[note.Id] = tags;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -1058,6 +1091,7 @@
         newNoteTitle = string.Empty;
         noteContent = string.Empty;
         showPreview = false;
+        noteAutoCreated = false; // Reset flag
     }
 
     private void CancelNewNote()
@@ -1065,10 +1099,24 @@
         creatingNote = false;
         newNoteTitle = string.Empty;
         noteContent = string.Empty;
+        noteAutoCreated = false;
+        autoCreateTimer?.Dispose();
+        autoCreateTimer = null;
     }
 
     private async Task SaveNewNote()
     {
+        // If note was auto-created, just transition to editing it
+        if (noteAutoCreated && selectedNote != null)
+        {
+            // Note already exists, just close the creating mode
+            creatingNote = false;
+            noteAutoCreated = false;
+            autoCreateTimer?.Dispose();
+            autoCreateTimer = null;
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(newNoteTitle))
         {
             ToastService.ShowWarning("Please enter a note title");
@@ -1101,6 +1149,104 @@
         {
             saving = false;
         }
+    }
+
+    private void OnNewNoteTitleChanged()
+    {
+        if (!string.IsNullOrWhiteSpace(newNoteTitle) && !noteAutoCreated)
+        {
+            QueueAutoCreateNote();
+        }
+    }
+
+    private void OnNewNoteContentChanged()
+    {
+        if (!string.IsNullOrWhiteSpace(noteContent) && !noteAutoCreated)
+        {
+            QueueAutoCreateNote();
+        }
+    }
+
+    private void QueueAutoCreateNote()
+    {
+        // Cancel existing timer
+        autoCreateTimer?.Dispose();
+
+        // Create new timer for 500ms debounce
+        autoCreateTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await AutoCreateNote();
+            });
+        }, null, 500, Timeout.Infinite);
+    }
+
+    private async Task AutoCreateNote()
+    {
+        if (noteAutoCreated || !creatingNote || saving)
+        {
+            return;
+        }
+
+        try
+        {
+            saving = true;
+
+            // Use title if provided, otherwise generate one
+            var title = string.IsNullOrWhiteSpace(newNoteTitle)
+                ? await GenerateUntitledNoteName()
+                : newNoteTitle;
+
+            var note = await NoteService.CreateNoteAsync(
+                WorkspaceId,
+                currentUserId!,
+                title,
+                noteContent
+            );
+
+            // Add to list and select
+            notes.Insert(0, note);
+            selectedNote = note;
+            noteAutoCreated = true;
+
+            // Update the title if it was auto-generated
+            if (string.IsNullOrWhiteSpace(newNoteTitle))
+            {
+                newNoteTitle = title;
+            }
+
+            // Transition from creating to editing mode
+            creatingNote = false;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error auto-creating note: {ex.Message}");
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private async Task<string> GenerateUntitledNoteName()
+    {
+        // Find the next available "Untitled Note X" number
+        var untitledNotes = notes.Where(n => n.Title.StartsWith("Untitled Note")).ToList();
+        var maxNumber = 0;
+
+        foreach (var note in untitledNotes)
+        {
+            var parts = note.Title.Split(' ');
+            if (parts.Length >= 3 && int.TryParse(parts[2], out var num))
+            {
+                maxNumber = Math.Max(maxNumber, num);
+            }
+        }
+
+        return $"Untitled Note {maxNumber + 1}";
     }
 
     private async Task SaveNote()
@@ -1543,8 +1689,20 @@
         StateHasChanged();
     }
 
-    private void OnSortChanged()
+    private async void OnSortChanged()
     {
+        // Save the sort preference
+        if (!string.IsNullOrEmpty(currentUserId))
+        {
+            try
+            {
+                await UserPreferencesService.UpdateDefaultNotesSortOrderAsync(currentUserId, noteSortOption.ToString());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to save notes sort preference: {ex.Message}");
+            }
+        }
         StateHasChanged();
     }
 
@@ -1653,21 +1811,49 @@
             {
                 ToastService.ShowSuccess($"Deleted '{noteToDelete.Title}'");
 
-                // Remove from local list
-                notes.Remove(noteToDelete);
+                // Find index in FILTERED list before removing
+                var filteredList = FilteredNotes.ToList();
+                var deletedIndex = filteredList.FindIndex(n => n.Id == noteToDelete.Id);
+                var wasSelected = selectedNote?.Id == noteToDelete.Id;
 
-                // Clear selection if we deleted the selected note
-                if (selectedNote?.Id == noteToDelete.Id)
+                // Remove from local list - create new list to trigger Blazor change detection
+                notes = notes.Where(n => n.Id != noteToDelete.Id).ToList();
+
+                // Clear selection immediately if we deleted the selected note
+                if (wasSelected)
                 {
                     selectedNote = null;
                     noteContent = string.Empty;
+                    selectedNoteTags = new List<Tag>();
+                    backlinks = new List<NoteLink>();
                 }
 
-                // Close dialog
+                // Close dialog and update UI
                 showDeleteConfirmation = false;
                 noteToDelete = null;
-
                 StateHasChanged();
+
+                // Now select next note if there are any remaining
+                if (wasSelected && notes.Any())
+                {
+                    // Rebuild filtered list after removal
+                    var updatedFilteredList = FilteredNotes.ToList();
+
+                    if (updatedFilteredList.Any())
+                    {
+                        // Try to select the note at the same index, or the previous one if at the end
+                        var nextIndex = deletedIndex >= 0 && deletedIndex < updatedFilteredList.Count
+                            ? deletedIndex
+                            : updatedFilteredList.Count - 1;
+
+                        var nextNote = updatedFilteredList.ElementAtOrDefault(nextIndex);
+
+                        if (nextNote != null)
+                        {
+                            await SelectNote(nextNote.Id);
+                        }
+                    }
+                }
             }
             else
             {

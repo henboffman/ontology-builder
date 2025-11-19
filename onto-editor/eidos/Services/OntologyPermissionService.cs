@@ -485,7 +485,8 @@ public class OntologyPermissionService
             {
                 w.UserId,
                 w.Visibility,
-                w.Id
+                w.Id,
+                OntologyId = w.Ontology != null ? (int?)w.Ontology.Id : null
             })
             .AsNoTracking()
             .FirstOrDefaultAsync();
@@ -517,8 +518,26 @@ public class OntologyPermissionService
             return true;
 
         // Check direct user access
-        return await context.WorkspaceUserAccesses
+        var hasDirectAccess = await context.WorkspaceUserAccesses
             .AnyAsync(ua => ua.WorkspaceId == workspaceId && ua.SharedWithUserId == userId);
+
+        if (hasDirectAccess)
+            return true;
+
+        // Check ontology share link access (if workspace has an ontology)
+        // This allows users who accessed via ontology share link to also view workspace notes
+        if (workspaceInfo.OntologyId.HasValue)
+        {
+            var hasShareLinkAccess = await context.UserShareAccesses
+                .AnyAsync(usa => usa.OntologyShare != null &&
+                                usa.OntologyShare.OntologyId == workspaceInfo.OntologyId.Value &&
+                                usa.UserId == userId);
+
+            if (hasShareLinkAccess)
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -537,7 +556,8 @@ public class OntologyPermissionService
             {
                 w.UserId,
                 w.Visibility,
-                w.AllowPublicEdit
+                w.AllowPublicEdit,
+                OntologyId = w.Ontology != null ? (int?)w.Ontology.Id : null
             })
             .AsNoTracking()
             .FirstOrDefaultAsync();
@@ -573,8 +593,26 @@ public class OntologyPermissionService
             .Select(ua => ua.PermissionLevel)
             .FirstOrDefaultAsync();
 
-        return userAccess == PermissionLevel.ViewAddEdit ||
-               userAccess == PermissionLevel.FullAccess;
+        if (userAccess == PermissionLevel.ViewAddEdit || userAccess == PermissionLevel.FullAccess)
+            return true;
+
+        // Check ontology share link access with edit permissions (if workspace has an ontology)
+        // Share link must grant ViewAddEdit or FullAccess to allow workspace note editing
+        if (workspaceInfo.OntologyId.HasValue)
+        {
+            var sharePermissionLevel = await context.UserShareAccesses
+                .Where(usa => usa.OntologyShare != null &&
+                             usa.OntologyShare.OntologyId == workspaceInfo.OntologyId.Value &&
+                             usa.UserId == userId)
+                .Select(usa => (PermissionLevel?)usa.OntologyShare!.PermissionLevel)
+                .FirstOrDefaultAsync();
+
+            if (sharePermissionLevel == PermissionLevel.ViewAddEdit ||
+                sharePermissionLevel == PermissionLevel.FullAccess)
+                return true;
+        }
+
+        return false;
     }
 
     #endregion

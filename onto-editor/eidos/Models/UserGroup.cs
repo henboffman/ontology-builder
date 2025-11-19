@@ -117,6 +117,12 @@ public class OntologyGroupPermission
     public DateTime GrantedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
+    /// When a user with this group permission last accessed the ontology
+    /// Used for "Shared with Me" recently accessed filtering
+    /// </summary>
+    public DateTime? LastAccessedAt { get; set; }
+
+    /// <summary>
     /// Who granted this permission
     /// </summary>
     public string? GrantedByUserId { get; set; }

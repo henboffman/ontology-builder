@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Xunit;
 using Eidos.Data;
 using Eidos.Models;
+using Eidos.Models.Enums;
 using Eidos.Services;
 using Eidos.Tests.Helpers;
 
@@ -720,6 +721,382 @@ public class OntologyPermissionServiceTests : IDisposable
         Assert.Contains(accessible, o => o.Name == "My Ontology");
         Assert.Contains(accessible, o => o.Name == "Public Ontology");
         Assert.DoesNotContain(accessible, o => o.Name == "Other's Private");
+    }
+
+    #endregion
+
+    #region CanViewWorkspaceAsync Tests
+
+    [Fact]
+    public async Task CanViewWorkspaceAsync_Owner_CanView()
+    {
+        // Arrange
+        var userId = "user1";
+        var workspace = new Workspace
+        {
+            Name = "Test Workspace",
+            UserId = userId,
+            Visibility = "private",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.Workspaces.Add(workspace);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _service.CanViewWorkspaceAsync(workspace.Id, userId);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task CanViewWorkspaceAsync_PublicWorkspace_AnyoneCanView()
+    {
+        // Arrange
+        var workspace = new Workspace
+        {
+            Name = "Public Workspace",
+            UserId = "owner",
+            Visibility = "public",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.Workspaces.Add(workspace);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _service.CanViewWorkspaceAsync(workspace.Id, "otherUser");
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task CanViewWorkspaceAsync_ShareLinkAccess_CanView()
+    {
+        // Arrange
+        var userId = "user1";
+
+        // Create workspace first
+        var workspace = new Workspace
+        {
+            Name = "Test Workspace",
+            UserId = "owner",
+            Visibility = "private",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.Workspaces.Add(workspace);
+        await _context.SaveChangesAsync();
+
+        // Create ontology linked to workspace
+        var ontology = new Ontology
+        {
+            Name = "Test Ontology",
+            UserId = "owner",
+            Visibility = OntologyVisibility.Private,
+            WorkspaceId = workspace.Id,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Ontologies.Add(ontology);
+        await _context.SaveChangesAsync();
+
+        // Create share link
+        var share = new OntologyShare
+        {
+            OntologyId = ontology.Id,
+            ShareToken = Guid.NewGuid().ToString(),
+            PermissionLevel = PermissionLevel.View,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.OntologyShares.Add(share);
+        await _context.SaveChangesAsync();
+
+        // User accesses via share link
+        var userShareAccess = new UserShareAccess
+        {
+            UserId = userId,
+            OntologyShareId = share.Id,
+            FirstAccessedAt = DateTime.UtcNow,
+            LastAccessedAt = DateTime.UtcNow
+        };
+        _context.UserShareAccesses.Add(userShareAccess);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _service.CanViewWorkspaceAsync(workspace.Id, userId);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task CanViewWorkspaceAsync_NoShareLinkAccess_CannotView()
+    {
+        // Arrange
+        var userId = "user1";
+
+        // Create workspace first
+        var workspace = new Workspace
+        {
+            Name = "Private Workspace",
+            UserId = "owner",
+            Visibility = "private",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.Workspaces.Add(workspace);
+        await _context.SaveChangesAsync();
+
+        // Create ontology (no share link for user1)
+        var ontology = new Ontology
+        {
+            Name = "Test Ontology",
+            UserId = "owner",
+            Visibility = OntologyVisibility.Private,
+            WorkspaceId = workspace.Id,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Ontologies.Add(ontology);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _service.CanViewWorkspaceAsync(workspace.Id, userId);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    #endregion
+
+    #region CanEditWorkspaceAsync Tests
+
+    [Fact]
+    public async Task CanEditWorkspaceAsync_Owner_CanEdit()
+    {
+        // Arrange
+        var userId = "user1";
+        var workspace = new Workspace
+        {
+            Name = "Test Workspace",
+            UserId = userId,
+            Visibility = "private",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.Workspaces.Add(workspace);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _service.CanEditWorkspaceAsync(workspace.Id, userId);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task CanEditWorkspaceAsync_PublicWithAllowEdit_CanEdit()
+    {
+        // Arrange
+        var workspace = new Workspace
+        {
+            Name = "Public Workspace",
+            UserId = "owner",
+            Visibility = "public",
+            AllowPublicEdit = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.Workspaces.Add(workspace);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _service.CanEditWorkspaceAsync(workspace.Id, "otherUser");
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task CanEditWorkspaceAsync_ShareLinkWithEditPermission_CanEdit()
+    {
+        // Arrange
+        var userId = "user1";
+
+        // Create workspace first
+        var workspace = new Workspace
+        {
+            Name = "Test Workspace",
+            UserId = "owner",
+            Visibility = "private",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.Workspaces.Add(workspace);
+        await _context.SaveChangesAsync();
+
+        // Create ontology linked to workspace
+        var ontology = new Ontology
+        {
+            Name = "Test Ontology",
+            UserId = "owner",
+            Visibility = OntologyVisibility.Private,
+            WorkspaceId = workspace.Id,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Ontologies.Add(ontology);
+        await _context.SaveChangesAsync();
+
+        // Create share link with edit permission
+        var share = new OntologyShare
+        {
+            OntologyId = ontology.Id,
+            ShareToken = Guid.NewGuid().ToString(),
+            PermissionLevel = PermissionLevel.ViewAddEdit,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.OntologyShares.Add(share);
+        await _context.SaveChangesAsync();
+
+        // User accesses via share link
+        var userShareAccess = new UserShareAccess
+        {
+            UserId = userId,
+            OntologyShareId = share.Id,
+            FirstAccessedAt = DateTime.UtcNow,
+            LastAccessedAt = DateTime.UtcNow
+        };
+        _context.UserShareAccesses.Add(userShareAccess);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _service.CanEditWorkspaceAsync(workspace.Id, userId);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task CanEditWorkspaceAsync_ShareLinkWithViewPermission_CannotEdit()
+    {
+        // Arrange
+        var userId = "user1";
+
+        // Create workspace first
+        var workspace = new Workspace
+        {
+            Name = "Test Workspace",
+            UserId = "owner",
+            Visibility = "private",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.Workspaces.Add(workspace);
+        await _context.SaveChangesAsync();
+
+        // Create ontology linked to workspace
+        var ontology = new Ontology
+        {
+            Name = "Test Ontology",
+            UserId = "owner",
+            Visibility = OntologyVisibility.Private,
+            WorkspaceId = workspace.Id,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Ontologies.Add(ontology);
+        await _context.SaveChangesAsync();
+
+        // Create share link with view-only permission
+        var share = new OntologyShare
+        {
+            OntologyId = ontology.Id,
+            ShareToken = Guid.NewGuid().ToString(),
+            PermissionLevel = PermissionLevel.View,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.OntologyShares.Add(share);
+        await _context.SaveChangesAsync();
+
+        // User accesses via share link
+        var userShareAccess = new UserShareAccess
+        {
+            UserId = userId,
+            OntologyShareId = share.Id,
+            FirstAccessedAt = DateTime.UtcNow,
+            LastAccessedAt = DateTime.UtcNow
+        };
+        _context.UserShareAccesses.Add(userShareAccess);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _service.CanEditWorkspaceAsync(workspace.Id, userId);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task CanEditWorkspaceAsync_ShareLinkWithFullAccessPermission_CanEdit()
+    {
+        // Arrange
+        var userId = "user1";
+
+        // Create workspace first
+        var workspace = new Workspace
+        {
+            Name = "Test Workspace",
+            UserId = "owner",
+            Visibility = "private",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.Workspaces.Add(workspace);
+        await _context.SaveChangesAsync();
+
+        // Create ontology linked to workspace
+        var ontology = new Ontology
+        {
+            Name = "Test Ontology",
+            UserId = "owner",
+            Visibility = OntologyVisibility.Private,
+            WorkspaceId = workspace.Id,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Ontologies.Add(ontology);
+        await _context.SaveChangesAsync();
+
+        // Create share link with full access permission
+        var share = new OntologyShare
+        {
+            OntologyId = ontology.Id,
+            ShareToken = Guid.NewGuid().ToString(),
+            PermissionLevel = PermissionLevel.FullAccess,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.OntologyShares.Add(share);
+        await _context.SaveChangesAsync();
+
+        // User accesses via share link
+        var userShareAccess = new UserShareAccess
+        {
+            UserId = userId,
+            OntologyShareId = share.Id,
+            FirstAccessedAt = DateTime.UtcNow,
+            LastAccessedAt = DateTime.UtcNow
+        };
+        _context.UserShareAccesses.Add(userShareAccess);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _service.CanEditWorkspaceAsync(workspace.Id, userId);
+
+        // Assert
+        Assert.True(result);
     }
 
     #endregion

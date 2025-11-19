@@ -84,6 +84,9 @@ namespace Eidos.Data
         // Note attachments (images in markdown)
         public DbSet<NoteAttachment> NoteAttachments { get; set; }
 
+        // Shared ontology user state (pin/hide/dismiss for "Shared with Me")
+        public DbSet<SharedOntologyUserState> SharedOntologyUserStates { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -1108,6 +1111,39 @@ namespace Eidos.Data
                 .HasIndex(nta => new { nta.NoteId, nta.TagId })
                 .IsUnique()
                 .HasDatabaseName("IX_NoteTagAssignment_NoteId_TagId");
+
+            // Configure SharedOntologyUserState - User relationship
+            modelBuilder.Entity<SharedOntologyUserState>()
+                .HasOne(s => s.User)
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure SharedOntologyUserState - Ontology relationship
+            modelBuilder.Entity<SharedOntologyUserState>()
+                .HasOne(s => s.Ontology)
+                .WithMany()
+                .HasForeignKey(s => s.OntologyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure SharedOntologyUserState indexes
+            modelBuilder.Entity<SharedOntologyUserState>()
+                .HasIndex(s => s.UserId)
+                .HasDatabaseName("IX_SharedOntologyUserState_UserId");
+
+            modelBuilder.Entity<SharedOntologyUserState>()
+                .HasIndex(s => s.OntologyId)
+                .HasDatabaseName("IX_SharedOntologyUserState_OntologyId");
+
+            modelBuilder.Entity<SharedOntologyUserState>()
+                .HasIndex(s => new { s.UserId, s.OntologyId })
+                .IsUnique()
+                .HasDatabaseName("IX_SharedOntologyUserState_UserId_OntologyId");
+
+            // Index for pinned queries
+            modelBuilder.Entity<SharedOntologyUserState>()
+                .HasIndex(s => new { s.UserId, s.IsPinned })
+                .HasDatabaseName("IX_SharedOntologyUserState_UserId_IsPinned");
         }
     }
 }

@@ -32,6 +32,27 @@
     align-items: center;
 }
 
+/* Workspace Switch Button - Theme-aware styling */
+.workspace-switch-btn {
+    border: 1px solid #495057;
+    color: #495057;
+    background: transparent;
+    transition: all 0.2s ease;
+}
+
+.workspace-switch-btn:hover {
+    background: #495057;
+    color: white;
+    border-color: #495057;
+}
+
+.workspace-switch-btn:active,
+.workspace-switch-btn:focus {
+    background: #343a40;
+    color: white;
+    border-color: #343a40;
+}
+
 /* Keyboard Hints Banner */
 .keyboard-hints-banner {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -126,6 +147,7 @@
 
 .pane-left {
     border-right: 1px solid var(--border-color, #dee2e6);
+    background: var(--sidebar-bg, #f8f9fa);
 }
 
 .pane-center {
@@ -633,6 +655,26 @@
     --editor-bg: var(--bs-tertiary-bg);
     --code-bg: var(--bs-secondary-bg);
     --pane-header-bg: var(--bs-secondary-bg);
+    --sidebar-bg: #1a1d21;
+}
+
+/* Workspace Switch Button - Dark mode styling */
+[data-bs-theme="dark"] .workspace-switch-btn {
+    border-color: #adb5bd;
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .workspace-switch-btn:hover {
+    background: #495057;
+    color: white;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .workspace-switch-btn:active,
+[data-bs-theme="dark"] .workspace-switch-btn:focus {
+    background: #6c757d;
+    color: white;
+    border-color: #6c757d;
 }
 
 /* Ensure buttons are visible in dark mode */

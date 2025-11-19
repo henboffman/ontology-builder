@@ -217,7 +217,7 @@ namespace Eidos.Data.Repositories
         }
 
         /// <summary>
-        /// Check if user has access to workspace (optimized to single query)
+        /// Check if user has access to workspace (optimized with share link support)
         /// </summary>
         public async Task<bool> UserHasAccessAsync(int workspaceId, string userId)
         {
@@ -225,24 +225,73 @@ namespace Eidos.Data.Repositories
             {
                 await using var context = await _contextFactory.CreateDbContextAsync();
 
-                // Single query with all access checks combined
-                var hasAccess = await context.Workspaces
+                // First check standard access (owner, public, direct, group) using LEFT JOIN to get OntologyId
+                var hasStandardAccess = await context.Workspaces
                     .Where(w => w.Id == workspaceId)
-                    .Select(w =>
-                        // Owner check
-                        w.UserId == userId ||
-                        // Public check
-                        w.Visibility == "public" ||
-                        // Direct user access
-                        w.UserAccesses.Any(ua => ua.SharedWithUserId == userId) ||
-                        // Group access (user is member of group that has permission)
-                        w.GroupPermissions.Any(gp =>
-                            gp.UserGroup.Members.Any(m => m.UserId == userId)
-                        )
-                    )
+                    .GroupJoin(
+                        context.Ontologies,
+                        w => w.Id,
+                        o => o.WorkspaceId,
+                        (w, ontologies) => new { Workspace = w, Ontology = ontologies.FirstOrDefault() })
+                    .Select(joined => new
+                    {
+                        HasAccess =
+                            // Owner check
+                            joined.Workspace.UserId == userId ||
+                            // Public check
+                            joined.Workspace.Visibility == "public" ||
+                            // Direct user access
+                            joined.Workspace.UserAccesses.Any(ua => ua.SharedWithUserId == userId) ||
+                            // Group access (user is member of group that has permission)
+                            joined.Workspace.GroupPermissions.Any(gp =>
+                                gp.UserGroup.Members.Any(m => m.UserId == userId)
+                            ),
+                        OntologyId = joined.Ontology != null ? (int?)joined.Ontology.Id : null
+                    })
                     .FirstOrDefaultAsync();
 
-                return hasAccess;
+                if (hasStandardAccess == null)
+                {
+                    _logger.LogWarning("Workspace {WorkspaceId} not found for user {UserId} access check", workspaceId, userId);
+                    return false;
+                }
+
+                if (hasStandardAccess.HasAccess)
+                {
+                    _logger.LogDebug("User {UserId} has standard access to workspace {WorkspaceId}", userId, workspaceId);
+                    return true;
+                }
+
+                // If no standard access and workspace has an ontology, check share link access
+                if (hasStandardAccess.OntologyId.HasValue)
+                {
+                    _logger.LogDebug("Checking share link access for user {UserId} to workspace {WorkspaceId} via ontology {OntologyId}",
+                        userId, workspaceId, hasStandardAccess.OntologyId.Value);
+
+                    var hasShareLinkAccess = await context.UserShareAccesses
+                        .AnyAsync(usa => usa.OntologyShare != null &&
+                                        usa.OntologyShare.OntologyId == hasStandardAccess.OntologyId.Value &&
+                                        usa.UserId == userId);
+
+                    if (hasShareLinkAccess)
+                    {
+                        _logger.LogInformation("User {UserId} granted workspace {WorkspaceId} access via ontology share link", userId, workspaceId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("User {UserId} has NO share link access to workspace {WorkspaceId} (OntologyId: {OntologyId})",
+                            userId, workspaceId, hasStandardAccess.OntologyId.Value);
+                    }
+
+                    return hasShareLinkAccess;
+                }
+                else
+                {
+                    _logger.LogWarning("Workspace {WorkspaceId} has NO linked ontology, cannot check share link access for user {UserId}",
+                        workspaceId, userId);
+                }
+
+                return false;
             }
             catch (Exception ex)
             {

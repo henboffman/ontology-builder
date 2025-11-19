@@ -165,6 +165,13 @@ public class UserPreferences
     [StringLength(20)]
     public string DefaultWorkspaceView { get; set; } = "graph";
 
+    /// <summary>
+    /// Default sort order for notes: "TitleAsc", "TitleDesc", "ModifiedDesc", "ModifiedAsc"
+    /// Default is "ModifiedDesc" (newest first)
+    /// </summary>
+    [StringLength(20)]
+    public string DefaultNotesSortOrder { get; set; } = "ModifiedDesc";
+
     // === Metadata ===
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

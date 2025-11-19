@@ -477,6 +477,7 @@ builder.Services.AddScoped<WikiLinkParser>();
 builder.Services.AddScoped<MarkdownRenderingService>();
 builder.Services.AddScoped<MarkdownImportService>();
 builder.Services.AddScoped<MarkdownExportService>();
+builder.Services.AddScoped<SharedOntologyService>();
 
 // Register Import Services (Single Responsibility Principle)
 builder.Services.AddScoped<IRdfParser, RdfParser>();
@@ -612,6 +613,9 @@ app.MapAdditionalIdentityEndpoints();
 
 // Map attachment endpoints
 app.MapAttachmentEndpoints();
+
+// Map shared ontology endpoints
+app.MapSharedOntologyEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

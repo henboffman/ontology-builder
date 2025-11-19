@@ -131,6 +131,9 @@ public class UserPreferencesService : IUserPreferencesService
         existing.Theme = preferences.Theme;
         existing.LayoutStyle = preferences.LayoutStyle;
         existing.ShowKeyboardShortcuts = preferences.ShowKeyboardShortcuts;
+        existing.ShowGlobalSearchBanner = preferences.ShowGlobalSearchBanner;
+        existing.DefaultWorkspaceView = preferences.DefaultWorkspaceView;
+        existing.DefaultNotesSortOrder = preferences.DefaultNotesSortOrder;
 
         existing.UpdatedAt = DateTime.UtcNow;
 
@@ -187,6 +190,9 @@ public class UserPreferencesService : IUserPreferencesService
         preferences.Theme = defaults.Theme;
         preferences.LayoutStyle = defaults.LayoutStyle;
         preferences.ShowKeyboardShortcuts = defaults.ShowKeyboardShortcuts;
+        preferences.ShowGlobalSearchBanner = defaults.ShowGlobalSearchBanner;
+        preferences.DefaultWorkspaceView = defaults.DefaultWorkspaceView;
+        preferences.DefaultNotesSortOrder = defaults.DefaultNotesSortOrder;
 
         preferences.UpdatedAt = DateTime.UtcNow;
 
@@ -311,6 +317,43 @@ public class UserPreferencesService : IUserPreferencesService
         await context.SaveChangesAsync();
 
         _logger.LogInformation("Updated ShowGlobalSearchBanner to {ShowBanner} for user {UserId}", showBanner, userId);
+
+        // Invalidate cache
+        _cache.Remove($"{CACHE_KEY_PREFIX}{userId}");
+    }
+
+    /// <summary>
+    /// Update DefaultNotesSortOrder preference for a specific user
+    /// </summary>
+    public async Task UpdateDefaultNotesSortOrderAsync(string userId, string sortOrder)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        var preferences = await context.UserPreferences
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (preferences == null)
+        {
+            // Create new preferences with the setting
+            preferences = new UserPreferences
+            {
+                UserId = userId,
+                DefaultNotesSortOrder = sortOrder,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            context.UserPreferences.Add(preferences);
+        }
+        else
+        {
+            preferences.DefaultNotesSortOrder = sortOrder;
+            preferences.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await context.SaveChangesAsync();
+
+        _logger.LogInformation("Updated DefaultNotesSortOrder to {SortOrder} for user {UserId}", sortOrder, userId);
 
         // Invalidate cache
         _cache.Remove($"{CACHE_KEY_PREFIX}{userId}");

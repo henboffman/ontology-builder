@@ -1,0 +1,423 @@
+@using Eidos.Models.DTOs
+@using Eidos.Models.Enums
+@using Eidos.Services
+@using System.Net.Http.Json
+@using System.Text
+@using System.Text.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject ILogger<SharedOntologyList> Logger
+@inject ToastService ToastService
+
+@if (isLoading)
+{
+    <div class="text-center p-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading shared ontologies...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading shared ontologies...</p>
+    </div>
+}
+else if (result == null || !result.Ontologies.Any())
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        No recently accessed shared ontologies. When others share ontologies with you via links or groups, they'll appear here.
+    </div>
+}
+else
+{
+    <!-- Filter Controls -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control form-control-sm" placeholder="Search..."
+                               @bind="filter.SearchTerm" @bind:event="oninput" @bind:after="ApplyFilters" />
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select form-select-sm" @bind="filter.AccessTypeFilter" @bind:after="ApplyFilters">
+                        <option value="">All Types</option>
+                        <option value="@((int)SharedAccessType.ShareLink)">Share Links</option>
+                        <option value="@((int)SharedAccessType.Group)">Groups</option>
+                        <option value="@((int)SharedAccessType.Both)">Both</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select form-select-sm" @bind="filter.SortBy" @bind:after="ApplyFilters">
+                        <option value="@((int)SharedOntologySortBy.LastAccessed)">Recently Accessed</option>
+                        <option value="@((int)SharedOntologySortBy.Name)">Name</option>
+                        <option value="@((int)SharedOntologySortBy.ConceptCount)">Concept Count</option>
+                        <option value="@((int)SharedOntologySortBy.PinnedFirst)">Pinned First</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="showPinnedOnly"
+                               @bind="filter.PinnedOnly" @bind:after="ApplyFilters" />
+                        <label class="form-check-label small" for="showPinnedOnly">Pinned Only</label>
+                    </div>
+                </div>
+                <div class="col-md-3 text-end">
+                    <small class="text-muted">
+                        Showing @result.Ontologies.Count of @result.TotalCount
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ontology Grid -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-3">
+        @foreach (var ontology in result.Ontologies)
+        {
+            <div class="col">
+                <div class="card h-100 shared-ontology-card @(ontology.IsPinned ? "pinned" : "")"
+                     @onclick="() => OpenOntology(ontology.OntologyId)">
+                    <div class="card-body">
+                        <!-- Header with badges -->
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0 flex-grow-1" title="@ontology.Name">
+                                @if (ontology.IsPinned)
+                                {
+                                    <i class="bi bi-pin-fill text-primary me-1" title="Pinned"></i>
+                                }
+                                @ontology.Name
+                            </h5>
+                            <div class="d-flex gap-1 flex-shrink-0 ms-2">
+                                @if (ontology.AccessType == SharedAccessType.ShareLink)
+                                {
+                                    <span class="badge bg-info" title="Shared via link">
+                                        <i class="bi bi-link-45deg"></i>
+                                    </span>
+                                }
+                                else if (ontology.AccessType == SharedAccessType.Group)
+                                {
+                                    <span class="badge bg-success" title="Shared via group: @ontology.GroupName">
+                                        <i class="bi bi-people"></i>
+                                    </span>
+                                }
+                                else if (ontology.AccessType == SharedAccessType.Both)
+                                {
+                                    <span class="badge bg-primary" title="Link + Group">
+                                        <i class="bi bi-link-45deg"></i>
+                                        <i class="bi bi-people"></i>
+                                    </span>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <p class="card-text text-muted small mb-2">
+                            @if (!string.IsNullOrWhiteSpace(ontology.Description))
+                            {
+                                @(ontology.Description.Length > 80 ? ontology.Description.Substring(0, 80) + "..." : ontology.Description)
+                            }
+                            else
+                            {
+                                <em>No description</em>
+                            }
+                        </p>
+
+                        <!-- Owner Info -->
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <i class="bi bi-person"></i> @ontology.OwnerName
+                            </small>
+                        </div>
+
+                        <!-- Stats -->
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="text-muted">
+                                <i class="bi bi-circle-fill"></i> @ontology.ConceptCount
+                                <i class="bi bi-arrow-left-right ms-2"></i> @ontology.RelationshipCount
+                            </small>
+                            <small class="text-muted" title="Permission level">
+                                @GetPermissionIcon(ontology.PermissionLevel)
+                            </small>
+                        </div>
+
+                        <!-- Last Accessed -->
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <i class="bi bi-clock"></i> @GetTimeAgo(ontology.LastAccessedAt)
+                            </small>
+                        </div>
+
+                        <!-- Group Info (if applicable) -->
+                        @if (!string.IsNullOrWhiteSpace(ontology.GroupName))
+                        {
+                            <div>
+                                <small class="badge bg-light text-dark border">
+                                    <i class="bi bi-people"></i> @ontology.GroupName (@ontology.GroupMemberCount members)
+                                </small>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="card-footer bg-transparent border-top-0 pt-0">
+                        <div class="btn-group btn-group-sm w-100" role="group">
+                            <button class="btn btn-outline-primary" @onclick="() => OpenOntology(ontology.OntologyId)" @onclick:stopPropagation="true">
+                                <i class="bi bi-eye"></i> Open
+                            </button>
+                            <button class="btn @(ontology.IsPinned ? "btn-primary" : "btn-outline-secondary")"
+                                    @onclick="() => TogglePin(ontology)" @onclick:stopPropagation="true"
+                                    title="@(ontology.IsPinned ? "Unpin" : "Pin for quick access")">
+                                <i class="bi @(ontology.IsPinned ? "bi-pin-fill" : "bi-pin")"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick="() => HideOntology(ontology)" @onclick:stopPropagation="true" title="Hide from list">
+                                <i class="bi bi-eye-slash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Pagination -->
+    @if (result.TotalPages > 1)
+    {
+        <nav aria-label="Shared ontologies pagination" class="mt-4">
+            <ul class="pagination pagination-sm justify-content-center">
+                <li class="page-item @(result.HasPreviousPage ? "" : "disabled")">
+                    <button class="page-link" @onclick="PreviousPage" disabled="@(!result.HasPreviousPage)">
+                        <i class="bi bi-chevron-left"></i> Previous
+                    </button>
+                </li>
+
+                @for (int i = 1; i <= result.TotalPages; i++)
+                {
+                    var pageNum = i;
+                    <li class="page-item @(pageNum == result.Page ? "active" : "")">
+                        <button class="page-link" @onclick="() => GoToPage(pageNum)">@pageNum</button>
+                    </li>
+                }
+
+                <li class="page-item @(result.HasNextPage ? "" : "disabled")">
+                    <button class="page-link" @onclick="NextPage" disabled="@(!result.HasNextPage)">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </button>
+                </li>
+            </ul>
+        </nav>
+    }
+}
+
+<style>
+    .shared-ontology-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+
+    .shared-ontology-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .shared-ontology-card.pinned {
+        border-left: 3px solid var(--bs-primary);
+    }
+
+    .card-title {
+        font-size: 1rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+</style>
+
+@code {
+    private SharedOntologyResult? result;
+    private SharedOntologyFilterModel filter = new();
+    private bool isLoading = true;
+    private int currentPage = 1;
+    private const int PageSize = 24;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSharedOntologies();
+    }
+
+    private async Task LoadSharedOntologies()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var requestBody = new
+            {
+                includeHidden = filter.IncludeHidden,
+                pinnedOnly = filter.PinnedOnly,
+                accessTypeFilter = filter.AccessTypeFilter.HasValue ? (int)filter.AccessTypeFilter.Value : (int?)null,
+                daysBack = filter.DaysBack,
+                searchTerm = filter.SearchTerm,
+                sortBy = (int)filter.SortBy,
+                page = currentPage,
+                pageSize = PageSize
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await Http.PostAsync("/api/shared-ontologies", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                result = await response.Content.ReadFromJsonAsync<SharedOntologyResult>();
+            }
+            else
+            {
+                Logger.LogError("Failed to load shared ontologies: {StatusCode}", response.StatusCode);
+                ToastService.ShowError("Failed to load shared ontologies");
+                result = new SharedOntologyResult();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading shared ontologies");
+            ToastService.ShowError("An error occurred while loading shared ontologies");
+            result = new SharedOntologyResult();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        currentPage = 1; // Reset to first page when filters change
+        await LoadSharedOntologies();
+    }
+
+    private async Task TogglePin(SharedOntologyInfo ontology)
+    {
+        try
+        {
+            HttpResponseMessage response;
+            if (ontology.IsPinned)
+            {
+                response = await Http.DeleteAsync($"/api/shared-ontologies/{ontology.OntologyId}/pin");
+            }
+            else
+            {
+                response = await Http.PostAsync($"/api/shared-ontologies/{ontology.OntologyId}/pin", null);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                ToastService.ShowSuccess(ontology.IsPinned ? "Ontology unpinned" : "Ontology pinned");
+                await LoadSharedOntologies();
+                StateHasChanged(); // Force UI refresh
+            }
+            else
+            {
+                ToastService.ShowError("Failed to update pin status");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error toggling pin for ontology {OntologyId}", ontology.OntologyId);
+            ToastService.ShowError("An error occurred");
+        }
+    }
+
+    private async Task HideOntology(SharedOntologyInfo ontology)
+    {
+        try
+        {
+            var response = await Http.PostAsync($"/api/shared-ontologies/{ontology.OntologyId}/hide", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                ToastService.ShowSuccess("Ontology hidden");
+                await LoadSharedOntologies();
+                StateHasChanged(); // Force UI refresh
+            }
+            else
+            {
+                ToastService.ShowError("Failed to hide ontology");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error hiding ontology {OntologyId}", ontology.OntologyId);
+            ToastService.ShowError("An error occurred");
+        }
+    }
+
+    private void OpenOntology(int ontologyId)
+    {
+        Navigation.NavigateTo($"/ontology/{ontologyId}");
+    }
+
+    private async Task PreviousPage()
+    {
+        if (result?.HasPreviousPage == true)
+        {
+            currentPage--;
+            await LoadSharedOntologies();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (result?.HasNextPage == true)
+        {
+            currentPage++;
+            await LoadSharedOntologies();
+        }
+    }
+
+    private async Task GoToPage(int page)
+    {
+        currentPage = page;
+        await LoadSharedOntologies();
+    }
+
+    private string GetPermissionIcon(PermissionLevel level)
+    {
+        return level switch
+        {
+            PermissionLevel.View => "👁️ View",
+            PermissionLevel.ViewAndAdd => "➕ Add",
+            PermissionLevel.ViewAddEdit => "✏️ Edit",
+            PermissionLevel.FullAccess => "👑 Admin",
+            _ => "👁️"
+        };
+    }
+
+    private string GetTimeAgo(DateTime? dateTime)
+    {
+        if (!dateTime.HasValue) return "Never";
+
+        var timeSpan = DateTime.UtcNow - dateTime.Value;
+
+        if (timeSpan.TotalMinutes < 1) return "just now";
+        if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7) return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalDays < 30) return $"{(int)(timeSpan.TotalDays / 7)}w ago";
+        if (timeSpan.TotalDays < 365) return $"{(int)(timeSpan.TotalDays / 30)}mo ago";
+
+        return $"{(int)(timeSpan.TotalDays / 365)}y ago";
+    }
+
+    // Filter model for binding
+    private class SharedOntologyFilterModel
+    {
+        public bool IncludeHidden { get; set; } = false;
+        public bool PinnedOnly { get; set; } = false;
+        public SharedAccessType? AccessTypeFilter { get; set; } = null;
+        public int DaysBack { get; set; } = 90;
+        public string? SearchTerm { get; set; }
+        public SharedOntologySortBy SortBy { get; set; } = SharedOntologySortBy.LastAccessed;
+    }
+}

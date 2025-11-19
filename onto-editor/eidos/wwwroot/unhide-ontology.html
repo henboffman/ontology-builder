@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Unhide Ontology</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .button {
+            background-color: #0d6efd;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .button:hover {
+            background-color: #0b5ed7;
+        }
+        .message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #842029;
+        }
+    </style>
+</head>
+<body>
+    <h1>Unhide Ontology ID 5</h1>
+    <p>Click the button below to unhide ontology ID 5 from your "Shared with Me" list.</p>
+
+    <button class="button" onclick="unhideOntology()">Unhide Ontology 5</button>
+
+    <div id="message"></div>
+
+    <script>
+        function unhideOntology() {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = 'Processing...';
+            messageDiv.className = 'message';
+
+            fetch('/api/shared-ontologies/5/hide', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                messageDiv.innerHTML = '✓ Success! Ontology 5 has been unhidden. Redirecting to home page in 2 seconds...';
+                messageDiv.className = 'message success';
+
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            })
+            .catch((error) => {
+                messageDiv.innerHTML = '✗ Error: ' + error.message;
+                messageDiv.className = 'message error';
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>

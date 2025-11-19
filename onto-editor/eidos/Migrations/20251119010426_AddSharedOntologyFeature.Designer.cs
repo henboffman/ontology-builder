@@ -4,6 +4,7 @@ using Eidos.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Eidos.Migrations
 {
     [DbContext(typeof(OntologyDbContext))]
-    partial class OntologyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251119010426_AddSharedOntologyFeature")]
+    partial class AddSharedOntologyFeature
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2083,11 +2086,6 @@ namespace Eidos.Migrations
 
                     b.Property<int>("DefaultNodeSize")
                         .HasColumnType("int");
-
-                    b.Property<string>("DefaultNotesSortOrder")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("DefaultRelationshipColor")
                         .IsRequired()

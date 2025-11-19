@@ -41,4 +41,9 @@ public interface IUserPreferencesService
     /// Update ShowGlobalSearchBanner preference for a specific user
     /// </summary>
     Task UpdateShowGlobalSearchBannerAsync(string userId, bool showBanner);
+
+    /// <summary>
+    /// Update DefaultNotesSortOrder preference for a specific user
+    /// </summary>
+    Task UpdateDefaultNotesSortOrderAsync(string userId, string sortOrder);
 }
