@@ -300,6 +300,12 @@ public static class OntologyVisibility
         /// Enables backlinks (Obsidian-style)
         /// </summary>
         public ICollection<NoteLink> IncomingNoteLinks { get; set; } = new List<NoteLink>();
+
+        /// <summary>
+        /// Auto-detected mentions of this concept in notes
+        /// Enables automatic backlinks panel showing which notes mention this concept
+        /// </summary>
+        public ICollection<NoteConceptLink> NoteMentions { get; set; } = new List<NoteConceptLink>();
     }
 
     /// <summary>

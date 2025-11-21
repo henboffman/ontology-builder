@@ -1,0 +1,219 @@
+@using Eidos.Models
+@using Eidos.Services
+@inject ToastService ToastService
+
+<div class="smart-suggestions-panel">
+    @if (IsLoading)
+    {
+        <div class="text-center py-3">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted small mt-2 mb-0">Detecting concepts...</p>
+        </div>
+    }
+    else if (!ConceptLinks.Any())
+    {
+        <div class="empty-state">
+            <i class="bi bi-inbox text-muted"></i>
+            <p class="text-muted small mb-0">No concepts detected in this note.</p>
+            <p class="text-muted small mb-0">Try mentioning concepts from your ontology.</p>
+        </div>
+    }
+    else
+    {
+        <div class="suggestions-list">
+            @foreach (var link in ConceptLinks.OrderByDescending(l => l.TotalMentions))
+            {
+                <div class="suggestion-item">
+                    <div class="suggestion-header">
+                        <div class="concept-name">
+                            <i class="bi bi-tag-fill text-primary"></i>
+                            <span>@link.Concept?.Name</span>
+                        </div>
+                        <div class="mention-count">
+                            <span class="badge bg-secondary">
+                                @link.TotalMentions @(link.TotalMentions == 1 ? "mention" : "mentions")
+                            </span>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(link.Concept?.Definition))
+                    {
+                        <div class="concept-preview text-muted small">
+                            @GetTruncatedDefinition(link.Concept.Definition)
+                        </div>
+                    }
+
+                    @* Show related concepts *@
+                    @{
+                        var relatedConcepts = GetRelatedConcepts(link);
+                    }
+                    @if (relatedConcepts.Any())
+                    {
+                        <div class="related-concepts">
+                            <small class="text-muted">Related:</small>
+                            @foreach (var related in relatedConcepts.Take(3))
+                            {
+                                <span class="related-badge">@related</span>
+                            }
+                            @if (relatedConcepts.Count > 3)
+                            {
+                                <span class="text-muted small">+@(relatedConcepts.Count - 3) more</span>
+                            }
+                        </div>
+                    }
+
+                    <div class="suggestion-actions">
+                        @if (!HasExistingWikiLink(link))
+                        {
+                            <button class="btn btn-sm btn-primary" @onclick="() => CreateWikiLink(link)" title="Automatically add [[]] to first mention">
+                                <i class="bi bi-link-45deg"></i> Create Wiki-Link
+                            </button>
+                        }
+                        else
+                        {
+                            <span class="text-success small">
+                                <i class="bi bi-check-circle-fill"></i> Already linked
+                            </span>
+                        }
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowWikiLinkTip(link)" title="How to create wiki-links for this concept">
+                            <i class="bi bi-lightbulb"></i> How to Link
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="panel-footer">
+            <small class="text-muted">
+                <i class="bi bi-info-circle"></i>
+                Convert plain text mentions to [[wiki-links]] for better connectivity
+            </small>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<NoteConceptLink> ConceptLinks { get; set; } = new();
+
+    [Parameter]
+    public bool IsLoading { get; set; } = false;
+
+    [Parameter]
+    public int? OntologyId { get; set; }
+
+    [Parameter]
+    public string? CurrentNoteContent { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnContentUpdate { get; set; }
+
+    private List<string> GetRelatedConcepts(NoteConceptLink link)
+    {
+        var related = new List<string>();
+
+        if (link.Concept == null)
+            return related;
+
+        // Get concepts this concept has relationships TO
+        if (link.Concept.RelationshipsAsSource != null)
+        {
+            related.AddRange(link.Concept.RelationshipsAsSource
+                .Where(r => r.TargetConcept != null)
+                .Select(r => r.TargetConcept!.Name));
+        }
+
+        // Get concepts that have relationships TO this concept
+        if (link.Concept.RelationshipsAsTarget != null)
+        {
+            related.AddRange(link.Concept.RelationshipsAsTarget
+                .Where(r => r.SourceConcept != null)
+                .Select(r => r.SourceConcept!.Name));
+        }
+
+        return related.Distinct().OrderBy(n => n).ToList();
+    }
+
+    private void ShowWikiLinkTip(NoteConceptLink link)
+    {
+        var conceptName = link.Concept?.Name ?? "this concept";
+        var mentions = link.TotalMentions;
+        var message = $"To create wiki-links for '{conceptName}', wrap each mention with double brackets: [[{conceptName}]]. This will create {mentions} backlink{(mentions == 1 ? "" : "s")} and improve note connectivity.";
+
+        ToastService.ShowInfo(message);
+    }
+
+    private string GetTruncatedDefinition(string definition)
+    {
+        const int maxLength = 100;
+        if (string.IsNullOrWhiteSpace(definition))
+            return string.Empty;
+
+        if (definition.Length <= maxLength)
+            return definition;
+
+        return definition.Substring(0, maxLength).TrimEnd() + "...";
+    }
+
+    private bool HasExistingWikiLink(NoteConceptLink link)
+    {
+        if (string.IsNullOrWhiteSpace(CurrentNoteContent) || link.Concept == null)
+            return false;
+
+        var conceptName = link.Concept.Name;
+        var wikiLinkPattern = $"[[{conceptName}]]";
+
+        return CurrentNoteContent.Contains(wikiLinkPattern, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task CreateWikiLink(NoteConceptLink link)
+    {
+        if (string.IsNullOrWhiteSpace(CurrentNoteContent) || link.Concept == null)
+        {
+            ToastService.ShowWarning("Unable to create wiki-link: note content is empty");
+            return;
+        }
+
+        var conceptName = link.Concept.Name;
+        var wikiLinkPattern = $"[[{conceptName}]]";
+
+        // DEBUG: Log what we're working with
+        Console.WriteLine($"[CreateWikiLink] Concept: {conceptName}");
+        Console.WriteLine($"[CreateWikiLink] Content length: {CurrentNoteContent.Length}");
+        Console.WriteLine($"[CreateWikiLink] Content preview (first 200 chars): {CurrentNoteContent.Substring(0, Math.Min(200, CurrentNoteContent.Length))}");
+        Console.WriteLine($"[CreateWikiLink] Looking for HTML: {CurrentNoteContent.Contains("<span")}");
+
+        // Check if wiki-link already exists
+        if (CurrentNoteContent.Contains(wikiLinkPattern, StringComparison.OrdinalIgnoreCase))
+        {
+            ToastService.ShowInfo($"Wiki-link for '{conceptName}' already exists");
+            return;
+        }
+
+        // Find the first occurrence of the concept name (case-insensitive)
+        var index = CurrentNoteContent.IndexOf(conceptName, StringComparison.OrdinalIgnoreCase);
+
+        if (index == -1)
+        {
+            ToastService.ShowWarning($"Could not find '{conceptName}' in the note content");
+            return;
+        }
+
+        // Get the actual text at that position (to preserve case)
+        var actualText = CurrentNoteContent.Substring(index, conceptName.Length);
+
+        // Replace first occurrence with wiki-link
+        var beforeText = CurrentNoteContent.Substring(0, index);
+        var afterText = CurrentNoteContent.Substring(index + conceptName.Length);
+        var newContent = beforeText + $"[[{actualText}]]" + afterText;
+
+        Console.WriteLine($"[CreateWikiLink] New content preview (first 200 chars): {newContent.Substring(0, Math.Min(200, newContent.Length))}");
+
+        // Update the content via callback
+        await OnContentUpdate.InvokeAsync(newContent);
+
+        ToastService.ShowSuccess($"Created wiki-link for '{conceptName}'");
+    }
+}

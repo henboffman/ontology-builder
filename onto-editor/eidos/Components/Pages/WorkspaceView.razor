@@ -2,6 +2,7 @@
 @using Eidos.Models
 @using Eidos.Services
 @using Eidos.Services.Interfaces
+@using Eidos.Data.Repositories
 @using Eidos.Components.Workspace
 @using Eidos.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
@@ -19,6 +20,8 @@
 @inject NavigationManager Navigation
 @inject ToastService ToastService
 @inject IJSRuntime JSRuntime
+@inject ConceptDetectionService ConceptDetectionService
+@inject NoteConceptLinkRepository NoteConceptLinkRepository
 @implements IAsyncDisposable
 @rendermode InteractiveServer
 
@@ -32,6 +35,7 @@
 <script src="js/workspaceKeyboardHandler.js"></script>
 <script src="js/fileDownload.js"></script>
 <script src="js/markdownToolbar.js"></script>
+<script src="js/noteGraphVisualization.js"></script>
 
 <!-- Quick Switcher Component -->
 <WorkspaceQuickSwitcher @ref="quickSwitcher"
@@ -271,11 +275,13 @@
                 <div class="pane-header-vertical">
                     <div class="pane-header-row">
                         <h5>Notes</h5>
-                        <button class="btn btn-sm btn-link text-decoration-none p-1"
-                                @onclick="ToggleCondensedView"
-                                title="@(isCondensedView ? "Comfortable View" : "Condensed View")">
-                            <i class="bi @(isCondensedView ? "bi-list" : "bi-list-task")"></i>
-                        </button>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-link text-decoration-none p-1"
+                                    @onclick="ToggleCondensedView"
+                                    title="@(isCondensedView ? "Comfortable View" : "Condensed View")">
+                                <i class="bi @(isCondensedView ? "bi-list" : "bi-list-task")"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="pane-actions-compact">
                         <button class="btn btn-sm btn-link text-decoration-none p-1"
@@ -395,6 +401,7 @@
                     </div> 
                 </div>
                 <div class="pane-content">
+                    <!-- Note List View -->
                     @if (notes.Any())
                     {
                         <div class="note-list">
@@ -451,9 +458,27 @@
                 </div>
             </div>
 
-            <!-- Center Pane: Markdown Editor -->
+            <!-- Center Pane: Markdown Editor or Graph View -->
             <div class="pane pane-center">
-                @if (selectedNote != null)
+                @if (showNoteGraph)
+                {
+                    <!-- Graph View Mode -->
+                    <div class="pane-header">
+                        <h5 class="mb-0">Note Network</h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-sm btn-primary"
+                                    @onclick="ToggleNoteView"
+                                    title="Switch to Note Editor">
+                                <i class="bi bi-pencil me-1"></i> Back to Notes
+                            </button>
+                        </div>
+                    </div>
+                    <div class="pane-content p-0" style="height: calc(100% - 60px);">
+                        <NoteGraphView WorkspaceId="@WorkspaceId"
+                                       OnNoteSelected="@((noteId) => SelectNote(noteId))" />
+                    </div>
+                }
+                else if (selectedNote != null)
                 {
                     <div class="pane-header">
                         <input type="text"
@@ -461,6 +486,11 @@
                                @bind="selectedNote.Title"
                                placeholder="Note title..." />
                         <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-sm btn-outline-primary"
+                                    @onclick="ToggleNoteView"
+                                    title="View Note Network">
+                                <i class="bi bi-diagram-3 me-1"></i> Graph
+                            </button>
                             @if (!showPreview)
                             {
                                 <AutoSaveIndicator Status="@autoSaveStatus" />
@@ -600,9 +630,14 @@
                     <div class="empty-state">
                         <i class="bi bi-journal-text" style="font-size: 3rem; opacity: 0.3;"></i>
                         <p class="text-muted mt-3">Select a note to view or edit</p>
-                        <p class="text-muted small">
+                        <p class="text-muted small mb-3">
                             Tip: Use <code>[[concept name]]</code> to create links to concepts
                         </p>
+                        <button class="btn btn-outline-primary"
+                                @onclick="ToggleNoteView"
+                                title="View Note Network">
+                            <i class="bi bi-diagram-3 me-1"></i> View Note Network
+                        </button>
                     </div>
                 }
             </div>
@@ -640,6 +675,21 @@
                                      UserId="@currentUserId"
                                      SelectedTags="@selectedNoteTags"
                                      SelectedTagsChanged="@HandleNoteTagsChanged" />
+                    </div>
+                }
+
+                <!-- Smart Suggestions Section (for non-concept notes) -->
+                @if (selectedNote != null && !selectedNote.IsConceptNote && workspace?.Ontology != null)
+                {
+                    <div class="pane-header">
+                        <h5>Smart Suggestions</h5>
+                    </div>
+                    <div class="pane-content" style="border-bottom: 1px solid var(--bs-border-color); padding: 1rem;">
+                        <SmartSuggestionsPanel ConceptLinks="@currentNoteConceptLinks"
+                                               IsLoading="@loadingConceptLinks"
+                                               OntologyId="@workspace.Ontology.Id"
+                                               CurrentNoteContent="@noteContent"
+                                               OnContentUpdate="@HandleWikiLinkCreation" />
                     </div>
                 }
 
@@ -803,6 +853,10 @@
     private List<NoteLink> backlinks = new();
     private List<Concept> relatedConcepts = new();
 
+    // Smart suggestions (concept links)
+    private List<NoteConceptLink> currentNoteConceptLinks = new();
+    private bool loadingConceptLinks = false;
+
     private string noteContent = string.Empty;
     private string searchTerm = string.Empty;
     private string newNoteTitle = string.Empty;
@@ -812,6 +866,7 @@
     private bool showPreview = false;
     private bool creatingNote = false;
     private bool isCondensedView = true; // Default to condensed view (VS Code style)
+    private bool showNoteGraph = false; // Note graph view toggle
     private bool hideKeyboardHints = false;
     private bool isRightPaneCollapsed = false;
     private bool isTagsExpanded = true; // Default to expanded
@@ -1066,6 +1121,16 @@
                 {
                     selectedNoteTags = await TagService.GetNoteTagsAsync(note.Id);
                     noteTagsCache[note.Id] = selectedNoteTags;
+                }
+
+                // Load concept links for non-concept notes
+                if (!note.IsConceptNote && workspace?.Ontology != null)
+                {
+                    await LoadConceptLinksAsync(note.Id);
+                }
+                else
+                {
+                    currentNoteConceptLinks = new List<NoteConceptLink>();
                 }
 
                 // Force UI update
@@ -1326,6 +1391,11 @@
     private void ToggleCondensedView()
     {
         isCondensedView = !isCondensedView;
+    }
+
+    private void ToggleNoteView()
+    {
+        showNoteGraph = !showNoteGraph;
     }
 
     private void ToggleRightPane()
@@ -1748,6 +1818,19 @@
         }
     }
 
+    private Task HandleWikiLinkCreation(string updatedContent)
+    {
+        // Update the note content
+        noteContent = updatedContent;
+
+        // Trigger the save process
+        OnNoteContentChanged();
+
+        StateHasChanged();
+
+        return Task.CompletedTask;
+    }
+
     // === Toolbar Actions ===
 
     private bool showShareDialog = false;
@@ -2037,6 +2120,45 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Error inserting horizontal rule: {ex.Message}");
+        }
+    }
+
+    // Smart Suggestions (Concept Links)
+    private async Task LoadConceptLinksAsync(int noteId)
+    {
+        try
+        {
+            loadingConceptLinks = true;
+            StateHasChanged();
+
+            // Get concept links from database
+            currentNoteConceptLinks = await NoteConceptLinkRepository.GetByNoteIdAsync(noteId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading concept links: {ex.Message}");
+            currentNoteConceptLinks = new List<NoteConceptLink>();
+        }
+        finally
+        {
+            loadingConceptLinks = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleConceptSelected(int conceptId)
+    {
+        try
+        {
+            if (workspace?.Ontology != null)
+            {
+                // Navigate to the ontology graph view with the selected concept
+                Navigation.NavigateTo($"/ontology/{workspace.Ontology.Id}?selectedConcept={conceptId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error navigating to concept: {ex.Message}");
         }
     }
 

@@ -16,6 +16,8 @@ namespace Eidos.Services
         private readonly IConceptService _conceptService;
         private readonly IConceptRepository _conceptRepository;
         private readonly WikiLinkParser _wikiLinkParser;
+        private readonly ConceptDetectionService _conceptDetectionService;
+        private readonly NoteConceptLinkRepository _noteConceptLinkRepository;
         private readonly ILogger<NoteService> _logger;
 
         public NoteService(
@@ -24,6 +26,8 @@ namespace Eidos.Services
             IConceptService conceptService,
             IConceptRepository conceptRepository,
             WikiLinkParser wikiLinkParser,
+            ConceptDetectionService conceptDetectionService,
+            NoteConceptLinkRepository noteConceptLinkRepository,
             ILogger<NoteService> logger)
         {
             _noteRepository = noteRepository;
@@ -31,6 +35,8 @@ namespace Eidos.Services
             _conceptService = conceptService;
             _conceptRepository = conceptRepository;
             _wikiLinkParser = wikiLinkParser;
+            _conceptDetectionService = conceptDetectionService;
+            _noteConceptLinkRepository = noteConceptLinkRepository;
             _logger = logger;
         }
 
@@ -68,6 +74,9 @@ namespace Eidos.Services
 
                 // Process [[wiki-links]] and create concepts if needed
                 await ProcessWikiLinksAsync(created.Id, workspaceId, markdownContent);
+
+                // Detect and link concept mentions
+                await DetectAndLinkConceptsAsync(created.Id, workspaceId, markdownContent);
 
                 // Update workspace note counts
                 await _workspaceRepository.UpdateNoteCountsAsync(workspaceId);
@@ -168,6 +177,9 @@ namespace Eidos.Services
 
                 // Process [[wiki-links]]
                 await ProcessWikiLinksAsync(noteId, note.WorkspaceId, markdownContent);
+
+                // Detect and link concept mentions
+                await DetectAndLinkConceptsAsync(noteId, note.WorkspaceId, markdownContent);
 
                 _logger.LogInformation("Updated content for note {NoteId}", noteId);
             }
@@ -439,6 +451,10 @@ namespace Eidos.Services
                     return false;
                 }
 
+                // Delete concept links first (for InMemory database compatibility)
+                // In SQL Server, these would be deleted automatically by cascade delete
+                await _noteConceptLinkRepository.DeleteByNoteIdAsync(noteId);
+
                 await _noteRepository.DeleteAsync(noteId);
 
                 // Update workspace note counts
@@ -529,6 +545,34 @@ namespace Eidos.Services
             {
                 _logger.LogError(ex, "Error ensuring concept notes for ontology {OntologyId}", ontologyId);
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Detect concept mentions in note content and create/update links
+        /// Runs automatically when notes are created or updated
+        /// </summary>
+        private async Task DetectAndLinkConceptsAsync(int noteId, int workspaceId, string markdownContent)
+        {
+            try
+            {
+                // Detect concepts mentioned in the note
+                var detectedLinks = await _conceptDetectionService.DetectConceptsAsync(
+                    noteId,
+                    workspaceId,
+                    markdownContent);
+
+                // Upsert the detected links (replace all existing links for this note)
+                await _noteConceptLinkRepository.UpsertLinksAsync(noteId, detectedLinks);
+
+                _logger.LogDebug("Detected and linked {Count} concept mentions in note {NoteId}",
+                    detectedLinks.Count, noteId);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't throw - concept detection is a nice-to-have feature
+                // We don't want it to break note saving
+                _logger.LogError(ex, "Error detecting concept links for note {NoteId}", noteId);
             }
         }
     }

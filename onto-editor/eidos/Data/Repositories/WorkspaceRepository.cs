@@ -31,19 +31,33 @@ namespace Eidos.Data.Repositories
             try
             {
                 await using var context = await _contextFactory.CreateDbContextAsync();
-                var query = context.Workspaces.AsQueryable();
+
+                var workspace = await context.Workspaces
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(w => w.Id == id);
+
+                if (workspace == null)
+                {
+                    return null;
+                }
 
                 if (includeOntology)
                 {
-                    query = query.Include(w => w.Ontology);
+                    // Load ontology separately since FK is on Ontology side
+                    workspace.Ontology = await context.Ontologies
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(o => o.WorkspaceId == id);
                 }
 
                 if (includeNotes)
                 {
-                    query = query.Include(w => w.Notes);
+                    workspace.Notes = await context.Notes
+                        .Where(n => n.WorkspaceId == id)
+                        .AsNoTracking()
+                        .ToListAsync();
                 }
 
-                return await query.AsNoTracking().FirstOrDefaultAsync(w => w.Id == id);
+                return workspace;
             }
             catch (Exception ex)
             {
@@ -197,14 +211,17 @@ namespace Eidos.Data.Repositories
                 var conceptNoteCount = counts?.ConceptNoteCount ?? 0;
                 var userNoteCount = counts?.UserNoteCount ?? 0;
 
-                // Update workspace counts directly in database without loading entity
-                await context.Workspaces
-                    .Where(w => w.Id == workspaceId)
-                    .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(w => w.NoteCount, totalCount)
-                        .SetProperty(w => w.ConceptNoteCount, conceptNoteCount)
-                        .SetProperty(w => w.UserNoteCount, userNoteCount)
-                        .SetProperty(w => w.UpdatedAt, DateTime.UtcNow));
+                // Update workspace counts
+                // Note: Using load-modify-save pattern for compatibility with in-memory database tests
+                var workspace = await context.Workspaces.FindAsync(workspaceId);
+                if (workspace != null)
+                {
+                    workspace.NoteCount = totalCount;
+                    workspace.ConceptNoteCount = conceptNoteCount;
+                    workspace.UserNoteCount = userNoteCount;
+                    workspace.UpdatedAt = DateTime.UtcNow;
+                    await context.SaveChangesAsync();
+                }
 
                 _logger.LogDebug("Updated note counts for workspace {WorkspaceId}: Total={TotalCount}, Concept={ConceptCount}, User={UserCount}",
                     workspaceId, totalCount, conceptNoteCount, userNoteCount);

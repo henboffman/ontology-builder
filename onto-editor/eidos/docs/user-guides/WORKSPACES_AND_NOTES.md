@@ -34,6 +34,7 @@ Workspaces use a three-pane layout designed for efficient knowledge work:
 - View backlinks (notes that reference the current concept)
 - See related concepts from your ontology
 - Navigate concept relationships
+- Smart suggestions for detected concepts (when editing notes)
 
 ## Working with Notes
 
@@ -223,6 +224,73 @@ The right pane shows backlinks for the current note/concept:
 
 This creates a bi-directional knowledge graph where you can navigate by association.
 
+### Smart Suggestions Panel
+
+The Smart Suggestions panel automatically detects when you mention concepts from your ontology in your notes, even if you haven't created wiki-links for them yet. This helps you discover connections and encourages you to formalize relationships by creating proper wiki-links.
+
+**What It Shows:**
+
+When editing a note, the Smart Suggestions panel displays:
+
+1. **Detected Concepts** - Concepts from your ontology that you've mentioned in plain text
+2. **Mention Count** - How many times each concept appears in the current note
+3. **Concept Preview** - A brief excerpt of the concept's definition
+4. **Related Concepts** - Other concepts connected to this one in your ontology graph
+5. **Wiki-Link Guide** - Actionable tips on how to create proper links
+
+**How It Works:**
+
+As you write in plain text, Eidos automatically scans your note content for matches against concept names in your workspace's ontology. For example:
+
+```markdown
+I'm working on a project involving machine learning and data science.
+The team is excited about neural networks.
+```
+
+If your ontology contains concepts named "Machine Learning", "Data Science", and "Neural Networks", they'll appear in the Smart Suggestions panel - even though you haven't used `[[wiki-links]]` yet.
+
+**Understanding the Suggestions:**
+
+Each suggestion card shows:
+
+- **Concept Name** - The concept detected in your note
+- **Badge** - Number of times mentioned (e.g., "3 mentions")
+- **Definition Preview** - First 100 characters of the concept's definition (if available)
+- **Related Concepts** - Up to 3 related concepts from your ontology graph, with an overflow indicator if there are more
+- **"How to Link" Button** - Click to see a helpful tip about creating wiki-links
+
+**Taking Action:**
+
+The primary purpose of Smart Suggestions is to prompt you to formalize your concept mentions into proper wiki-links:
+
+1. **Review the suggestions** to see which concepts you've mentioned
+2. **Click "How to Link"** to see exactly how to create wiki-links for that concept
+3. **Go back to your note** and wrap the mentions in double brackets: `[[Concept Name]]`
+4. **Save your note** to create backlinks and strengthen your knowledge graph
+
+**Example Workflow:**
+
+1. You write: "This project uses Python and TensorFlow for deep learning."
+2. Smart Suggestions detects: "Python", "TensorFlow", "Deep Learning"
+3. You see that "Deep Learning" has 1 mention and is related to "Neural Networks" and "Machine Learning"
+4. You click "How to Link" and see: "To create wiki-links for 'Deep Learning', wrap each mention with double brackets: `[[Deep Learning]]`"
+5. You update your note: "This project uses `[[Python]]` and `[[TensorFlow]]` for `[[deep learning]]`"
+6. These now become proper backlinks visible in the Backlinks panel
+
+**Benefits:**
+
+- **Discover Hidden Connections** - See which ontology concepts you're already mentioning organically
+- **Strengthen Your Graph** - Convert plain text into structured wiki-links
+- **Explore Relationships** - Related concepts help you discover connections you might not have considered
+- **Learn the System** - "How to Link" tips teach wiki-link syntax in context
+
+**Tips:**
+
+- The more concepts you have in your ontology, the more helpful Smart Suggestions becomes
+- Suggestions are case-insensitive, so "machine learning" matches "Machine Learning"
+- If a concept appears multiple times, consider creating a wiki-link for better connectivity
+- Related concepts can inspire you to add more context to your notes
+
 ## Organizing Your Workspace
 
 ### Best Practices
@@ -327,4 +395,4 @@ Change visibility in the ontology settings (gear icon in graph view).
 
 ---
 
-*Last updated: November 15, 2025*
+*Last updated: November 19, 2025*

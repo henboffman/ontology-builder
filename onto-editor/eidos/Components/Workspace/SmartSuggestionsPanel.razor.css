@@ -1,0 +1,195 @@
+.smart-suggestions-panel {
+    /* No additional styling needed - inherits from pane-content */
+}
+
+.empty-state {
+    text-align: center;
+    padding: 24px 16px;
+}
+
+.empty-state i {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    display: block;
+}
+
+.empty-state p {
+    margin: 4px 0;
+}
+
+.suggestions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.suggestion-item {
+    padding: 12px;
+    background: var(--bs-light);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.suggestion-item:hover {
+    background: var(--bs-gray-200);
+    border-color: var(--bs-gray-400);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.concept-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--bs-body-color);
+    flex: 1;
+}
+
+.concept-name i {
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.mention-count {
+    flex-shrink: 0;
+}
+
+.mention-count .badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    font-weight: 500;
+}
+
+.concept-preview {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--bs-border-color);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.related-concepts {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.related-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    background: #0d6efd;
+    color: white;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.suggestion-actions {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--bs-border-color);
+    display: flex;
+    gap: 8px;
+}
+
+.suggestion-actions .btn {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+}
+
+.panel-footer {
+    padding-top: 12px;
+    border-top: 1px solid var(--bs-border-color);
+    margin-top: 12px;
+}
+
+.panel-footer small {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .smart-suggestions-panel {
+        background: var(--bs-dark);
+        border-color: var(--bs-gray-700);
+    }
+
+    .panel-header {
+        background: var(--bs-gray-800);
+        border-bottom-color: var(--bs-gray-700);
+    }
+
+    .panel-header:hover {
+        background: var(--bs-gray-700);
+    }
+
+    .suggestion-item {
+        background: var(--bs-gray-800);
+        border-color: var(--bs-gray-700);
+    }
+
+    .suggestion-item:hover {
+        background: var(--bs-gray-700);
+        border-color: var(--bs-primary);
+    }
+
+    .concept-preview {
+        border-top-color: var(--bs-gray-700);
+    }
+
+    .panel-footer {
+        border-top-color: var(--bs-gray-700);
+    }
+
+    .related-badge {
+        background: #1a73e8;
+        color: white;
+    }
+}
+
+/* Scrollbar styling */
+.panel-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.panel-body::-webkit-scrollbar-track {
+    background: var(--bs-light);
+    border-radius: 4px;
+}
+
+.panel-body::-webkit-scrollbar-thumb {
+    background: var(--bs-gray-400);
+    border-radius: 4px;
+}
+
+.panel-body::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-gray-500);
+}
+
+@media (prefers-color-scheme: dark) {
+    .panel-body::-webkit-scrollbar-track {
+        background: var(--bs-gray-800);
+    }
+
+    .panel-body::-webkit-scrollbar-thumb {
+        background: var(--bs-gray-600);
+    }
+
+    .panel-body::-webkit-scrollbar-thumb:hover {
+        background: var(--bs-gray-500);
+    }
+}

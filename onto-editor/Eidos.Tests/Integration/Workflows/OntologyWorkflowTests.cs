@@ -52,6 +52,10 @@ public class OntologyWorkflowTests : IDisposable
         var noteRepository = new NoteRepository(_contextFactory, noteLogger.Object);
         var workspaceLogger = new Mock<Microsoft.Extensions.Logging.ILogger<WorkspaceRepository>>();
         var workspaceRepository = new WorkspaceRepository(_contextFactory, workspaceLogger.Object);
+        var detectionLogger = new Mock<Microsoft.Extensions.Logging.ILogger<ConceptDetectionService>>();
+        var conceptDetectionService = new ConceptDetectionService(workspaceRepository, _conceptRepository, detectionLogger.Object);
+        var linkLogger = new Mock<Microsoft.Extensions.Logging.ILogger<NoteConceptLinkRepository>>();
+        var noteConceptLinkRepository = new NoteConceptLinkRepository(_contextFactory, linkLogger.Object);
         var mockConceptLogger = new Mock<Microsoft.Extensions.Logging.ILogger<ConceptService>>();
 
         _testUser = TestDataBuilder.CreateUser();
@@ -85,6 +89,8 @@ public class OntologyWorkflowTests : IDisposable
             permissionService,
             noteRepository,
             workspaceRepository,
+            conceptDetectionService,
+            noteConceptLinkRepository,
             mockConceptLogger.Object);
 
         _relationshipService = new RelationshipService(

@@ -35,6 +35,8 @@ public class ConceptServiceIntegrationTests : IDisposable
     private readonly OntologyPermissionService _permissionService;
     private readonly NoteRepository _noteRepository;
     private readonly WorkspaceRepository _workspaceRepository;
+    private readonly ConceptDetectionService _conceptDetectionService;
+    private readonly NoteConceptLinkRepository _noteConceptLinkRepository;
     private readonly Mock<Microsoft.Extensions.Logging.ILogger<ConceptService>> _mockLogger;
     private readonly ApplicationUser _testUser;
 
@@ -61,6 +63,10 @@ public class ConceptServiceIntegrationTests : IDisposable
         _noteRepository = new NoteRepository(_contextFactory, noteLogger.Object);
         var workspaceLogger = new Mock<Microsoft.Extensions.Logging.ILogger<WorkspaceRepository>>();
         _workspaceRepository = new WorkspaceRepository(_contextFactory, workspaceLogger.Object);
+        var detectionLogger = new Mock<Microsoft.Extensions.Logging.ILogger<ConceptDetectionService>>();
+        _conceptDetectionService = new ConceptDetectionService(_workspaceRepository, _conceptRepository, detectionLogger.Object);
+        var linkLogger = new Mock<Microsoft.Extensions.Logging.ILogger<NoteConceptLinkRepository>>();
+        _noteConceptLinkRepository = new NoteConceptLinkRepository(_contextFactory, linkLogger.Object);
         _mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<ConceptService>>();
 
         _testUser = TestDataBuilder.CreateUser();
@@ -95,6 +101,8 @@ public class ConceptServiceIntegrationTests : IDisposable
             _permissionService,
             _noteRepository,
             _workspaceRepository,
+            _conceptDetectionService,
+            _noteConceptLinkRepository,
             _mockLogger.Object
         );
     }

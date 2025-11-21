@@ -1,0 +1,291 @@
+@using Eidos.Models
+@using Eidos.Services
+@using System.Text.Json
+@inject NoteGraphService GraphService
+@inject IJSRuntime JS
+@inject ToastService ToastService
+
+<div class="note-graph-container">
+    @if (IsLoading)
+    {
+        <div class="graph-loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading graph...</span>
+            </div>
+            <p class="mt-2 text-muted">Building note network...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Filter Panel -->
+        <div class="graph-controls">
+            <div class="filter-panel">
+                <div class="filter-group">
+                    <label class="form-label">Search</label>
+                    <input type="text"
+                           class="form-control form-control-sm"
+                           @bind="searchTerm"
+                           @bind:event="oninput"
+                           @onchange="ApplyFilters"
+                           placeholder="Filter by note title...">
+                </div>
+
+                @if (availableTags.Any())
+                {
+                    <div class="filter-group">
+                        <label class="form-label">Tags</label>
+                        <select class="form-select form-select-sm"
+                                @onchange="OnTagSelected">
+                            <option value="">All tags</option>
+                            @foreach (var tag in availableTags)
+                            {
+                                <option value="@tag">@tag</option>
+                            }
+                        </select>
+                    </div>
+                }
+
+                <div class="filter-group">
+                    <label class="form-label">Layout</label>
+                    <select class="form-select form-select-sm" @bind="selectedLayout" @bind:after="UpdateLayout">
+                        <option value="cose">Force-Directed</option>
+                        <option value="circle">Circle</option>
+                        <option value="grid">Grid</option>
+                        <option value="concentric">Concentric</option>
+                    </select>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="ResetFilters">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="FitGraph">
+                        <i class="bi bi-arrows-fullscreen"></i> Fit
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistics Panel -->
+            @if (graphData?.Statistics != null)
+            {
+                <div class="statistics-panel">
+                    <div class="stat-item">
+                        <i class="bi bi-file-text"></i>
+                        <span class="stat-value">@graphData.Statistics.TotalNotes</span>
+                        <span class="stat-label">Notes</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="bi bi-lightbulb"></i>
+                        <span class="stat-value">@graphData.Statistics.TotalConcepts</span>
+                        <span class="stat-label">Concepts</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="bi bi-arrows-angle-contract"></i>
+                        <span class="stat-value">@graphData.Statistics.TotalRelationships</span>
+                        <span class="stat-label">Relationships</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="bi bi-diagram-3"></i>
+                        <span class="stat-value">@graphData.Statistics.TotalEdges</span>
+                        <span class="stat-label">Total Edges</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="bi bi-tags"></i>
+                        <span class="stat-value">@graphData.Statistics.AverageConceptsPerNote.ToString("F1")</span>
+                        <span class="stat-label">Avg Concepts/Note</span>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Graph Canvas -->
+        <div id="@GraphElementId" class="graph-canvas"></div>
+
+        <!-- Legend -->
+        <div class="graph-legend">
+            <div class="legend-item">
+                <div class="legend-node user-note"></div>
+                <span>User Note</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-node concept-note"></div>
+                <span>Concept Note</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-edge"></div>
+                <span>Shared Concepts</span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int WorkspaceId { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnNoteSelected { get; set; }
+
+    private NoteGraphData? graphData;
+    private NoteGraphData? filteredGraphData;
+    private bool IsLoading = true;
+    private string GraphElementId = $"note-graph-{Guid.NewGuid():N}";
+
+    // Filter state
+    private string searchTerm = string.Empty;
+    private List<string> selectedTags = new();
+    private List<string> availableTags = new();
+    private string selectedLayout = "cose";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (WorkspaceId > 0)
+        {
+            await LoadGraphDataAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && graphData != null)
+        {
+            await RenderGraphAsync();
+        }
+    }
+
+    private async Task LoadGraphDataAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            StateHasChanged();
+
+            graphData = await GraphService.BuildGraphAsync(WorkspaceId);
+            filteredGraphData = graphData;
+
+            // Extract available tags
+            availableTags = graphData.Nodes
+                .SelectMany(n => n.Tags)
+                .Distinct()
+                .OrderBy(t => t)
+                .ToList();
+
+            IsLoading = false;
+            StateHasChanged();
+
+            // Render after state update
+            await Task.Delay(100); // Give DOM time to update
+            await RenderGraphAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load graph: {ex.Message}");
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RenderGraphAsync()
+    {
+        if (filteredGraphData == null) return;
+
+        try
+        {
+            var graphJson = JsonSerializer.Serialize(new
+            {
+                nodes = filteredGraphData.Nodes.Select(n => new
+                {
+                    data = new
+                    {
+                        id = n.Id,
+                        label = n.Label,
+                        nodeType = n.NodeType,
+                        noteId = n.NoteId,
+                        conceptId = n.ConceptId,
+                        conceptCount = n.ConceptCount,
+                        conceptCategory = n.ConceptCategory,
+                        isConceptNote = n.IsConceptNote,
+                        tags = n.Tags
+                    }
+                }),
+                edges = filteredGraphData.Edges.Select(e => new
+                {
+                    data = new
+                    {
+                        id = e.Id,
+                        source = e.Source,
+                        target = e.Target,
+                        edgeType = e.EdgeType,
+                        label = e.Label,
+                        weight = e.SharedConceptCount
+                    }
+                })
+            });
+
+            await JS.InvokeVoidAsync("renderNoteGraph", GraphElementId, graphJson, selectedLayout);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to render graph: {ex.Message}");
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        if (graphData == null) return;
+
+        var filter = new NoteGraphFilter
+        {
+            SearchTerm = string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm,
+            Tags = selectedTags.Any() ? selectedTags : null
+        };
+
+        filteredGraphData = GraphService.FilterGraph(graphData, filter);
+
+        InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            await Task.Delay(100);
+            await RenderGraphAsync();
+        });
+    }
+
+    private void OnTagSelected(ChangeEventArgs e)
+    {
+        var tag = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(tag))
+        {
+            selectedTags.Clear();
+            selectedTags.Add(tag);
+        }
+        else
+        {
+            selectedTags.Clear();
+        }
+        ApplyFilters();
+    }
+
+    private void ResetFilters()
+    {
+        searchTerm = string.Empty;
+        selectedTags.Clear();
+        filteredGraphData = graphData;
+
+        InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            await Task.Delay(100);
+            await RenderGraphAsync();
+        });
+    }
+
+    private async Task UpdateLayout()
+    {
+        await RenderGraphAsync();
+    }
+
+    private async Task FitGraph()
+    {
+        await JS.InvokeVoidAsync("fitNoteGraph", GraphElementId);
+    }
+}

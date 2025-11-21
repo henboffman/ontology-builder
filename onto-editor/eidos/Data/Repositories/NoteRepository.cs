@@ -242,12 +242,15 @@ namespace Eidos.Data.Repositories
             try
             {
                 await using var context = await _contextFactory.CreateDbContextAsync();
-                // Use ExecuteUpdate for direct database update without tracking issues
-                await context.Notes
-                    .Where(n => n.Id == noteId)
-                    .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(n => n.LinkCount, linkCount)
-                        .SetProperty(n => n.UpdatedAt, DateTime.UtcNow));
+
+                // Note: Using load-modify-save pattern for compatibility with in-memory database tests
+                var note = await context.Notes.FindAsync(noteId);
+                if (note != null)
+                {
+                    note.LinkCount = linkCount;
+                    note.UpdatedAt = DateTime.UtcNow;
+                    await context.SaveChangesAsync();
+                }
 
                 _logger.LogInformation("Updated note {NoteId} metadata", noteId);
             }

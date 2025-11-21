@@ -36,6 +36,8 @@ public class ConceptService : IConceptService
     private readonly OntologyPermissionService _permissionService;
     private readonly NoteRepository _noteRepository;
     private readonly WorkspaceRepository _workspaceRepository;
+    private readonly ConceptDetectionService _conceptDetectionService;
+    private readonly NoteConceptLinkRepository _noteConceptLinkRepository;
     private readonly ILogger<ConceptService> _logger;
 
     public ConceptService(
@@ -52,6 +54,8 @@ public class ConceptService : IConceptService
         OntologyPermissionService permissionService,
         NoteRepository noteRepository,
         WorkspaceRepository workspaceRepository,
+        ConceptDetectionService conceptDetectionService,
+        NoteConceptLinkRepository noteConceptLinkRepository,
         ILogger<ConceptService> logger)
     {
         _conceptRepository = conceptRepository;
@@ -67,6 +71,8 @@ public class ConceptService : IConceptService
         _permissionService = permissionService;
         _noteRepository = noteRepository;
         _workspaceRepository = workspaceRepository;
+        _conceptDetectionService = conceptDetectionService;
+        _noteConceptLinkRepository = noteConceptLinkRepository;
         _logger = logger;
     }
 
@@ -127,6 +133,7 @@ public class ConceptService : IConceptService
 
         // Capture before state for activity tracking
         var beforeConcept = await _conceptRepository.GetByIdAsync(concept.Id);
+        var nameChanged = beforeConcept?.Name != concept.Name;
 
         if (recordUndo)
         {
@@ -144,6 +151,12 @@ public class ConceptService : IConceptService
 
         // Broadcast concept update to other users in the ontology
         await BroadcastConceptChange(concept.OntologyId, ChangeType.Updated, concept);
+
+        // If concept name changed, re-scan all notes to update concept links
+        if (nameChanged)
+        {
+            await RescanNotesAfterConceptRenameAsync(concept.OntologyId);
+        }
 
         return concept;
     }
@@ -493,6 +506,9 @@ public class ConceptService : IConceptService
             // Broadcast update via SignalR
             await BroadcastConceptChange(concept.OntologyId, ChangeType.Updated, concept);
 
+            // Re-scan all notes to update concept links after name change
+            await RescanNotesAfterConceptRenameAsync(concept.OntologyId);
+
             return true;
         }
         catch
@@ -607,6 +623,70 @@ public class ConceptService : IConceptService
         {
             _logger.LogError(ex, "Error auto-creating concept note for concept {ConceptId}", conceptId);
             // Don't throw - this is a nice-to-have feature, don't break concept creation
+        }
+    }
+
+    /// <summary>
+    /// Re-scans all notes in workspaces associated with this concept's ontology
+    /// to update concept links after a concept rename
+    /// </summary>
+    private async Task RescanNotesAfterConceptRenameAsync(int ontologyId)
+    {
+        try
+        {
+            // Find all workspaces using this ontology using DbContext directly
+            using var context = await _contextFactory.CreateDbContextAsync();
+            var workspaceIds = await context.Workspaces
+                .AsNoTracking()
+                .Include(w => w.Ontology)
+                .Where(w => w.Ontology != null && w.Ontology.Id == ontologyId)
+                .Select(w => w.Id)
+                .ToListAsync();
+
+            if (workspaceIds.Count == 0)
+            {
+                _logger.LogDebug("No workspaces found for ontology {OntologyId}, skipping note re-scan", ontologyId);
+                return;
+            }
+
+            // Re-scan all notes in each workspace
+            int totalNotesScanned = 0;
+            int totalLinksUpdated = 0;
+
+            foreach (var workspaceId in workspaceIds)
+            {
+                // Get all notes with content for this workspace
+                var notes = await _noteRepository.GetByWorkspaceIdWithContentAsync(workspaceId);
+
+                foreach (var note in notes)
+                {
+                    // Get note content from navigation property
+                    var noteContent = note.Content;
+                    if (noteContent?.MarkdownContent == null)
+                        continue;
+
+                    // Detect concepts in the note
+                    var detectedLinks = await _conceptDetectionService.DetectConceptsAsync(
+                        note.Id,
+                        workspaceId,
+                        noteContent.MarkdownContent);
+
+                    // Upsert the detected links
+                    await _noteConceptLinkRepository.UpsertLinksAsync(note.Id, detectedLinks);
+
+                    totalNotesScanned++;
+                    totalLinksUpdated += detectedLinks.Count;
+                }
+            }
+
+            _logger.LogInformation(
+                "Re-scanned {NoteCount} notes after concept rename in ontology {OntologyId}, updated {LinkCount} concept links",
+                totalNotesScanned, ontologyId, totalLinksUpdated);
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't throw - concept rename should still succeed
+            _logger.LogError(ex, "Error re-scanning notes after concept rename for ontology {OntologyId}", ontologyId);
         }
     }
 }

@@ -168,6 +168,12 @@ namespace Eidos.Models
         /// </summary>
         public ICollection<NoteTagAssignment> TagAssignments { get; set; } = new List<NoteTagAssignment>();
 
+        /// <summary>
+        /// Auto-detected concept mentions in this note
+        /// Enables automatic backlinks from notes to concepts
+        /// </summary>
+        public ICollection<NoteConceptLink> ConceptLinks { get; set; } = new List<NoteConceptLink>();
+
         // === Import Metadata (for markdown file imports) ===
 
         /// <summary>

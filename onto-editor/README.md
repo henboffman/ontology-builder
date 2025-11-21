@@ -50,22 +50,26 @@ A modern, production-ready web-based ontology editor built with Blazor Server an
 ## Technology Stack
 
 ### Backend
+
 - **.NET 9**: Latest .NET framework with C# 13
 - **Blazor Server**: Interactive server-side web framework with SignalR
 - **ASP.NET Core Identity**: Authentication and user management
 - **Entity Framework Core 9**: ORM with migrations and DbContextFactory
 
 ### Database
+
 - **SQL Server 2022**: Production database (Azure SQL Database)
 - **Docker SQL Server**: Local development with production parity
 - **Azure Key Vault**: Secure secrets and connection string management
 
 ### Security
+
 - **OAuth 2.0 Providers**: GitHub, Google, Microsoft authentication
 - **AspNetCoreRateLimit**: IP-based rate limiting middleware
 - **Azure Identity**: Managed Identity and DefaultAzureCredential
 
 ### Data Processing
+
 - **dotNetRDF**: RDF and TTL file processing library
 - **D3.js**: Force-directed graph visualization
 - **Bootstrap 5**: Responsive UI framework with Bootstrap Icons
@@ -156,11 +160,13 @@ See [DOCKER-SETUP.md](DOCKER-SETUP.md) for complete Docker SQL Server documentat
 ## Documentation
 
 ### User Documentation
+
 - **[USER_GUIDE.md](USER_GUIDE.md)**: Comprehensive user guide covering all features, workflows, and best practices
 - **Keyboard Shortcuts**: Press `?` in the application to view all keyboard shortcuts
 - **In-app Help**: Built-in help dialogs and tooltips throughout the interface
 
 ### Developer Documentation
+
 - **[DOCKER-SETUP.md](DOCKER-SETUP.md)**: Complete Docker SQL Server setup, troubleshooting, and daily workflow
 - **[SECURITY-SETUP.md](SECURITY-SETUP.md)**: OAuth configuration, secrets management, and security best practices
 - **[AZURE-DEPLOYMENT.md](AZURE-DEPLOYMENT.md)**: Step-by-step Azure deployment guide with infrastructure setup
@@ -292,6 +298,7 @@ onto-editor/
 The application uses SQL Server (Docker for dev, Azure SQL for prod) with the following tables:
 
 ### Core Tables
+
 - **AspNetUsers**: User accounts with ASP.NET Core Identity
   - Id, Username, DisplayName, Email, PasswordHash, SecurityStamp, etc.
 
@@ -311,6 +318,7 @@ The application uses SQL Server (Docker for dev, Azure SQL for prod) with the fo
   - Id, OntologyId, Category, Type, Description, Examples, Color, CreatedAt, UpdatedAt
 
 ### Supporting Tables
+
 - **OntologyLinks**: External ontology references
   - Id, OntologyId, Uri, Name, Prefix, Description, ConceptsImported, ImportedConceptCount
 
@@ -339,6 +347,7 @@ The application uses SQL Server (Docker for dev, Azure SQL for prod) with the fo
 ### Production Configuration
 
 In production, configure via:
+
 - **Azure App Service Configuration**: Set connection strings and app settings
 - **Azure Key Vault**: Store secrets securely
 - **Managed Identity**: Automatic authentication for Azure resources
@@ -375,6 +384,7 @@ Deploy to Azure App Service with these steps:
 2. **Full Deployment Guide**: See [AZURE-DEPLOYMENT.md](AZURE-DEPLOYMENT.md) for complete infrastructure setup
 
 **What gets deployed:**
+
 - Azure App Service (Linux, .NET 9)
 - Azure SQL Database (production database)
 - Azure Key Vault (secrets management)
@@ -382,6 +392,7 @@ Deploy to Azure App Service with these steps:
 - Custom domain with SSL (optional)
 
 **Before deploying:**
+
 - Rotate OAuth credentials (see [SECURITY-SETUP.md](SECURITY-SETUP.md))
 - Store secrets in Azure Key Vault
 - Configure App Service settings
@@ -392,6 +403,7 @@ Deploy to Azure App Service with these steps:
 ### Docker SQL Server Issues
 
 **Container won't start:**
+
 ```bash
 # Check Docker is running
 docker info
@@ -403,6 +415,7 @@ docker-compose logs sqlserver
 ```
 
 **Port 1433 already in use:**
+
 ```bash
 # Use different port in docker-compose.yml
 ports:
@@ -413,6 +426,7 @@ Server=localhost,1434;...
 ```
 
 **Connection refused:**
+
 ```bash
 # Wait for SQL Server to start (can take 10-20s)
 docker-compose logs -f sqlserver
@@ -425,6 +439,7 @@ See [DOCKER-SETUP.md](DOCKER-SETUP.md#troubleshooting) for complete troubleshoot
 ### Database Issues
 
 **Reset local database:**
+
 ```bash
 # Delete Docker volume (destroys all data)
 docker-compose down -v
@@ -432,6 +447,7 @@ docker-compose up -d
 ```
 
 **Migration errors:**
+
 ```bash
 # Create new migration
 dotnet ef migrations add YourMigrationName
@@ -443,11 +459,13 @@ dotnet ef database update
 ### Authentication Issues
 
 **OAuth errors:**
+
 - Verify Client ID and Client Secret in User Secrets
 - Check OAuth redirect URIs match your domain
 - Ensure GitHub/Google/Microsoft OAuth app is configured
 
 **Key Vault connection errors:**
+
 ```bash
 # Verify Azure CLI login
 az login
@@ -483,9 +501,41 @@ Contributions are welcome! Please follow these steps:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+## License and Usage
 
-This project is open source and available under the MIT License.
+This project is open source and available under the MIT License, with the following usage restrictions:
+
+### Commercial Use Policy
+
+**Effective Date: November 20, 2025**
+
+- **Future Commercial Use**: Commercial use of this software is **prohibited** for any usage beginning on or after November 20, 2025.
+- **Past Commercial Use**: Any commercial use that began prior to November 20, 2025 is **permitted perpetually** under the original MIT License terms.
+
+### Permitted Use
+
+The following uses are permitted without restriction:
+
+- Personal projects and learning
+- Academic and research purposes
+- Non-profit organizations
+- Educational institutions
+- Open source projects
+- Internal business tools (non-commercial deployment)
+
+### Definition of Commercial Use
+
+Commercial use includes, but is not limited to:
+
+- Selling the software or derivative works
+- Using the software to provide paid services
+- Incorporating the software into commercial products
+- Deploying the software in revenue-generating applications
+- Using the software at or for a commercial entity
+
+### Grandfathering Clause
+
+Organizations or individuals who began using this software for commercial purposes prior to November 20, 2025 may continue such use indefinitely under the original MIT License terms, including the right to receive updates and modifications.
 
 ## Security
 
@@ -517,6 +567,7 @@ See [SECURITY-SETUP.md](SECURITY-SETUP.md) for security configuration and best p
 ## Support
 
 For issues, questions, or suggestions:
+
 - Open an issue on the GitHub repository
 - See documentation in the `/docs` folder
 - Review security practices in [SECURITY-SETUP.md](SECURITY-SETUP.md)

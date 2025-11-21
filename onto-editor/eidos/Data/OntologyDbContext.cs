@@ -84,6 +84,9 @@ namespace Eidos.Data
         // Note attachments (images in markdown)
         public DbSet<NoteAttachment> NoteAttachments { get; set; }
 
+        // Auto-detected concept mentions in notes
+        public DbSet<NoteConceptLink> NoteConceptLinks { get; set; }
+
         // Shared ontology user state (pin/hide/dismiss for "Shared with Me")
         public DbSet<SharedOntologyUserState> SharedOntologyUserStates { get; set; }
 

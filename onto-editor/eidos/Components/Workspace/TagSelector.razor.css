@@ -37,6 +37,7 @@
         opacity: 0;
         transform: translateY(-0.5rem);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -116,7 +117,7 @@
 /* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
     .available-tags {
-        background-color: rgba(0, 0, 0, 0.2);
+        /* background-color: rgba(0, 0, 0, 0.2); */
     }
 
     .tag-item:hover {
