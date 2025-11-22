@@ -1,19 +1,10 @@
 @page "/learn"
 @rendermode InteractiveServer
-@using Eidos.Models
-@using Eidos.Services
-@using Eidos.Services.Interfaces
-@using Microsoft.JSInterop
-@inject NavigationManager Navigation
-@inject IOntologyService OntologyService
-@inject IConceptService ConceptService
-@inject IRelationshipService RelationshipService
-@inject ToastService ToastService
-@inject IJSRuntime JS
 
 <PageTitle>Learn - Ontology Builder</PageTitle>
 <HeadContent>
-    <meta name="description" content="Learn how to build ontologies with interactive tutorials and examples. Understand concepts, relationships, properties, and real-world use cases for knowledge modeling and semantic web applications." />
+    <meta name="description"
+        content="Learn how to build ontologies with interactive tutorials and examples. Understand concepts, relationships, properties, and real-world use cases for knowledge modeling and semantic web applications." />
 </HeadContent>
 
 <div class="container-fluid py-4 learn-page">
@@ -23,31 +14,40 @@
             <div class="sticky-top" style="top: 20px;">
                 <h5 class="text-muted mb-3">Contents</h5>
                 <nav class="nav flex-column">
-                    <button class="nav-link @(activeSection == "intro" ? "active" : "")" @onclick='async () => await ScrollToSection("intro")'>
+                    <button class="nav-link @(activeSection == "intro" ? "active" : "")"
+                        @onclick='async () => await ScrollToSection("intro")'>
                         <i class="bi bi-book"></i> What are Ontologies?
                     </button>
-                    <button class="nav-link @(activeSection == "concepts" ? "active" : "")" @onclick='async () => await ScrollToSection("concepts")'>
+                    <button class="nav-link @(activeSection == "concepts" ? "active" : "")"
+                        @onclick='async () => await ScrollToSection("concepts")'>
                         <i class="bi bi-puzzle"></i> Core Concepts
                     </button>
-                    <button class="nav-link @(activeSection == "example" ? "active" : "")" @onclick='async () => await ScrollToSection("example")'>
+                    <button class="nav-link @(activeSection == "example" ? "active" : "")"
+                        @onclick='async () => await ScrollToSection("example")'>
                         <i class="bi bi-diagram-3"></i> Example Walkthrough
                     </button>
-                    <button class="nav-link @(activeSection == "practice" ? "active" : "")" @onclick='async () => await ScrollToSection("practice")'>
+                    <button class="nav-link @(activeSection == "practice" ? "active" : "")"
+                        @onclick='async () => await ScrollToSection("practice")'>
                         <i class="bi bi-pencil-square"></i> Try It Yourself
                     </button>
-                    <button class="nav-link @(activeSection == "usecases" ? "active" : "")" @onclick='async () => await ScrollToSection("usecases")'>
+                    <button class="nav-link @(activeSection == "usecases" ? "active" : "")"
+                        @onclick='async () => await ScrollToSection("usecases")'>
                         <i class="bi bi-lightbulb"></i> Real-World Uses
                     </button>
-                    <button class="nav-link @(activeSection == "bestpractices" ? "active" : "")" @onclick='async () => await ScrollToSection("bestpractices")'>
+                    <button class="nav-link @(activeSection == "bestpractices" ? "active" : "")"
+                        @onclick='async () => await ScrollToSection("bestpractices")'>
                         <i class="bi bi-star"></i> Best Practices
                     </button>
                 </nav>
 
                 <div class="mt-4 p-3 bg-light rounded">
                     <small class="text-muted">
-                        <strong>Your Progress:</strong><br/>
+                        <strong>Your Progress:</strong><br />
                         <div class="progress mt-2" style="height: 8px;">
-                            <div class="progress-bar bg-success" role="progressbar" aria-label="Learning progress: @completedSections of @totalSections sections completed" aria-valuenow="@progressPercent" aria-valuemin="0" aria-valuemax="100" style="width: @(progressPercent)%"></div>
+                            <div class="progress-bar bg-success" role="progressbar"
+                                aria-label="Learning progress: @completedSections of @totalSections sections completed"
+                                aria-valuenow="@progressPercent" aria-valuemin="0" aria-valuemax="100"
+                                style="width: @(progressPercent)%"></div>
                         </div>
                         <span class="text-success">@completedSections / @totalSections sections</span>
                     </small>
@@ -81,9 +81,12 @@
                             Think of it as a map that shows:
                         </p>
                         <ul class="list-unstyled ms-3">
-                            <li class="mb-2"><i class="bi bi-check-circle text-primary"></i> <strong>What exists</strong> in your domain (concepts/entities)</li>
-                            <li class="mb-2"><i class="bi bi-check-circle text-primary"></i> <strong>How things relate</strong> to each other (relationships)</li>
-                            <li class="mb-2"><i class="bi bi-check-circle text-primary"></i> <strong>What properties</strong> things have (attributes)</li>
+                            <li class="mb-2"><i class="bi bi-check-circle text-primary"></i> <strong>What
+                                    exists</strong> in your domain (concepts/entities)</li>
+                            <li class="mb-2"><i class="bi bi-check-circle text-primary"></i> <strong>How things
+                                    relate</strong> to each other (relationships)</li>
+                            <li class="mb-2"><i class="bi bi-check-circle text-primary"></i> <strong>What
+                                    properties</strong> things have (attributes)</li>
                         </ul>
                     </div>
                 </div>
@@ -151,7 +154,7 @@
                     <div class="accordion-item">
                         <h3 class="accordion-header">
                             <button class="accordion-button @(expandedConcept != 1 ? "collapsed" : "")" type="button"
-                                    @onclick='() => ToggleConcept(1)'>
+                                @onclick='() => ToggleConcept(1)'>
                                 <i class="bi bi-box text-primary me-2"></i>
                                 <strong>1. Concepts (Entities)</strong>
                             </button>
@@ -160,30 +163,36 @@
                         {
                             <div class="accordion-body">
                                 <p>
-                                    <strong>Concepts</strong> (also called entities or classes) represent the "things" in your domain.
+                                    <strong>Concepts</strong> (also called entities or classes) represent the "things" in
+                                    your domain.
                                     They are the nouns - people, places, objects, ideas.
                                 </p>
 
                                 <div class="alert alert-info">
                                     <strong>Categories of Concepts:</strong>
                                     <ul class="mb-0 mt-2">
-                                        <li><span class="badge bg-primary">Entity</span> - Physical or abstract objects (Book, Person, Organization)</li>
-                                        <li><span class="badge bg-warning text-dark">Process</span> - Actions or events (Publishing, Borrowing, Reading)</li>
-                                        <li><span class="badge bg-success">Quality</span> - Characteristics or properties (Color, Size, Genre)</li>
-                                        <li><span class="badge bg-info">Role</span> - Functions or positions (Author, Reader, Librarian)</li>
-                                        <li><span class="badge bg-danger">Event</span> - Occurrences in time (BookRelease, LibraryOpening)</li>
+                                        <li><span class="badge bg-primary">Entity</span> - Physical or abstract objects
+                                            (Book, Person, Organization)</li>
+                                        <li><span class="badge bg-warning text-dark">Process</span> - Actions or events
+                                            (Publishing, Borrowing, Reading)</li>
+                                        <li><span class="badge bg-success">Quality</span> - Characteristics or properties
+                                            (Color, Size, Genre)</li>
+                                        <li><span class="badge bg-info">Role</span> - Functions or positions (Author,
+                                            Reader, Librarian)</li>
+                                        <li><span class="badge bg-danger">Event</span> - Occurrences in time (BookRelease,
+                                            LibraryOpening)</li>
                                     </ul>
                                 </div>
 
                                 <div class="mt-3">
                                     <h6>Example Hierarchy:</h6>
                                     <pre class="bg-light p-3 rounded"><code>Publication
-├── Book
-│   ├── Fiction
-│   └── NonFiction
-└── Magazine
-    ├── Weekly
-    └── Monthly</code></pre>
+    ├── Book
+    │   ├── Fiction
+    │   └── NonFiction
+    └── Magazine
+        ├── Weekly
+        └── Monthly</code></pre>
                                 </div>
                             </div>
                         }
@@ -193,7 +202,7 @@
                     <div class="accordion-item">
                         <h3 class="accordion-header">
                             <button class="accordion-button @(expandedConcept != 2 ? "collapsed" : "")" type="button"
-                                    @onclick='() => ToggleConcept(2)'>
+                                @onclick='() => ToggleConcept(2)'>
                                 <i class="bi bi-arrow-left-right text-success me-2"></i>
                                 <strong>2. Relationships</strong>
                             </button>
@@ -202,14 +211,16 @@
                         {
                             <div class="accordion-body">
                                 <p>
-                                    <strong>Relationships</strong> connect concepts and show how they interact or relate to each other.
+                                    <strong>Relationships</strong> connect concepts and show how they interact or relate to
+                                    each other.
                                     They are the verbs - connecting, linking, associating.
                                 </p>
 
                                 <div class="alert alert-success">
                                     <strong>Common Relationship Types:</strong>
                                     <ul class="mb-0 mt-2">
-                                        <li><strong>is-a</strong> (subclass) - "Fiction is-a Book" (inheritance/taxonomy)</li>
+                                        <li><strong>is-a</strong> (subclass) - "Fiction is-a Book" (inheritance/taxonomy)
+                                        </li>
                                         <li><strong>part-of</strong> - "Chapter part-of Book" (composition)</li>
                                         <li><strong>has-part</strong> - "Book has-part Chapter" (reverse composition)</li>
                                         <li><strong>related-to</strong> - "Book related-to Topic" (association)</li>
@@ -235,7 +246,7 @@
                     <div class="accordion-item">
                         <h3 class="accordion-header">
                             <button class="accordion-button @(expandedConcept != 3 ? "collapsed" : "")" type="button"
-                                    @onclick='() => ToggleConcept(3)'>
+                                @onclick='() => ToggleConcept(3)'>
                                 <i class="bi bi-tags text-warning me-2"></i>
                                 <strong>3. Properties (Attributes)</strong>
                             </button>
@@ -244,14 +255,16 @@
                         {
                             <div class="accordion-body">
                                 <p>
-                                    <strong>Properties</strong> describe characteristics of concepts. They answer questions like
+                                    <strong>Properties</strong> describe characteristics of concepts. They answer questions
+                                    like
                                     "What is its name?", "What color is it?", "When was it created?"
                                 </p>
 
                                 <div class="alert alert-warning">
                                     <strong>Property Examples:</strong>
                                     <ul class="mb-0 mt-2">
-                                        <li><strong>Book:</strong> title (text), ISBN (text), publicationYear (number), pageCount (number)</li>
+                                        <li><strong>Book:</strong> title (text), ISBN (text), publicationYear (number),
+                                            pageCount (number)</li>
                                         <li><strong>Author:</strong> name (text), birthDate (date), nationality (text)</li>
                                         <li><strong>Library:</strong> name (text), address (text), established (date)</li>
                                     </ul>
@@ -416,20 +429,22 @@
                         <p class="text-muted">Select a topic to model, or create your own:</p>
 
                         <div class="btn-group flex-wrap mb-3" role="group">
-                            <button class="btn @(selectedDomain == "university" ? "btn-primary" : "btn-outline-primary")"
-                                    @onclick='() => SelectDomain("university")'>
+                            <button
+                                class="btn @(selectedDomain == "university" ? "btn-primary" : "btn-outline-primary")"
+                                @onclick='() => SelectDomain("university")'>
                                 <i class="bi bi-mortarboard"></i> University
                             </button>
-                            <button class="btn @(selectedDomain == "restaurant" ? "btn-primary" : "btn-outline-primary")"
-                                    @onclick='() => SelectDomain("restaurant")'>
+                            <button
+                                class="btn @(selectedDomain == "restaurant" ? "btn-primary" : "btn-outline-primary")"
+                                @onclick='() => SelectDomain("restaurant")'>
                                 <i class="bi bi-shop"></i> Restaurant
                             </button>
                             <button class="btn @(selectedDomain == "hospital" ? "btn-primary" : "btn-outline-primary")"
-                                    @onclick='() => SelectDomain("hospital")'>
+                                @onclick='() => SelectDomain("hospital")'>
                                 <i class="bi bi-heart-pulse"></i> Hospital
                             </button>
                             <button class="btn @(selectedDomain == "custom" ? "btn-primary" : "btn-outline-primary")"
-                                    @onclick='() => SelectDomain("custom")'>
+                                @onclick='() => SelectDomain("custom")'>
                                 <i class="bi bi-plus-circle"></i> Custom
                             </button>
                         </div>
@@ -443,21 +458,18 @@
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
                                         <label class="form-label"><strong>1. List 5 Key Concepts</strong></label>
-                                        <textarea class="form-control" rows="5"
-                                                  placeholder="@conceptsPlaceholder"
-                                                  @bind="userConcepts"></textarea>
+                                        <textarea class="form-control" rows="5" placeholder="@conceptsPlaceholder"
+                                        @bind="userConcepts"></textarea>
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label class="form-label"><strong>2. List 5 Relationships</strong></label>
-                                        <textarea class="form-control" rows="5"
-                                                  placeholder="@relationshipsPlaceholder"
-                                                  @bind="userRelationships"></textarea>
+                                        <textarea class="form-control" rows="5" placeholder="@relationshipsPlaceholder"
+                                        @bind="userRelationships"></textarea>
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label class="form-label"><strong>3. List 5 Properties</strong></label>
-                                        <textarea class="form-control" rows="5"
-                                                  placeholder="@propertiesPlaceholder"
-                                                  @bind="userProperties"></textarea>
+                                        <textarea class="form-control" rows="5" placeholder="@propertiesPlaceholder"
+                                        @bind="userProperties"></textarea>
                                     </div>
                                 </div>
 
@@ -506,8 +518,10 @@
                             </div>
                             <div class="card-body">
                                 <p><strong>Problem:</strong> Medical knowledge is vast and interconnected</p>
-                                <p><strong>Solution:</strong> Medical ontologies like SNOMED CT organize diseases, symptoms, treatments, and medications</p>
-                                <p class="text-success mb-0"><strong>Impact:</strong> Enables accurate diagnosis, drug interaction checking, and interoperability between hospital systems</p>
+                                <p><strong>Solution:</strong> Medical ontologies like SNOMED CT organize diseases,
+                                    symptoms, treatments, and medications</p>
+                                <p class="text-success mb-0"><strong>Impact:</strong> Enables accurate diagnosis, drug
+                                    interaction checking, and interoperability between hospital systems</p>
                             </div>
                         </div>
                     </div>
@@ -518,9 +532,12 @@
                                 <i class="bi bi-globe"></i> Semantic Web
                             </div>
                             <div class="card-body">
-                                <p><strong>Problem:</strong> Search engines struggle to understand context and meaning</p>
-                                <p><strong>Solution:</strong> Ontologies help structure web content so machines can understand relationships (Google Knowledge Graph)</p>
-                                <p class="text-success mb-0"><strong>Impact:</strong> Better search results, smart assistants, and linked data across websites</p>
+                                <p><strong>Problem:</strong> Search engines struggle to understand context and meaning
+                                </p>
+                                <p><strong>Solution:</strong> Ontologies help structure web content so machines can
+                                    understand relationships (Google Knowledge Graph)</p>
+                                <p class="text-success mb-0"><strong>Impact:</strong> Better search results, smart
+                                    assistants, and linked data across websites</p>
                             </div>
                         </div>
                     </div>
@@ -531,9 +548,12 @@
                                 <i class="bi bi-robot"></i> Artificial Intelligence
                             </div>
                             <div class="card-body">
-                                <p><strong>Problem:</strong> AI systems need structured knowledge to reason and make decisions</p>
-                                <p><strong>Solution:</strong> Ontologies provide a knowledge base for AI to understand domains and relationships</p>
-                                <p class="text-success mb-0"><strong>Impact:</strong> Smarter chatbots, recommendation systems, and autonomous decision-making</p>
+                                <p><strong>Problem:</strong> AI systems need structured knowledge to reason and make
+                                    decisions</p>
+                                <p><strong>Solution:</strong> Ontologies provide a knowledge base for AI to understand
+                                    domains and relationships</p>
+                                <p class="text-success mb-0"><strong>Impact:</strong> Smarter chatbots, recommendation
+                                    systems, and autonomous decision-making</p>
                             </div>
                         </div>
                     </div>
@@ -544,9 +564,12 @@
                                 <i class="bi bi-building"></i> Enterprise Data Management
                             </div>
                             <div class="card-body">
-                                <p><strong>Problem:</strong> Different departments use different terms for the same things</p>
-                                <p><strong>Solution:</strong> Corporate ontologies create a shared vocabulary and understanding across teams</p>
-                                <p class="text-success mb-0"><strong>Impact:</strong> Improved communication, data integration, and business intelligence</p>
+                                <p><strong>Problem:</strong> Different departments use different terms for the same
+                                    things</p>
+                                <p><strong>Solution:</strong> Corporate ontologies create a shared vocabulary and
+                                    understanding across teams</p>
+                                <p class="text-success mb-0"><strong>Impact:</strong> Improved communication, data
+                                    integration, and business intelligence</p>
                             </div>
                         </div>
                     </div>
@@ -579,7 +602,9 @@
                                     <div>
                                         <strong>Start Simple:</strong> Begin with core concepts and expand gradually
                                         <div class="text-muted small mt-1">
-                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> Create your first ontology with just a name - add concepts one at a time using the visual graph editor.
+                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> Create your first
+                                            ontology with just a name - add concepts one at a time using the visual
+                                            graph editor.
                                         </div>
                                     </div>
                                 </div>
@@ -588,9 +613,12 @@
                                 <div class="d-flex">
                                     <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
                                     <div>
-                                        <strong>Use Clear Naming:</strong> Choose descriptive, unambiguous names (prefer "FullTimeEmployee" over "FTE")
+                                        <strong>Use Clear Naming:</strong> Choose descriptive, unambiguous names (prefer
+                                        "FullTimeEmployee" over "FTE")
                                         <div class="text-muted small mt-1">
-                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> Concept and relationship names are prominently displayed in the graph - unclear names will be immediately obvious.
+                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> Concept and
+                                            relationship names are prominently displayed in the graph - unclear names
+                                            will be immediately obvious.
                                         </div>
                                     </div>
                                 </div>
@@ -599,9 +627,12 @@
                                 <div class="d-flex">
                                     <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
                                     <div>
-                                        <strong>Follow Conventions:</strong> Use CamelCase for concepts, lowercase for relationships
+                                        <strong>Follow Conventions:</strong> Use CamelCase for concepts, lowercase for
+                                        relationships
                                         <div class="text-muted small mt-1">
-                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> The interface encourages proper naming by example - templates use standard conventions you can follow.
+                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> The interface
+                                            encourages proper naming by example - templates use standard conventions you
+                                            can follow.
                                         </div>
                                     </div>
                                 </div>
@@ -610,9 +641,12 @@
                                 <div class="d-flex">
                                     <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
                                     <div>
-                                        <strong>Define Properties Carefully:</strong> Each property should have a clear datatype and purpose
+                                        <strong>Define Properties Carefully:</strong> Each property should have a clear
+                                        datatype and purpose
                                         <div class="text-muted small mt-1">
-                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> Add custom properties to any concept with name, value, and datatype fields for structured documentation.
+                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> Add custom properties
+                                            to any concept with name, value, and datatype fields for structured
+                                            documentation.
                                         </div>
                                     </div>
                                 </div>
@@ -621,9 +655,12 @@
                                 <div class="d-flex">
                                     <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
                                     <div>
-                                        <strong>Document Everything:</strong> Add descriptions explaining concepts, especially domain-specific terms
+                                        <strong>Document Everything:</strong> Add descriptions explaining concepts,
+                                        especially domain-specific terms
                                         <div class="text-muted small mt-1">
-                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> Every concept and relationship has dedicated definition and description fields - hover tooltips show these in the graph view.
+                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> Every concept and
+                                            relationship has dedicated definition and description fields - hover
+                                            tooltips show these in the graph view.
                                         </div>
                                     </div>
                                 </div>
@@ -632,9 +669,13 @@
                                 <div class="d-flex">
                                     <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
                                     <div>
-                                        <strong>Reuse Existing Ontologies:</strong> Don't reinvent the wheel - use standards like BFO, Dublin Core, FOAF when applicable
+                                        <strong>Reuse Existing Ontologies:</strong> Don't reinvent the wheel - use
+                                        standards like BFO, Dublin Core, FOAF when applicable
                                         <div class="text-muted small mt-1">
-                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> When creating a new ontology, choose from starter templates including BFO (Basic Formal Ontology) and PROV-O. You can also import existing ontologies from .ttl files.
+                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> When creating a new
+                                            ontology, choose from starter templates including BFO (Basic Formal
+                                            Ontology) and PROV-O. You can also import existing ontologies from .ttl
+                                            files.
                                         </div>
                                     </div>
                                 </div>
@@ -643,9 +684,12 @@
                                 <div class="d-flex">
                                     <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
                                     <div>
-                                        <strong>Think About Hierarchy:</strong> Use "is-a" relationships to create taxonomies (Dog is-a Animal is-a LivingThing)
+                                        <strong>Think About Hierarchy:</strong> Use "is-a" relationships to create
+                                        taxonomies (Dog is-a Animal is-a LivingThing)
                                         <div class="text-muted small mt-1">
-                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> The graph visualization clearly shows hierarchical relationships - use the "is-a" relationship type to build taxonomies.
+                                            <i class="bi bi-tools"></i> <em>The tool helps:</em> The graph visualization
+                                            clearly shows hierarchical relationships - use the "is-a" relationship type
+                                            to build taxonomies.
                                         </div>
                                     </div>
                                 </div>
@@ -661,19 +705,24 @@
                     <div class="card-body">
                         <ul>
                             <li class="mb-2">
-                                <strong>Don't Over-Engineer:</strong> Avoid creating concepts for every possible variation - find the right level of abstraction
+                                <strong>Don't Over-Engineer:</strong> Avoid creating concepts for every possible
+                                variation - find the right level of abstraction
                             </li>
                             <li class="mb-2">
-                                <strong>Don't Mix Levels:</strong> Keep concepts at similar abstraction levels (don't mix "Vehicle" with "RedFordTruck")
+                                <strong>Don't Mix Levels:</strong> Keep concepts at similar abstraction levels (don't
+                                mix "Vehicle" with "RedFordTruck")
                             </li>
                             <li class="mb-2">
-                                <strong>Don't Create Circular Relationships:</strong> Avoid A→B→C→A loops unless you have a specific reason
+                                <strong>Don't Create Circular Relationships:</strong> Avoid A→B→C→A loops unless you
+                                have a specific reason
                             </li>
                             <li class="mb-2">
-                                <strong>Don't Use Abbreviations:</strong> Unless they're widely understood in your domain (DNA, URL are OK; internal jargon is not)
+                                <strong>Don't Use Abbreviations:</strong> Unless they're widely understood in your
+                                domain (DNA, URL are OK; internal jargon is not)
                             </li>
                             <li class="mb-2">
-                                <strong>Don't Ignore Validation:</strong> Regularly check your ontology for inconsistencies and redundancies
+                                <strong>Don't Ignore Validation:</strong> Regularly check your ontology for
+                                inconsistencies and redundancies
                             </li>
                         </ul>
                     </div>
@@ -682,8 +731,10 @@
                 <div class="alert alert-info">
                     <h6><i class="bi bi-trophy"></i> The Golden Rule</h6>
                     <p class="mb-0">
-                        <strong>Make it useful, not perfect.</strong> An ontology should serve a purpose - solving a real problem,
-                        answering specific questions, or organizing knowledge effectively. Start with what you need, iterate based on use.
+                        <strong>Make it useful, not perfect.</strong> An ontology should serve a purpose - solving a
+                        real problem,
+                        answering specific questions, or organizing knowledge effectively. Start with what you need,
+                        iterate based on use.
                     </p>
                 </div>
 
@@ -790,19 +841,24 @@
                             <div class="col-md-6">
                                 <dl>
                                     <dt>Ontology</dt>
-                                    <dd>A formal representation of knowledge showing concepts, relationships, and properties within a domain.</dd>
+                                    <dd>A formal representation of knowledge showing concepts, relationships, and
+                                        properties within a domain.</dd>
 
                                     <dt>Concept (Class/Entity)</dt>
-                                    <dd>A category or type of thing in your domain (e.g., Person, Book, Organization).</dd>
+                                    <dd>A category or type of thing in your domain (e.g., Person, Book, Organization).
+                                    </dd>
 
                                     <dt>Relationship (Property)</dt>
-                                    <dd>A connection between two concepts showing how they relate (e.g., "writes", "part-of", "is-a").</dd>
+                                    <dd>A connection between two concepts showing how they relate (e.g., "writes",
+                                        "part-of", "is-a").</dd>
 
                                     <dt>Instance</dt>
-                                    <dd>A specific example of a concept (e.g., "John Smith" is an instance of Person).</dd>
+                                    <dd>A specific example of a concept (e.g., "John Smith" is an instance of Person).
+                                    </dd>
 
                                     <dt>Taxonomy</dt>
-                                    <dd>A hierarchical classification using "is-a" relationships (e.g., Dog is-a Mammal is-a Animal).</dd>
+                                    <dd>A hierarchical classification using "is-a" relationships (e.g., Dog is-a Mammal
+                                        is-a Animal).</dd>
 
                                     <dt>Attribute (Property)</dt>
                                     <dd>A characteristic or feature of a concept (e.g., name, color, age).</dd>
@@ -842,7 +898,7 @@
                     <div class="accordion-item">
                         <h3 class="accordion-header">
                             <button class="accordion-button @(expandedPattern != 1 ? "collapsed" : "")" type="button"
-                                    @onclick='() => TogglePattern(1)'>
+                                @onclick='() => TogglePattern(1)'>
                                 <strong>Pattern 1: Simple Hierarchy</strong>
                             </button>
                         </h3>
@@ -852,15 +908,15 @@
                                 <p><strong>Use Case:</strong> Organizing things by type or category</p>
                                 <p><strong>Structure:</strong></p>
                                 <pre class="bg-light p-3 rounded"><code>Animal
-├── Mammal
-│   ├── Dog
-│   ├── Cat
-│   └── Human
-└── Bird
-    ├── Eagle
-    └── Sparrow
+    ├── Mammal
+    │   ├── Dog
+    │   ├── Cat
+    │   └── Human
+    └── Bird
+        ├── Eagle
+        └── Sparrow
 
-Relationships: All use "is-a"</code></pre>
+    Relationships: All use "is-a"</code></pre>
                                 <p class="text-muted mb-0"><em>Great for: Classifications, categories, types</em></p>
                             </div>
                         }
@@ -869,7 +925,7 @@ Relationships: All use "is-a"</code></pre>
                     <div class="accordion-item">
                         <h3 class="accordion-header">
                             <button class="accordion-button @(expandedPattern != 2 ? "collapsed" : "")" type="button"
-                                    @onclick='() => TogglePattern(2)'>
+                                @onclick='() => TogglePattern(2)'>
                                 <strong>Pattern 2: Part-Whole Composition</strong>
                             </button>
                         </h3>
@@ -879,13 +935,14 @@ Relationships: All use "is-a"</code></pre>
                                 <p><strong>Use Case:</strong> Describing objects made of components</p>
                                 <p><strong>Structure:</strong></p>
                                 <pre class="bg-light p-3 rounded"><code>Car
-├── has-part → Engine
-├── has-part → Wheel (x4)
-├── has-part → Seat (x5)
-└── has-part → Steering Wheel
+    ├── has-part → Engine
+    ├── has-part → Wheel (x4)
+    ├── has-part → Seat (x5)
+    └── has-part → Steering Wheel
 
-Relationships: "has-part" or "part-of"</code></pre>
-                                <p class="text-muted mb-0"><em>Great for: Physical objects, organizations, documents</em></p>
+    Relationships: "has-part" or "part-of"</code></pre>
+                                <p class="text-muted mb-0"><em>Great for: Physical objects, organizations, documents</em>
+                                </p>
                             </div>
                         }
                     </div>
@@ -893,7 +950,7 @@ Relationships: "has-part" or "part-of"</code></pre>
                     <div class="accordion-item">
                         <h3 class="accordion-header">
                             <button class="accordion-button @(expandedPattern != 3 ? "collapsed" : "")" type="button"
-                                    @onclick='() => TogglePattern(3)'>
+                                @onclick='() => TogglePattern(3)'>
                                 <strong>Pattern 3: Agent-Action-Object</strong>
                             </button>
                         </h3>
@@ -903,11 +960,11 @@ Relationships: "has-part" or "part-of"</code></pre>
                                 <p><strong>Use Case:</strong> Modeling who does what to whom</p>
                                 <p><strong>Structure:</strong></p>
                                 <pre class="bg-light p-3 rounded"><code>Student → enrolls-in → Course
-Professor → teaches → Course
-Author → writes → Book
-Chef → prepares → Meal
+    Professor → teaches → Course
+    Author → writes → Book
+    Chef → prepares → Meal
 
-Relationships: Action verbs</code></pre>
+    Relationships: Action verbs</code></pre>
                                 <p class="text-muted mb-0"><em>Great for: Business processes, workflows, activities</em></p>
                             </div>
                         }
@@ -916,7 +973,7 @@ Relationships: Action verbs</code></pre>
                     <div class="accordion-item">
                         <h3 class="accordion-header">
                             <button class="accordion-button @(expandedPattern != 4 ? "collapsed" : "")" type="button"
-                                    @onclick='() => TogglePattern(4)'>
+                                @onclick='() => TogglePattern(4)'>
                                 <strong>Pattern 4: Time-Based Events</strong>
                             </button>
                         </h3>
@@ -926,13 +983,13 @@ Relationships: Action verbs</code></pre>
                                 <p><strong>Use Case:</strong> Tracking things that happen over time</p>
                                 <p><strong>Structure:</strong></p>
                                 <pre class="bg-light p-3 rounded"><code>Event
-├── has-property → startTime
-├── has-property → endTime
-├── has-property → location
-├── involves → Person
-└── produces → Outcome
+    ├── has-property → startTime
+    ├── has-property → endTime
+    ├── has-property → location
+    ├── involves → Person
+    └── produces → Outcome
 
-Relationships: Temporal and causal</code></pre>
+    Relationships: Temporal and causal</code></pre>
                                 <p class="text-muted mb-0"><em>Great for: Histories, logs, timelines, processes</em></p>
                             </div>
                         }
@@ -960,343 +1017,3 @@ Relationships: Temporal and causal</code></pre>
         </div>
     </div>
 </div>
-
-@code {
-    private string activeSection = "intro";
-    private HashSet<string> visitedSections = new();
-    private int expandedConcept = 0;
-    private int expandedPattern = 0;
-    private string selectedDomain = "";
-    private bool showHints = false;
-
-    private string userConcepts = "";
-    private string userRelationships = "";
-    private string userProperties = "";
-
-    private int totalSections = 6;
-    private int completedSections => visitedSections.Count;
-    private int progressPercent => (int)((double)completedSections / totalSections * 100);
-
-    // Placeholder text with actual newlines
-    private string conceptsPlaceholder = "e.g.,\nStudent\nProfessor\nCourse\n...";
-    private string relationshipsPlaceholder = "e.g.,\nStudent enrolls-in Course\nProfessor teaches Course\n...";
-    private string propertiesPlaceholder = "e.g.,\nStudent: studentID, name\nCourse: courseCode, credits\n...";
-
-    protected override void OnInitialized()
-    {
-        // Auto-mark intro as visited on page load
-        visitedSections.Add("intro");
-    }
-
-    private async Task ScrollToSection(string section)
-    {
-        activeSection = section;
-        if (!visitedSections.Contains(section))
-        {
-            visitedSections.Add(section);
-        }
-
-        // Scroll to the section using JavaScript
-        await JS.InvokeVoidAsync("eval", $"document.getElementById('{section}')?.scrollIntoView({{ behavior: 'smooth', block: 'start' }});");
-
-        StateHasChanged();
-    }
-
-    private void MarkSectionComplete(string section)
-    {
-        if (!visitedSections.Contains(section))
-        {
-            visitedSections.Add(section);
-        }
-
-        // Auto-scroll to next section
-        var sections = new[] { "intro", "concepts", "example", "practice", "usecases", "bestpractices" };
-        var currentIndex = Array.IndexOf(sections, section);
-        if (currentIndex >= 0 && currentIndex < sections.Length - 1)
-        {
-            activeSection = sections[currentIndex + 1];
-        }
-
-        StateHasChanged();
-    }
-
-    private void ToggleConcept(int concept)
-    {
-        expandedConcept = expandedConcept == concept ? 0 : concept;
-        StateHasChanged();
-    }
-
-    private void TogglePattern(int pattern)
-    {
-        expandedPattern = expandedPattern == pattern ? 0 : pattern;
-        StateHasChanged();
-    }
-
-    private void SelectDomain(string domain)
-    {
-        selectedDomain = domain;
-        userConcepts = "";
-        userRelationships = "";
-        userProperties = "";
-        showHints = false;
-        StateHasChanged();
-    }
-
-    private string GetDomainName()
-    {
-        return selectedDomain switch
-        {
-            "university" => "University System",
-            "restaurant" => "Restaurant Management",
-            "hospital" => "Hospital Operations",
-            "custom" => "Your Custom Domain",
-            _ => ""
-        };
-    }
-
-    private string GetDomainDescription()
-    {
-        return selectedDomain switch
-        {
-            "university" => "Model the relationships between students, courses, professors, and departments.",
-            "restaurant" => "Design a system for orders, menu items, ingredients, and staff.",
-            "hospital" => "Create an ontology for patients, doctors, treatments, and departments.",
-            "custom" => "Choose any domain you're interested in and design your own ontology!",
-            _ => ""
-        };
-    }
-
-    private string GetDomainHints()
-    {
-        return selectedDomain switch
-        {
-            "university" => @"
-                <strong>Concepts:</strong> Student, Professor, Course, Department, Degree, Classroom<br/>
-                <strong>Relationships:</strong> Student enrolls-in Course, Professor teaches Course, Department offers Course<br/>
-                <strong>Properties:</strong> Student: studentID, GPA; Course: courseCode, credits, semester
-            ",
-            "restaurant" => @"
-                <strong>Concepts:</strong> Customer, Order, MenuItem, Chef, Table, Ingredient<br/>
-                <strong>Relationships:</strong> Customer places Order, Chef prepares MenuItem, MenuItem contains Ingredient<br/>
-                <strong>Properties:</strong> MenuItem: name, price, calories; Order: orderNumber, timestamp, totalCost
-            ",
-            "hospital" => @"
-                <strong>Concepts:</strong> Patient, Doctor, Nurse, Department, Treatment, Prescription<br/>
-                <strong>Relationships:</strong> Doctor treats Patient, Patient receives Treatment, Doctor prescribes Prescription<br/>
-                <strong>Properties:</strong> Patient: patientID, age, bloodType; Treatment: name, duration, cost
-            ",
-            _ => ""
-        };
-    }
-
-    private void ToggleHints()
-    {
-        showHints = !showHints;
-        StateHasChanged();
-    }
-
-    private async Task CreatePracticeOntology()
-    {
-        try
-        {
-            // Validate that user has entered something
-            if (string.IsNullOrWhiteSpace(userConcepts))
-            {
-                ToastService.ShowWarning("Please list at least one concept before creating your ontology.");
-                return;
-            }
-
-            // Create the ontology
-            var ontologyName = $"My {GetDomainName()} Ontology";
-            var description = $"A practice ontology created from the Learn page for {GetDomainName().ToLower()}.";
-
-            var newOntology = new Ontology
-            {
-                Name = ontologyName,
-                Description = description
-            };
-
-            var ontology = await OntologyService.CreateOntologyAsync(newOntology);
-
-            // Parse and create concepts
-            var conceptLines = userConcepts.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var createdConcepts = new Dictionary<string, Concept>();
-
-            foreach (var line in conceptLines)
-            {
-                if (!string.IsNullOrWhiteSpace(line))
-                {
-                    var conceptName = line.Trim();
-                    var concept = new Concept
-                    {
-                        OntologyId = ontology.Id,
-                        Name = conceptName,
-                        Category = "Entity", // Default category
-                        Definition = $"A {conceptName.ToLower()} in the {GetDomainName().ToLower()} domain.",
-                        Color = GenerateRandomColor()
-                    };
-
-                    var created = await ConceptService.CreateAsync(concept);
-                    createdConcepts[conceptName.ToLower()] = created;
-                }
-            }
-
-            // Parse and create relationships if provided
-            if (!string.IsNullOrWhiteSpace(userRelationships))
-            {
-                var relationshipLines = userRelationships.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-                foreach (var line in relationshipLines)
-                {
-                    if (!string.IsNullOrWhiteSpace(line))
-                    {
-                        // Try to parse "Source relationship Target" format
-                        var parts = line.Split(new[] { " " }, StringSplitOptions.RemoveEmptyEntries);
-                        if (parts.Length >= 3)
-                        {
-                            var sourceName = parts[0].ToLower();
-                            var targetName = parts[^1].ToLower();
-                            var relationType = string.Join(" ", parts.Skip(1).Take(parts.Length - 2));
-
-                            // Find matching concepts
-                            var source = createdConcepts.Values.FirstOrDefault(c => c.Name.ToLower().Contains(sourceName));
-                            var target = createdConcepts.Values.FirstOrDefault(c => c.Name.ToLower().Contains(targetName));
-
-                            if (source != null && target != null)
-                            {
-                                var relationship = new Relationship
-                                {
-                                    OntologyId = ontology.Id,
-                                    SourceConceptId = source.Id,
-                                    TargetConceptId = target.Id,
-                                    RelationType = relationType,
-                                    Description = $"{source.Name} {relationType} {target.Name}"
-                                };
-
-                                await RelationshipService.CreateAsync(relationship);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Show success message
-            ToastService.ShowSuccess($"Created '{ontologyName}' with {createdConcepts.Count} concepts!");
-
-            // Navigate to the newly created ontology
-            Navigation.NavigateTo($"/ontology/{ontology.Id}");
-        }
-        catch (Exception ex)
-        {
-            ToastService.ShowError($"Error creating ontology: {ex.Message}");
-        }
-    }
-
-    private string GenerateRandomColor()
-    {
-        var colors = new[]
-        {
-            "#4A90E2", "#E67E22", "#6BCF7F", "#9B59B6", "#E74C3C",
-            "#3498DB", "#F39C12", "#1ABC9C", "#E91E63", "#9C27B0"
-        };
-        return colors[Random.Shared.Next(colors.Length)];
-    }
-
-    private void NavigateToHome()
-    {
-        Navigation.NavigateTo("");
-    }
-
-    private void NavigateToTemplates()
-    {
-        Navigation.NavigateTo("");
-    }
-}
-
-<style>
-    /* Dark mode fixes for Learn page */
-    [data-bs-theme="dark"] .learn-page .text-muted {
-        color: var(--bs-secondary-color) !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page h5.text-muted {
-        color: var(--bs-light) !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page .bg-light {
-        background-color: var(--bs-gray-800) !important;
-        color: var(--bs-light) !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page .bg-light h6 {
-        color: var(--bs-light) !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page .bg-light ul {
-        color: var(--bs-light) !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page .bg-light pre,
-    [data-bs-theme="dark"] .learn-page .bg-light code {
-        background-color: var(--bs-gray-900) !important;
-        color: var(--bs-light) !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page .nav-link {
-        color: var(--bs-light) !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page .nav-link.active {
-        background-color: var(--bs-primary) !important;
-        color: white !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page .nav-link:hover {
-        background-color: var(--bs-gray-700) !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page .alert-light {
-        background-color: var(--bs-gray-800) !important;
-        color: var(--bs-light) !important;
-        border-color: var(--bs-gray-700) !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page dl dt {
-        color: var(--bs-light) !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page dl dd {
-        color: var(--bs-secondary-color) !important;
-    }
-
-    /* Fix badge text colors in dark mode */
-    [data-bs-theme="dark"] .learn-page .badge {
-        color: white !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page .badge.text-dark {
-        color: white !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page .badge.bg-light {
-        background-color: var(--bs-gray-700) !important;
-        color: var(--bs-light) !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page .badge.bg-warning {
-        background-color: #f39c12 !important;
-        color: white !important;
-    }
-
-    /* Fix card text in example sections */
-    [data-bs-theme="dark"] .learn-page .card-body p,
-    [data-bs-theme="dark"] .learn-page .card-body ul,
-    [data-bs-theme="dark"] .learn-page .card-body li {
-        color: var(--bs-body-color) !important;
-    }
-
-    [data-bs-theme="dark"] .learn-page .card-body .small,
-    [data-bs-theme="dark"] .learn-page .card-body small {
-        color: var(--bs-secondary-color) !important;
-    }
-</style>

@@ -191,3 +191,89 @@ section.visited {
 html {
     scroll-behavior: smooth;
 }
+
+/* Dark mode fixes for Learn page */
+[data-bs-theme="dark"] ::deep .text-muted {
+    color: var(--bs-secondary-color) !important;
+}
+
+[data-bs-theme="dark"] ::deep h5.text-muted {
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] ::deep .bg-light {
+    background-color: var(--bs-gray-800) !important;
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] ::deep .bg-light h6 {
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] ::deep .bg-light ul {
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] ::deep .bg-light pre,
+[data-bs-theme="dark"] ::deep .bg-light code {
+    background-color: var(--bs-gray-900) !important;
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] ::deep .nav-link {
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] ::deep .nav-link.active {
+    background-color: var(--bs-primary) !important;
+    color: white !important;
+}
+
+[data-bs-theme="dark"] ::deep .nav-link:hover {
+    background-color: var(--bs-gray-700) !important;
+}
+
+[data-bs-theme="dark"] ::deep .alert-light {
+    background-color: var(--bs-gray-800) !important;
+    color: var(--bs-light) !important;
+    border-color: var(--bs-gray-700) !important;
+}
+
+[data-bs-theme="dark"] ::deep dl dt {
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] ::deep dl dd {
+    color: var(--bs-secondary-color) !important;
+}
+
+/* Fix badge text colors in dark mode */
+[data-bs-theme="dark"] ::deep .badge {
+    color: white !important;
+}
+
+[data-bs-theme="dark"] ::deep .badge.text-dark {
+    color: white !important;
+}
+
+[data-bs-theme="dark"] ::deep .badge.bg-light {
+    background-color: var(--bs-gray-700) !important;
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] ::deep .badge.bg-warning {
+    background-color: #f39c12 !important;
+    color: white !important;
+}
+
+/* Fix card text in example sections */
+[data-bs-theme="dark"] ::deep .card-body p,
+[data-bs-theme="dark"] ::deep .card-body ul,
+[data-bs-theme="dark"] ::deep .card-body li {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] ::deep .card-body .small,
+[data-bs-theme="dark"] ::deep .card-body small {
+    color: var(--bs-secondary-color) !important;
+}

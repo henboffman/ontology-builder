@@ -46,6 +46,7 @@ The workspace feature integrates note-taking with ontology management, providing
 Represents a knowledge workspace containing an ontology and notes.
 
 **Properties:**
+
 - `Id`: Primary key
 - `Name`: Workspace name
 - `Description`: Optional description
@@ -55,10 +56,12 @@ Represents a knowledge workspace containing an ontology and notes.
 - `NoteCount`, `ConceptNoteCount`, `UserNoteCount`: Computed metrics
 
 **Navigation Properties:**
+
 - `Ontology`: Associated ontology (1:1)
 - `Notes`: Collection of notes (1:N)
 
 **Design Notes:**
+
 - 1:1 relationship with Ontology via `Ontology.WorkspaceId`
 - Ontology can exist without workspace (legacy support)
 - Workspace always has an ontology
@@ -68,6 +71,7 @@ Represents a knowledge workspace containing an ontology and notes.
 Metadata for a note without the large markdown content.
 
 **Properties:**
+
 - `Id`: Primary key
 - `WorkspaceId`: Parent workspace
 - `Title`: Note title
@@ -78,12 +82,14 @@ Metadata for a note without the large markdown content.
 - `CreatedAt`, `UpdatedAt`: Timestamps
 
 **Navigation Properties:**
+
 - `Workspace`: Parent workspace
 - `LinkedConcept`: Associated concept (if IsConceptNote)
 - `NoteContent`: Markdown content (1:1)
 - `OutgoingLinks`: Links to concepts (1:N)
 
 **Design Notes:**
+
 - Content separated for performance (avoid loading large text in lists)
 - `IsConceptNote` distinguishes auto-created concept notes from user notes
 - `LinkCount` cached for performance
@@ -93,12 +99,14 @@ Metadata for a note without the large markdown content.
 Large markdown content separated from note metadata.
 
 **Properties:**
+
 - `Id`: Primary key
 - `NoteId`: Parent note (FK)
 - `MarkdownContent`: Full markdown text
 - `UpdatedAt`: Last modified timestamp
 
 **Design Notes:**
+
 - Separation pattern improves list view performance
 - Future: Can add versioning by making 1:N relationship
 - Future: Can add collaborative editing metadata (cursors, locks)
@@ -108,6 +116,7 @@ Large markdown content separated from note metadata.
 Extracted [[wiki-link]] with position and context for backlinks.
 
 **Properties:**
+
 - `Id`: Primary key
 - `SourceNoteId`: Note containing the link
 - `TargetConceptId`: Referenced concept
@@ -116,10 +125,12 @@ Extracted [[wiki-link]] with position and context for backlinks.
 - `CreatedAt`: Link creation time
 
 **Navigation Properties:**
+
 - `SourceNote`: Note containing link
 - `TargetConcept`: Referenced concept
 
 **Design Notes:**
+
 - Populated by WikiLinkParser when note is saved
 - Context snippets enable rich backlinks panel
 - Position enables future features (go-to-definition)
@@ -131,6 +142,7 @@ Extracted [[wiki-link]] with position and context for backlinks.
 Stateless service for parsing `[[wiki-style]]` links.
 
 **Key Methods:**
+
 - `ExtractConceptNames(markdown)` - Get unique concept names
 - `ExtractLinksWithContext(markdown)` - Get links with position and context
 - `CountLinks(markdown)` - Count links
@@ -141,6 +153,7 @@ Stateless service for parsing `[[wiki-style]]` links.
 - `EscapeConceptName(name)` - Sanitization
 
 **Design Notes:**
+
 - Uses compiled regex for performance
 - Supports display text: `[[Concept|Display]]`
 - Context window: 50 characters before/after link
@@ -148,9 +161,11 @@ Stateless service for parsing `[[wiki-style]]` links.
 - 45+ unit tests ensure robustness
 
 **Regex Pattern:**
+
 ```regex
 \[\[([^\]|]+)(?:\|([^\]]+))?\]\]
 ```
+
 - Group 1: Concept name (required)
 - Group 2: Display text (optional, after pipe)
 
@@ -159,6 +174,7 @@ Stateless service for parsing `[[wiki-style]]` links.
 Business logic for workspace management.
 
 **Key Methods:**
+
 - `CreateWorkspaceAsync()` - Create with auto-ontology
 - `GetWorkspaceAsync()` - Load with permission check
 - `GetUserWorkspacesAsync()` - List user's workspaces
@@ -167,6 +183,7 @@ Business logic for workspace management.
 - `EnsureWorkspaceForOntologyAsync()` - Legacy migration
 
 **Design Notes:**
+
 - Permission checking via `OntologyPermissionService`
 - Auto-creates ontology when creating workspace
 - `EnsureWorkspaceForOntologyAsync` handles legacy ontologies:
@@ -184,6 +201,7 @@ The `EnsureWorkspaceForOntologyAsync` method was failing to persist the `Workspa
 Business logic for note management and wiki-link processing.
 
 **Key Methods:**
+
 - `CreateNoteAsync()` - Create user note
 - `CreateConceptNoteAsync()` - Create concept note
 - `UpdateNoteContentAsync()` - Update and reprocess links
@@ -194,6 +212,7 @@ Business logic for note management and wiki-link processing.
 - `EnsureConceptNotesForOntologyAsync()` - Bulk create for legacy
 
 **Design Notes:**
+
 - `ProcessWikiLinksAsync()` extracts and stores links when note saved
 - Auto-creates concepts via `FindOrCreateConceptAsync()`
 - Updates `LinkCount` cached value
@@ -201,6 +220,7 @@ Business logic for note management and wiki-link processing.
 - Transaction handling ensures consistency
 
 **Wiki-Link Processing Flow:**
+
 1. Parse markdown with `WikiLinkParser.ExtractLinksWithContext()`
 2. For each link:
    - Find or create concept in ontology
@@ -216,6 +236,7 @@ Business logic for note management and wiki-link processing.
 Data access for workspaces.
 
 **Key Methods:**
+
 - `GetByIdAsync(id, includeOntology, includeNotes)` - Flexible loading
 - `GetByUserIdAsync(userId)` - User's workspaces
 - `CreateAsync(workspace)` - Insert
@@ -226,6 +247,7 @@ Data access for workspaces.
 - `GetPublicWorkspacesAsync()` - Discovery
 
 **Design Notes:**
+
 - Uses `Include()` for eager loading navigation properties
 - `AsNoTracking()` for read-only queries
 - Computed counts updated via raw SQL for performance
@@ -236,6 +258,7 @@ Data access for workspaces.
 Data access for notes and content.
 
 **Key Methods:**
+
 - `CreateAsync(note, markdown)` - Create with content
 - `GetByIdAsync(id)` - Metadata only
 - `GetByIdWithContentAsync(id)` - With content
@@ -249,6 +272,7 @@ Data access for notes and content.
 - `DeleteAsync(id)` - Delete with content and links
 
 **Design Notes:**
+
 - Separate queries for content vs metadata
 - Uses transactions for multi-table updates
 - Includes content table and links in delete cascade
@@ -259,6 +283,7 @@ Data access for notes and content.
 ### Content Separation
 
 Notes and NoteContent in separate tables:
+
 - **Benefit**: List views don't load large markdown text
 - **Pattern**: Common in forums (Discourse), blogs (Ghost), wikis (MediaWiki)
 - **Trade-off**: Extra join when loading content (acceptable for read performance)
@@ -266,6 +291,7 @@ Notes and NoteContent in separate tables:
 ### Query Patterns
 
 **Efficient Loading:**
+
 ```csharp
 // List view - no content
 var notes = await context.Notes
@@ -283,6 +309,7 @@ var note = await context.Notes
 ```
 
 **Count Updates (SQL):**
+
 ```sql
 UPDATE Workspaces
 SET NoteCount = (SELECT COUNT(*) FROM Notes WHERE WorkspaceId = @id),
@@ -294,6 +321,7 @@ WHERE Id = @id;
 ### Indexes
 
 Critical indexes for performance:
+
 - `Notes.WorkspaceId` (foreign key, list queries)
 - `Notes.LinkedConceptId` (concept note lookup)
 - `NoteLinks.SourceNoteId` (delete cascade)
@@ -334,6 +362,7 @@ Critical indexes for performance:
 ```
 
 **State Management:**
+
 - `workspace` - Current workspace (from route param)
 - `notes` - List of notes
 - `selectedNote` - Currently editing
@@ -344,6 +373,7 @@ Critical indexes for performance:
 - `saving` - Save indicator
 
 **Component Lifecycle:**
+
 1. `OnParametersSetAsync()` - Load workspace by ID
 2. `LoadWorkspaceAsync()` - Fetch with permission check
 3. `LoadNotesAsync()` - Get note list
@@ -355,6 +385,7 @@ Critical indexes for performance:
 **WorkspaceQuickSwitcher.razor** - Modal note picker
 
 **Features:**
+
 - Keyboard activation (`Cmd/Ctrl + K`)
 - Real-time filter
 - Keyboard navigation (arrows, enter, escape)
@@ -362,6 +393,7 @@ Critical indexes for performance:
 - Click-outside-to-close
 
 **State:**
+
 - `isOpen` - Visibility
 - `searchQuery` - Filter text
 - `filteredNotes` - Computed property
@@ -372,16 +404,19 @@ Critical indexes for performance:
 ### Graph View ↔ Workspace View
 
 **Navigation from Graph to Workspace:**
+
 - Concept details panel has "Open Note" button
 - Button appears if concept has associated note
 - Navigates to `/workspace/{workspaceId}?noteId={noteId}`
 
 **Navigation from Workspace to Graph:**
+
 - Toolbar has "View in Graph" button
 - Appears if workspace has ontology (always, after migration)
 - Navigates to `/ontology/{ontologyId}`
 
 **Implementation:**
+
 ```csharp
 // In SelectedNodeDetailsPanel.razor
 private async Task ViewConceptNote()
@@ -389,12 +424,12 @@ private async Task ViewConceptNote()
     var note = await NoteRepository.GetConceptNoteAsync(SelectedConcept.Id);
     if (note != null)
     {
-        Navigation.NavigateTo($"/workspace/{note.WorkspaceId}?noteId={note.Id}");
+        Navigation.NavigateTo($"workspace/{note.WorkspaceId}?noteId={note.Id}");
     }
 }
 
 // In WorkspaceView.razor
-<button @onclick="@(() => Navigation.NavigateTo($"/ontology/{workspace.Ontology.Id}"))">
+<button @onclick="@(() => Navigation.NavigateTo($"ontology/{workspace.Ontology.Id}"))">
     <i class="bi bi-diagram-3"></i>
 </button>
 ```
@@ -418,6 +453,7 @@ public async Task<bool> UserHasAccessAsync(int workspaceId, string userId)
 ```
 
 Permission levels (from OntologyPermissionService):
+
 - **View**: Can read notes and view graph
 - **ViewAndAdd**: Can create notes and concepts
 - **ViewAddEdit**: Can edit existing notes/concepts
@@ -430,6 +466,7 @@ Permission levels (from OntologyPermissionService):
 Existing ontologies without workspaces are handled automatically:
 
 **Detection:**
+
 ```csharp
 if (workspace?.Ontology == null)
 {
@@ -440,6 +477,7 @@ if (workspace?.Ontology == null)
 ```
 
 **Migration Steps:**
+
 1. Load ontology
 2. Check if `ontology.WorkspaceId` is null
 3. If null, create workspace:
@@ -451,6 +489,7 @@ if (workspace?.Ontology == null)
 6. Return workspace with Ontology navigation property
 
 **Database Changes:**
+
 ```sql
 -- Migration adds nullable WorkspaceId
 ALTER TABLE Ontologies ADD COLUMN WorkspaceId INTEGER NULL;
@@ -488,11 +527,13 @@ public async Task<int> EnsureConceptNotesForOntologyAsync(int workspaceId, int o
 ### Validation
 
 **Note Creation:**
+
 - Title required (non-empty, trimmed)
 - Workspace must exist
 - User must have access (check via workspace permissions)
 
 **Concept Names (Wiki-Links):**
+
 - Cannot contain: `[`, `]`, `|`, newlines
 - Validated by `WikiLinkParser.IsValidConceptName()`
 - Invalid characters escaped by `EscapeConceptName()`
@@ -500,6 +541,7 @@ public async Task<int> EnsureConceptNotesForOntologyAsync(int workspaceId, int o
 ### Transaction Handling
 
 **Multi-Table Updates:**
+
 ```csharp
 using var transaction = await context.Database.BeginTransactionAsync();
 try
@@ -537,6 +579,7 @@ if (!hasAccess)
 ```
 
 UI layer handles nulls gracefully:
+
 ```csharp
 @if (workspace == null)
 {
@@ -551,6 +594,7 @@ UI layer handles nulls gracefully:
 ### Unit Tests
 
 **WikiLinkParser** (45+ tests):
+
 - Link extraction (simple, display text, multi-word)
 - Context snippet generation
 - HTML conversion
@@ -558,6 +602,7 @@ UI layer handles nulls gracefully:
 - Edge cases (nested, multiline, special chars)
 
 Example:
+
 ```csharp
 [Fact]
 public void ExtractLinksWithContext_SimpleLink_ReturnsLinkWithContext()
@@ -591,6 +636,7 @@ public void ExtractLinksWithContext_SimpleLink_ReturnsLinkWithContext()
 ### XSS Protection
 
 Markdown rendered via Markdig with sanitization:
+
 ```csharp
 var pipeline = new MarkdownPipelineBuilder()
     .UseAdvancedExtensions()
@@ -603,6 +649,7 @@ var html = Markdown.ToHtml(markdown, pipeline);
 ### SQL Injection
 
 Protected by parameterized queries via EF Core:
+
 ```csharp
 // Safe - uses parameters
 var notes = await context.Notes
@@ -613,6 +660,7 @@ var notes = await context.Notes
 ### Permission Bypass
 
 Multiple layers of protection:
+
 1. UI hides unauthorized actions
 2. Component checks permissions before rendering
 3. Service layer validates access
@@ -627,18 +675,21 @@ Multiple layers of protection:
 ## Future Enhancements
 
 ### Short Term
+
 - Full-text search in note content (SQLite FTS5)
 - Note templates for common patterns
 - Folder/tag organization
 - Export workspace to zip
 
 ### Medium Term
+
 - Real-time collaborative editing (SignalR + OT)
 - Note version history with diff view
 - Attachment support (images, PDFs)
 - Graph visualization of note connections
 
 ### Long Term
+
 - Plugin system for custom note types
 - AI-powered concept extraction
 - Knowledge graph analytics
@@ -649,6 +700,7 @@ Multiple layers of protection:
 ### Performance Metrics
 
 Track via Application Insights:
+
 - Note save latency
 - Wiki-link parse time
 - Workspace load time
@@ -664,6 +716,7 @@ Track via Application Insights:
 ### Error Tracking
 
 Log important events:
+
 - Workspace creation/migration
 - Permission denials
 - Failed link parsing

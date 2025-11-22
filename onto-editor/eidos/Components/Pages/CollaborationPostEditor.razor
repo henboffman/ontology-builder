@@ -38,16 +38,15 @@
                         <div class="mb-3">
                             <label class="form-label">Title <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" @bind="title"
-                                   placeholder="e.g., Looking for collaborators on Healthcare Ontology"
-                                   maxlength="200" />
+                                placeholder="e.g., Looking for collaborators on Healthcare Ontology" maxlength="200" />
                             <small class="text-muted">Be specific and descriptive</small>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Description <span class="text-danger">*</span></label>
                             <textarea class="form-control" rows="6" @bind="description"
-                                      placeholder="Describe your project, what you're trying to build, and what you hope to achieve..."
-                                      maxlength="2000"></textarea>
+                            placeholder="Describe your project, what you're trying to build, and what you hope to achieve..."
+                            maxlength="2000"></textarea>
                             <small class="text-muted">@description.Length / 2000 characters</small>
                         </div>
 
@@ -79,24 +78,22 @@
                         <div class="mb-3">
                             <label class="form-label">Looking For</label>
                             <input type="text" class="form-control" @bind="lookingFor"
-                                   placeholder="e.g., Domain experts in cardiology, Technical contributors, Co-designers"
-                                   maxlength="500" />
+                                placeholder="e.g., Domain experts in cardiology, Technical contributors, Co-designers"
+                                maxlength="500" />
                             <small class="text-muted">What kind of help do you need?</small>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Time Commitment</label>
                             <input type="text" class="form-control" @bind="timeCommitment"
-                                   placeholder="e.g., Few hours, Weekly, Ongoing project"
-                                   maxlength="100" />
+                                placeholder="e.g., Few hours, Weekly, Ongoing project" maxlength="100" />
                             <small class="text-muted">How much time will this require?</small>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Tags</label>
                             <input type="text" class="form-control" @bind="tags"
-                                   placeholder="healthcare, medical-imaging, radiology (comma-separated)"
-                                   maxlength="500" />
+                                placeholder="healthcare, medical-imaging, radiology (comma-separated)" maxlength="500" />
                             <small class="text-muted">Add keywords to help people find your post</small>
                         </div>
 
@@ -131,8 +128,7 @@
                         }
 
                         <div class="d-flex gap-2">
-                            <button class="btn btn-primary" @onclick="SavePost"
-                                    disabled="@(!CanSave() || saving)">
+                            <button class="btn btn-primary" @onclick="SavePost" disabled="@(!CanSave() || saving)">
                                 @if (saving)
                                 {
                                     <span class="spinner-border spinner-border-sm me-2"></span>
@@ -151,7 +147,8 @@
     </div>
 </div>
 
-@code {
+@code
+{
     [Parameter]
     public int? PostId { get; set; }
 
@@ -176,10 +173,10 @@
 
     private readonly string[] commonDomains = new[]
     {
-        "Healthcare", "Biology", "Environmental Science", "Business",
-        "Education", "Technology", "Social Sciences", "Engineering",
-        "Arts & Humanities", "Law & Policy", "Other"
-    };
+"Healthcare", "Biology", "Environmental Science", "Business",
+"Education", "Technology", "Social Sciences", "Engineering",
+"Arts & Humanities", "Law & Policy", "Other"
+};
 
     protected override async Task OnInitializedAsync()
     {
@@ -259,12 +256,12 @@
             {
                 post.Id = PostId.Value;
                 await CollaborationService.UpdatePostAsync(post);
-                Navigation.NavigateTo($"/collaboration/{PostId.Value}");
+                Navigation.NavigateTo($"collaboration/{PostId.Value}");
             }
             else
             {
                 var created = await CollaborationService.CreatePostAsync(post);
-                Navigation.NavigateTo($"/collaboration/{created.Id}");
+                Navigation.NavigateTo($"collaboration/{created.Id}");
             }
         }
         catch (Exception ex)
@@ -277,8 +274,8 @@
     private bool CanSave()
     {
         return !string.IsNullOrWhiteSpace(title) &&
-               title.Length <= 200 &&
-               !string.IsNullOrWhiteSpace(description) &&
-               description.Length <= 2000;
+        title.Length <= 200 &&
+        !string.IsNullOrWhiteSpace(description) &&
+        description.Length <= 2000;
     }
 }

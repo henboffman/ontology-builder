@@ -5,7 +5,22 @@
       "Bash(docker exec eidos-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong!Passw0rd' -d EidosDb -C -Q \"SELECT COUNT(*) as TotalPermissions FROM WorkspaceGroupPermissions;\")",
       "Bash(docker exec eidos-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong!Passw0rd' -d EidosDb -C -Q \"SELECT Id, Name FROM UserGroups ORDER BY Id DESC;\")",
       "Bash(docker exec eidos-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong!Passw0rd' -d EidosDb -Q \"SELECT COUNT(*) as PermissionCount FROM WorkspaceGroupPermissions;\" -C)",
-      "Bash(dotnet build --no-restore)"
+      "Bash(dotnet build --no-restore)",
+      "Bash(find Components/Pages -name \"*.razor\" -type f -exec sh -c 'lines=$(wc -l < \"\"$1\"\"); if [ \"\"$lines\"\" -gt 1000 ]; then echo \"\"$1: $lines lines\"\"; fi' _ {} ;)",
+      "Read(//tmp/**)",
+      "Bash(dotnet test --no-build --verbosity quiet)",
+      "Bash(dotnet build)",
+      "Bash(find /Users/benjaminhoffman/Documents/code/ontology-builder/onto-editor/eidos -name \"*.cs\" -type f -exec grep -l \"^namespace.*Ontology$\" {})",
+      "Bash(dotnet test --no-build)",
+      "Bash(dotnet test)",
+      "Bash(find /Users/benjaminhoffman/Documents/code/ontology-builder/onto-editor/eidos/Components -name \"*.razor\" -type f -exec wc -l {} +)",
+      "Bash(dotnet build --no-incremental)",
+      "Bash(awk '{print $9, $5}')",
+      "Bash(curl -s http://localhost:5147/learn -o /dev/null -w \"HTTP Status: %{http_code}\\n\")",
+      "Bash(dotnet test --no-build --verbosity normal)",
+      "Bash(dotnet test --verbosity quiet)",
+      "Read(//Users/benjaminhoffman/Documents/code/ontology-builder/onto-editor/**)",
+      "Bash(dotnet test Eidos.Tests/Eidos.Tests.csproj --verbosity quiet)"
     ],
     "deny": [],
     "ask": []

@@ -7,8 +7,10 @@
 ## Phase 1: Preparation & Cleanup (2-3 hours)
 
 ### Task 1.1: Remove Legacy Fields
+
 **File**: `Components/Pages/Home.razor` (or new CreateWorkspaceDialog.razor)
 **Changes**:
+
 - [x] Remove "Ontology Frameworks" section (lines 344-361)
   - Remove UsesBFO checkbox
   - Remove UsesProvO checkbox
@@ -17,15 +19,18 @@
 - [x] Update default version from "1.0" to "0.1"
 
 **Testing**:
+
 - Verify create dialog renders without removed sections
 - Verify workspace created has version "0.1"
 - Check mobile responsiveness
 
 ### Task 1.2: Extract Dialog to Separate Component (Optional but Recommended)
+
 **New File**: `Components/Workspace/CreateWorkspaceDialog.razor`
 **Rationale**: Separate concerns, reusability, easier testing
 
 **Approach**:
+
 - Create new component
 - Move dialog HTML from Home.razor to new component
 - Add parameters for callbacks (OnCreated, OnCancelled)
@@ -36,8 +41,10 @@
 ## Phase 2: Privacy Selection UI (3-4 hours)
 
 ### Task 2.1: Add Privacy Selector
+
 **File**: `Components/Workspace/CreateWorkspaceDialog.razor`
 **Changes**:
+
 ```html
 <div class="mb-3">
   <label class="form-label">Privacy Level</label>
@@ -63,6 +70,7 @@
 ```
 
 **Code-Behind**:
+
 ```csharp
 private string selectedPrivacy = "private";
 private bool allowPublicEdit = false;
@@ -80,9 +88,11 @@ private string GetPrivacyDescription()
 ```
 
 ### Task 2.2: Update WorkspaceService
+
 **File**: `Services/WorkspaceService.cs`
 **Changes**:
 Update `CreateWorkspaceAsync` signature:
+
 ```csharp
 public async Task<Workspace> CreateWorkspaceAsync(
     string userId,
@@ -128,16 +138,19 @@ public async Task<Workspace> CreateWorkspaceAsync(
 ## Phase 3: Group Selection & Creation (5-6 hours)
 
 ### Task 3.1: Create UserGroupSelector Component
+
 **New File**: `Components/Shared/UserGroupSelector.razor`
 **Purpose**: Reusable component for selecting/creating groups
 
 **Features**:
+
 - Show existing groups (user is member of OR user created)
 - "Create New Group" option
 - Inline group creation form
 - Member selection for new groups
 
 **Interface**:
+
 ```html
 <UserGroupSelector
     @bind-SelectedGroupId="selectedGroupId"
@@ -147,6 +160,7 @@ public async Task<Workspace> CreateWorkspaceAsync(
 ```
 
 **Implementation Outline**:
+
 ```html
 <div class="group-selector">
   @if (showExistingGroups)
@@ -186,6 +200,7 @@ public async Task<Workspace> CreateWorkspaceAsync(
 ```
 
 **Code-Behind**:
+
 ```csharp
 @code {
     [Parameter] public int SelectedGroupId { get; set; }
@@ -216,16 +231,19 @@ public async Task<Workspace> CreateWorkspaceAsync(
 ```
 
 ### Task 3.2: Create UserPicker Component
+
 **New File**: `Components/Shared/UserPicker.razor`
 **Purpose**: Multi-select user picker with autocomplete
 
 **Features**:
+
 - Search users by name/email
 - Server-side search (API endpoint)
 - Display selected users as chips/badges
 - Remove selected users
 
 **API Endpoint Required**:
+
 ```csharp
 // File: Endpoints/UserSearchEndpoint.cs (NEW)
 [HttpGet("/api/users/search")]
@@ -250,6 +268,7 @@ public record UserSearchResult(
 ```
 
 **Component Implementation**:
+
 ```html
 <div class="user-picker">
   <!-- Search input -->
@@ -294,6 +313,7 @@ public record UserSearchResult(
 ```
 
 **Code-Behind**:
+
 ```csharp
 @code {
     [Parameter] public List<string> SelectedUsers { get; set; } = new();
@@ -357,8 +377,10 @@ public record UserSearchResult(
 ```
 
 ### Task 3.3: Integrate Group Selection in Create Dialog
+
 **File**: `Components/Workspace/CreateWorkspaceDialog.razor`
 **Changes**:
+
 ```html
 @if (selectedPrivacy == "group")
 {
@@ -377,8 +399,10 @@ public record UserSearchResult(
 ## Phase 4: Direct User Access (3-4 hours)
 
 ### Task 4.1: Add User Access Section
+
 **File**: `Components/Workspace/CreateWorkspaceDialog.razor`
 **Changes**:
+
 ```html
 <div class="mb-3">
   <div class="form-check">
@@ -412,6 +436,7 @@ public record UserSearchResult(
 ```
 
 **Code-Behind**:
+
 ```csharp
 private bool enableUserAccess = false;
 private List<string> directAccessUserIds = new();
@@ -423,8 +448,10 @@ private string directAccessPermissionLevel = "ViewAddEdit";
 ## Phase 5: Service Integration (4-5 hours)
 
 ### Task 5.1: Update WorkspaceService for Group & User Access
+
 **File**: `Services/WorkspaceService.cs`
 **New Method**:
+
 ```csharp
 /// <summary>
 /// Create workspace with full privacy and access configuration
@@ -518,7 +545,9 @@ public async Task<Workspace> CreateWorkspaceWithAccessAsync(
 ```
 
 ### Task 5.2: Create Permission Service Methods
+
 **File**: `Services/WorkspacePermissionService.cs` (NEW or add to existing)
+
 ```csharp
 public async Task GrantGroupPermissionAsync(
     int workspaceId,
@@ -561,8 +590,10 @@ public async Task GrantUserAccessAsync(
 ```
 
 ### Task 5.3: Wire Up Create Dialog
+
 **File**: `Components/Workspace/CreateWorkspaceDialog.razor`
 **Update CreateWorkspace method**:
+
 ```csharp
 private async Task CreateWorkspace()
 {
@@ -594,7 +625,7 @@ private async Task CreateWorkspace()
         HideCreateDialog();
 
         // Navigate to the new workspace
-        Navigation.NavigateTo($"/workspace/{workspace.Id}");
+        Navigation.NavigateTo($"workspace/{workspace.Id}");
     }
     catch (Exception ex)
     {
@@ -613,9 +644,11 @@ private async Task CreateWorkspace()
 ## Phase 6: Testing (4-5 hours)
 
 ### Task 6.1: Unit Tests
+
 **New File**: `Eidos.Tests/Services/WorkspaceCreationWithAccessTests.cs`
 
 **Test Cases**:
+
 ```csharp
 [Fact]
 public async Task CreateWorkspace_Private_CreatesWithPrivateVisibility()
@@ -655,9 +688,11 @@ public async Task CreateWorkspace_Public_WithEditEnabled_AllowsPublicEdit()
 ```
 
 ### Task 6.2: Component Tests
+
 **New File**: `Eidos.Tests/Components/CreateWorkspaceDialogTests.cs`
 
 **Test Cases**:
+
 - Privacy selector changes visibility
 - Group section shows/hides based on privacy
 - User access section expands/collapses
@@ -665,7 +700,9 @@ public async Task CreateWorkspace_Public_WithEditEnabled_AllowsPublicEdit()
 - Error handling displays messages
 
 ### Task 6.3: Integration Tests
+
 **Manual Testing Checklist**:
+
 - [ ] Create private workspace (default)
 - [ ] Create workspace with existing group
 - [ ] Create workspace with new group (inline)
@@ -682,14 +719,17 @@ public async Task CreateWorkspace_Public_WithEditEnabled_AllowsPublicEdit()
 ## Phase 7: Documentation (2 hours)
 
 ### Task 7.1: Update User Documentation
+
 **File**: `docs/user-guides/WORKSPACES_AND_NOTES.md`
 **Add Section**: "Creating a Workspace with Privacy Controls"
 
 ### Task 7.2: Update CLAUDE.md
+
 **File**: `CLAUDE.md`
 **Add Section**: Document new workspace creation flow
 
 ### Task 7.3: Create Migration Guide
+
 **File**: `docs/migration/workspace-creation-v2.md`
 **Content**: How to use new creation flow, changes from old flow
 

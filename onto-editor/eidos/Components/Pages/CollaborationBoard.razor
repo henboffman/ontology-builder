@@ -35,7 +35,7 @@
                         <div class="col-md-4">
                             <label class="form-label small">Search</label>
                             <input type="text" class="form-control" @bind="searchTerm" @bind:event="oninput"
-                                   placeholder="Search by keywords, tags, domain..." />
+                                placeholder="Search by keywords, tags, domain..." />
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small">Domain</label>
@@ -216,7 +216,8 @@
     }
 </div>
 
-@code {
+@code
+{
     private List<CollaborationPost> posts = new();
     private List<CollaborationPost> myPosts = new();
     private bool loading = true;
@@ -229,10 +230,10 @@
 
     private readonly string[] commonDomains = new[]
     {
-        "Healthcare", "Biology", "Environmental Science", "Business",
-        "Education", "Technology", "Social Sciences", "Engineering",
-        "Arts & Humanities", "Law & Policy", "Other"
-    };
+"Healthcare", "Biology", "Environmental Science", "Business",
+"Education", "Technology", "Social Sciences", "Engineering",
+"Arts & Humanities", "Law & Policy", "Other"
+};
 
     protected override async Task OnInitializedAsync()
     {
@@ -272,9 +273,9 @@
         try
         {
             var filtered = await CollaborationService.SearchPostsAsync(
-                searchTerm: string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm,
-                domain: string.IsNullOrWhiteSpace(filterDomain) ? null : filterDomain,
-                skillLevel: string.IsNullOrWhiteSpace(filterSkillLevel) ? null : filterSkillLevel
+            searchTerm: string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm,
+            domain: string.IsNullOrWhiteSpace(filterDomain) ? null : filterDomain,
+            skillLevel: string.IsNullOrWhiteSpace(filterSkillLevel) ? null : filterSkillLevel
             );
             posts = filtered.ToList();
         }
@@ -291,7 +292,7 @@
 
     private void EditPost(int postId)
     {
-        Navigation.NavigateTo($"/collaboration/edit/{postId}");
+        Navigation.NavigateTo($"collaboration/edit/{postId}");
     }
 
     private async Task TogglePostStatus(int postId)

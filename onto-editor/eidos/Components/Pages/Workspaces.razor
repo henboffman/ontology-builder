@@ -69,13 +69,11 @@
     }
 </div>
 
-<CreateWorkspaceDialog
-    IsVisible="@showCreateDialog"
-    IsVisibleChanged="@((value) => showCreateDialog = value)"
-    OnWorkspaceCreated="@HandleWorkspaceCreated"
-    CurrentUserId="@currentUserId" />
+<CreateWorkspaceDialog IsVisible="@showCreateDialog" IsVisibleChanged="@((value) => showCreateDialog = value)"
+    OnWorkspaceCreated="@HandleWorkspaceCreated" CurrentUserId="@currentUserId" />
 
-@code {
+@code
+{
     private List<Workspace> workspaces = new();
     private bool loading = true;
     private bool showCreateDialog = false;
@@ -123,11 +121,11 @@
         workspaces.Insert(0, workspace);
 
         // Navigate to the new workspace
-        Navigation.NavigateTo($"/workspace/{workspace.Id}");
+        Navigation.NavigateTo($"workspace/{workspace.Id}");
     }
 
     private void OpenWorkspace(int workspaceId)
     {
-        Navigation.NavigateTo($"/workspace/{workspaceId}");
+        Navigation.NavigateTo($"workspace/{workspaceId}");
     }
 }

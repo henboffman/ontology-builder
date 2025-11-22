@@ -20,12 +20,14 @@ The current dev user switching feature has several issues:
 ## Requirements
 
 ### Must Have
+
 1. Register the `DevSwitchUserEndpoint` in `Program.cs` (only in Development environment)
 2. Fix the `/dev/switch-user` page to properly call the API endpoint
 3. Add "Switch User" link to the TopBar user dropdown menu (only visible in Development)
 4. Ensure all functionality is restricted to Development environment only
 
 ### Nice to Have
+
 1. Add dev user switching widget to the Login page (only in Development)
 2. Show current user prominently on the switch user page
 3. Add visual indicators that these are dev-only features
@@ -49,6 +51,7 @@ if (app.Environment.IsDevelopment())
 Replace `<a href>` links with proper form posts or JavaScript that calls the endpoint and handles the redirect:
 
 **Option A**: Use forms with POST
+
 ```razor
 <form method="post" action="/dev/api/switch-user/dev@localhost.local">
     <button type="submit" class="btn btn-lg btn-primary">...</button>
@@ -56,12 +59,13 @@ Replace `<a href>` links with proper form posts or JavaScript that calls the end
 ```
 
 **Option B**: Use NavigationManager to navigate (simpler, works with GET)
+
 ```csharp
 @inject NavigationManager Navigation
 
 private void SwitchToUser(string email)
 {
-    Navigation.NavigateTo($"/dev/api/switch-user/{email}", forceLoad: true);
+    Navigation.NavigateTo($"dev/api/switch-user/{email}", forceLoad: true);
 }
 ```
 

@@ -1,0 +1,1011 @@
+using Eidos.Models;
+using Eidos.Models.Enums;
+using Eidos.Services;
+using Eidos.Services.Interfaces;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.JSInterop;
+
+namespace Eidos.Components.Pages;
+
+public partial class GraphVisualization : ComponentBase
+{
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] private IUserPreferencesService PreferencesService { get; set; } = default!;
+    [Inject] private IConceptService ConceptService { get; set; } = default!;
+    [Inject] private IOntologyLinkService OntologyLinkService { get; set; } = default!;
+    [Inject] private IConceptGroupService ConceptGroupService { get; set; } = default!;
+    [Inject] private ILogger<GraphVisualization> Logger { get; set; } = default!;
+    [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
+    [Inject] private ToastService ToastService { get; set; } = default!;
+
+    [Parameter]
+    public Models.Ontology? Ontology { get; set; }
+
+    [Parameter]
+    public string Height { get; set; } = "600px";
+
+    [Parameter]
+    public string ColorMode { get; set; } = "concept"; // "concept" or "source"
+
+    /// <summary>
+    /// Controls whether individual instances are rendered in the graph alongside concepts.
+    /// When true, adds three types of additional graph elements:
+    /// 1. Individual nodes (diamond-shaped with 40% opacity colors derived from parent concept)
+    /// 2. Instance-of edges (dotted lines connecting individuals to their parent concepts)
+    /// 3. Individual relationship edges (purple lines connecting related individuals)
+    /// </summary>
+    /// <remarks>
+    /// Visual styling for individuals:
+    /// - Shape: Diamond (distinguishes from ellipse-shaped concepts)
+    /// - Border: Dashed (visual indicator of instance vs. concept)
+    /// - Color: rgba() format with 40% opacity of parent concept color
+    /// - Size: 1.2x larger than concept nodes for better visibility
+    ///
+    /// Edge types:
+    /// - instance-of: Dotted gray lines with vee arrows
+    /// - individualRelationship: Solid purple (#7B68EE) lines with triangle arrows
+    /// </remarks>
+    [Parameter]
+    public bool ShowIndividuals { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<int> OnNodeCtrlClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnNodeClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnNodeEditClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnEdgeClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnIndividualClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnOntologyLinkClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<(string nodeId, string label)> OnVirtualConceptClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<(string nodeId, string label)> OnVirtualConceptCtrlClicked { get; set; }
+
+    [Parameter]
+    public EventCallback OnBackgroundCmdShiftClicked { get; set; }
+
+    private string GraphId = $"graph-{Guid.NewGuid():N}";
+    private bool hasRendered = false;
+    private int lastConceptCount = 0;
+    private int lastRelationshipCount = 0;
+    private int textSizeScale = 100; // Percentage scale for text size (50-150%)
+    private bool preferencesLoaded = false;
+
+    /// <summary>
+    /// Tracks which ontology link nodes are expanded to show their concepts.
+    /// Key: OntologyLink.Id, Value: true if expanded
+    /// </summary>
+    private HashSet<int> expandedLinkIds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load text size preference when component is created
+        await LoadTextSizePreference();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Ontology != null)
+        {
+            hasRendered = true;
+            lastConceptCount = Ontology.Concepts.Count;
+            lastRelationshipCount = Ontology.Relationships.Count;
+            await RenderGraph();
+        }
+        else if (!firstRender && Ontology != null && hasRendered)
+        {
+            // Only re-render if the data has actually changed
+            var currentConceptCount = Ontology.Concepts.Count;
+            var currentRelationshipCount = Ontology.Relationships.Count;
+
+            if (currentConceptCount != lastConceptCount || currentRelationshipCount != lastRelationshipCount)
+            {
+                lastConceptCount = currentConceptCount;
+                lastRelationshipCount = currentRelationshipCount;
+                await RenderGraph();
+            }
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Don't call RenderGraph here - it will be called in OnAfterRenderAsync
+        // This avoids the JavaScript interop issue during pre-rendering
+    }
+
+    private async Task LoadTextSizePreference()
+    {
+        if (preferencesLoaded)
+            return;
+
+        try
+        {
+            var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+            textSizeScale = prefs.TextSizeScale;
+            if (textSizeScale == 0) // Handle old records that have default 0
+            {
+                textSizeScale = 100;
+            }
+            preferencesLoaded = true;
+        }
+        catch
+        {
+            // Use default 100 if preferences fail to load
+            textSizeScale = 100;
+            preferencesLoaded = true;
+        }
+    }
+
+    private async Task RenderGraph()
+    {
+        if (Ontology == null || Ontology.Concepts.Count == 0)
+            return;
+
+        // Load user preferences for graph display
+        UserPreferences? prefs = null;
+        try
+        {
+            prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+        }
+        catch
+        {
+            // Use defaults if preferences fail to load
+        }
+
+        // Get unique source ontologies and assign colors
+        var sourceOntologies = Ontology.Concepts
+            .Select(c => c.SourceOntology ?? "Original")
+            .Distinct()
+            .ToList();
+
+        var sourceColorMap = new Dictionary<string, string>();
+        // Predefined color palette for graph nodes - matches CSS variables in themes.css
+        // These correspond to: entity, function, quality, attribute, role, process, related, information
+        // Note: Dark mode brightness adjustments are handled by CSS in graphVisualization.js
+        var predefinedColors = new[] { "#4A90E2", "#E74C3C", "#6BCF7F", "#F4A261", "#9B59B6", "#E67E22", "#1ABC9C", "#3498DB" };
+
+        for (int i = 0; i < sourceOntologies.Count; i++)
+        {
+            sourceColorMap[sourceOntologies[i]] = predefinedColors[i % predefinedColors.Length];
+        }
+
+        // Build nodes and edges - use List<object> to allow different types
+        var nodes = new List<object>();
+        var edges = new List<object>();
+
+        // Log position data for debugging
+        var conceptsWithPositions = Ontology.Concepts.Count(c => c.PositionX.HasValue && c.PositionY.HasValue);
+        Console.WriteLine($"🔍 Building graph: {Ontology.Concepts.Count} concepts, {conceptsWithPositions} have positions");
+
+        // Log first few concepts to see their positions
+        foreach (var c in Ontology.Concepts.Take(5))
+        {
+            Console.WriteLine($"  - Concept {c.Id} ({c.Name}): PositionX={c.PositionX}, PositionY={c.PositionY}");
+        }
+
+        nodes.AddRange(Ontology.Concepts.Select(c =>
+        {
+            var nodeColor = ColorMode == "source"
+                ? sourceColorMap[c.SourceOntology ?? "Original"]
+                : (c.Color ?? "#4A90E2"); // Fallback to default concept color
+
+            var nodeData = new
+            {
+                id = $"concept-{c.Id}",
+                nodeId = c.Id,
+                type = "concept",
+                label = c.Name,
+                color = nodeColor,
+                nodeType = "concept",
+                definition = c.Definition ?? "",
+                explanation = c.SimpleExplanation ?? "",
+                examples = c.Examples ?? "",
+                category = c.Category ?? "",
+                sourceOntology = c.SourceOntology ?? "Original"
+            };
+
+            // Always include position property - either saved position or null
+            if (c.PositionX.HasValue && c.PositionY.HasValue)
+            {
+                return (object)new
+                {
+                    data = nodeData,
+                    position = new { x = c.PositionX.Value, y = c.PositionY.Value }
+                };
+            }
+            else
+            {
+                return (object)new
+                {
+                    data = nodeData,
+                    position = (object?)null
+                };
+            }
+        }));
+
+        // ====================================================================================
+        // Virtualized Ontology Link Nodes
+        // ====================================================================================
+        // Adds nodes representing linked ontologies (both external URI-based and internal DB references).
+        // These appear as hexagon-shaped nodes to distinguish them from regular concepts.
+        // Internal links show the linked ontology name and sync status.
+        // When expanded, child concepts from the linked ontology are displayed.
+        // ====================================================================================
+        if (Ontology.LinkedOntologies?.Any() == true)
+        {
+            var linkNodes = Ontology.LinkedOntologies
+                .Where(link => link.LinkType == LinkType.Internal) // Only show internal links as nodes
+                .Select(link =>
+                {
+                    var linkColor = link.Color ?? "#9B59B6"; // Purple default for virtual nodes
+                    var isExpanded = expandedLinkIds.Contains(link.Id);
+                    var expandIndicator = isExpanded ? "[-]" : "[+]";
+                    var conceptCount = link.LinkedOntology?.Concepts?.Count ?? 0;
+
+                    var linkData = new
+                    {
+                        id = $"ontologylink-{link.Id}",
+                        nodeId = link.Id,
+                        type = "ontologyLink",
+                        linkId = link.Id,
+                        label = $"{expandIndicator} {link.Name}",
+                        color = linkColor,
+                        nodeType = "ontologyLink",
+                        definition = link.Description ?? "",
+                        explanation = $"Virtualized reference to {link.Name} ({conceptCount} concepts)",
+                        examples = link.UpdateAvailable ? "Updates available! Click to expand." : $"Click to {(isExpanded ? "collapse" : "expand")}",
+                        category = "Linked Ontology",
+                        sourceOntology = "Virtual Link",
+                        isExpanded = isExpanded
+                    };
+
+                    // Always include position property - either saved position or null
+                    if (link.PositionX.HasValue && link.PositionY.HasValue)
+                    {
+                        return (object)new
+                        {
+                            data = linkData,
+                            position = new { x = link.PositionX.Value, y = link.PositionY.Value }
+                        };
+                    }
+                    else
+                    {
+                        return (object)new
+                        {
+                            data = linkData,
+                            position = (object?)null
+                        };
+                    }
+                });
+
+            nodes.AddRange(linkNodes);
+
+            // Add child concepts from expanded links
+            foreach (var link in Ontology.LinkedOntologies.Where(l => l.LinkType == LinkType.Internal && expandedLinkIds.Contains(l.Id)))
+            {
+                if (link.LinkedOntology?.Concepts != null)
+                {
+                    var childConcepts = link.LinkedOntology.Concepts.Select(c =>
+                    {
+                        var nodeColor = c.Color ?? "#E8B4F0"; // Lighter purple for child concepts
+
+                        return new
+                        {
+                            data = new
+                            {
+                                id = $"virtualconcept-{link.Id}-{c.Id}",
+                                label = c.Name,
+                                color = nodeColor,
+                                nodeType = "virtualConcept",
+                                definition = c.Definition ?? "",
+                                explanation = c.SimpleExplanation ?? "",
+                                examples = c.Examples ?? "",
+                                category = c.Category ?? "",
+                                sourceOntology = $"{link.Name} (Virtual)",
+                                parentLinkId = link.Id // Track which link this belongs to
+                            }
+                        };
+                    });
+
+                    nodes.AddRange(childConcepts);
+
+                    // ====================================================================================
+                    // Virtual Ontology Relationships
+                    // ====================================================================================
+                    // Render the actual relationships that exist within the linked ontology.
+                    // These show the semantic connections between virtual concepts, not just containment.
+                    // ====================================================================================
+                    if (link.LinkedOntology.Relationships?.Any() == true)
+                    {
+                        var virtualRelationships = link.LinkedOntology.Relationships.Select(r => new
+                        {
+                            data = new
+                            {
+                                id = $"virtualrel-{link.Id}-{r.Id}",
+                                source = $"virtualconcept-{link.Id}-{r.SourceConceptId}",
+                                target = $"virtualconcept-{link.Id}-{r.TargetConceptId}",
+                                label = r.Label ?? r.RelationType,
+                                edgeType = "virtualRelationship",
+                                description = r.Description ?? $"{r.RelationType} (from {link.Name})"
+                            }
+                        });
+
+                        edges.AddRange(virtualRelationships);
+
+                        // ====================================================================================
+                        // Orphan Concept Container Edges
+                        // ====================================================================================
+                        // For concepts that don't participate in any relationships, add a "contains" edge
+                        // from the ontology link node so they remain visible and connected in the graph.
+                        // ====================================================================================
+                        var conceptsInRelationships = link.LinkedOntology.Relationships
+                            .SelectMany(r => new[] { r.SourceConceptId, r.TargetConceptId })
+                            .Distinct()
+                            .ToHashSet();
+
+                        var orphanConcepts = link.LinkedOntology.Concepts
+                            .Where(c => !conceptsInRelationships.Contains(c.Id));
+
+                        var orphanEdges = orphanConcepts.Select(c => new
+                        {
+                            data = new
+                            {
+                                id = $"link-edge-{link.Id}-{c.Id}",
+                                source = $"ontologylink-{link.Id}",
+                                target = $"virtualconcept-{link.Id}-{c.Id}",
+                                label = "contains",
+                                edgeType = "virtualLink",
+                                description = "Orphan concept (no relationships)"
+                            }
+                        });
+
+                        edges.AddRange(orphanEdges);
+                    }
+                    else
+                    {
+                        // If there are no relationships at all, show "contains" for all concepts
+                        var linkEdges = link.LinkedOntology.Concepts.Select(c => new
+                        {
+                            data = new
+                            {
+                                id = $"link-edge-{link.Id}-{c.Id}",
+                                source = $"ontologylink-{link.Id}",
+                                target = $"virtualconcept-{link.Id}-{c.Id}",
+                                label = "contains",
+                                edgeType = "virtualLink",
+                                description = "Virtual link to concept"
+                            }
+                        });
+
+                        edges.AddRange(linkEdges);
+                    }
+
+                    // ====================================================================================
+                    // Cross-Ontology Bridge Edges
+                    // ====================================================================================
+                    // When a concept has been imported from this linked ontology, create a bridge edge
+                    // connecting the imported concept in the base ontology to its virtual counterpart.
+                    // This visually shows how the two ontologies are connected through imported concepts.
+                    // ====================================================================================
+                    foreach (var virtualConcept in link.LinkedOntology.Concepts)
+                    {
+                        // Find if this virtual concept has been imported into the base ontology
+                        // Match by: Name + SourceOntology matching the link name
+                        var importedConcept = Ontology.Concepts.FirstOrDefault(c =>
+                            c.Name == virtualConcept.Name &&
+                            c.SourceOntology == link.Name);
+
+                        if (importedConcept != null)
+                        {
+                            // Create a bridge edge from the imported concept to the virtual concept
+                            var bridgeEdge = new
+                            {
+                                data = new
+                                {
+                                    id = $"bridge-{importedConcept.Id}-{link.Id}-{virtualConcept.Id}",
+                                    source = $"concept-{importedConcept.Id}",
+                                    target = $"virtualconcept-{link.Id}-{virtualConcept.Id}",
+                                    label = "same as",
+                                    edgeType = "bridge",
+                                    description = $"Bridge: {importedConcept.Name} was imported from {link.Name}"
+                                }
+                            };
+
+                            edges.Add(bridgeEdge);
+
+                            // Now add any relationships from the imported concept
+                            // These will visually bridge between the two ontologies
+                            var outgoingRelationships = Ontology.Relationships
+                                .Where(r => r.SourceConceptId == importedConcept.Id || r.TargetConceptId == importedConcept.Id);
+
+                            // These relationships already exist in the normal relationship edges,
+                            // but they'll now connect to the imported concept which bridges to the virtual concept
+                        }
+                    }
+                }
+            }
+        }
+
+        // ====================================================================================
+        // Individual Node Visualization (Phase 1 of 3: Nodes)
+        // ====================================================================================
+        // Adds diamond-shaped nodes representing individual instances of concepts.
+        // Design decisions:
+        // - Color opacity: 40% of parent concept color for visual hierarchy
+        // - Color format: rgba() required by Cytoscape.js (8-char hex with alpha not supported)
+        // - Shape: Diamond with dashed border (defined in graphVisualization.js)
+        // - Size: 1.2x concept node size for better visibility with diamond shape
+        // ====================================================================================
+        if (ShowIndividuals && Ontology.Individuals?.Any() == true)
+        {
+            var individualNodes = Ontology.Individuals.Select(ind =>
+            {
+                // Find the concept this individual is an instance of
+                var concept = Ontology.Concepts.FirstOrDefault(c => c.Id == ind.ConceptId);
+                var baseColor = concept?.Color ?? "#4A90E2";
+
+                // Convert hex color to rgba format with 40% opacity
+                // Note: Cytoscape.js requires rgba() format - does not support 8-character hex (#RRGGBBAA)
+                var r = Convert.ToInt32(baseColor.Substring(1, 2), 16);
+                var g = Convert.ToInt32(baseColor.Substring(3, 2), 16);
+                var b = Convert.ToInt32(baseColor.Substring(5, 2), 16);
+                var individualColor = $"rgba({r}, {g}, {b}, 0.4)";
+
+                return new
+                {
+                    data = new
+                    {
+                        id = $"individual-{ind.Id}",
+                        label = ind.Name ?? ind.Label ?? $"Individual {ind.Id}",
+                        color = individualColor,
+                        nodeType = "individual",
+                        definition = ind.Description ?? "",
+                        explanation = "", // Individuals don't have explanations
+                        examples = "", // Individuals don't have examples
+                        category = "", // Individuals don't have categories
+                        sourceOntology = concept?.SourceOntology ?? "Original"
+                    }
+                };
+            });
+
+            nodes.AddRange(individualNodes);
+        }
+
+        // Build edges from relationships
+        edges.AddRange(Ontology.Relationships.Select(r => new
+        {
+            data = new
+            {
+                id = $"rel-{r.Id}",
+                source = $"concept-{r.SourceConceptId}",
+                target = $"concept-{r.TargetConceptId}",
+                label = r.RelationType,
+                edgeType = "relationship",
+                description = r.Description ?? ""
+            }
+        }));
+
+        // ====================================================================================
+        // Individual Visualization (Phase 2 of 3: Instance-of Edges)
+        // ====================================================================================
+        // Adds dotted edges connecting individuals to their parent concepts.
+        // Visual style: Dotted gray lines with vee arrows (lighter than regular relationships)
+        // Label: "instance of" to clearly indicate the type-instance relationship
+        // ====================================================================================
+        if (ShowIndividuals && Ontology.Individuals?.Any() == true)
+        {
+            var instanceEdges = Ontology.Individuals.Select(ind => new
+            {
+                data = new
+                {
+                    id = $"instance-{ind.Id}",
+                    source = $"individual-{ind.Id}",
+                    target = $"concept-{ind.ConceptId}",
+                    label = "instance of",
+                    edgeType = "instanceOf",
+                    description = ""
+                }
+            });
+
+            edges.AddRange(instanceEdges);
+        }
+
+        // ====================================================================================
+        // Individual Visualization (Phase 3 of 3: Individual Relationship Edges)
+        // ====================================================================================
+        // Adds edges connecting related individuals (e.g., "Alice knows Bob").
+        // Visual style: Solid purple (#7B68EE) lines with triangle arrows
+        // These relationships are distinct from concept relationships and instance-of edges,
+        // representing connections at the instance level rather than the ontology structure level.
+        // ====================================================================================
+        if (ShowIndividuals && Ontology.IndividualRelationships?.Any() == true)
+        {
+            var individualRelationshipEdges = Ontology.IndividualRelationships.Select(ir => new
+            {
+                data = new
+                {
+                    id = $"indrel-{ir.Id}",
+                    source = $"individual-{ir.SourceIndividualId}",
+                    target = $"individual-{ir.TargetIndividualId}",
+                    label = ir.RelationType ?? "related to",
+                    edgeType = "individualRelationship",
+                    description = ir.Description ?? ""
+                }
+            });
+
+            edges.AddRange(individualRelationshipEdges);
+        }
+
+        var elements = new
+        {
+            nodes,
+            edges
+        };
+
+        // Create display options from user preferences
+        // Explicitly type to avoid vararg calling convention issues
+        int nodeSize = prefs?.DefaultNodeSize ?? 40;
+        int edgeThickness = prefs?.DefaultEdgeThickness ?? 2;
+        bool showEdgeLabels = prefs?.ShowEdgeLabels ?? true;
+        double textScale = textSizeScale / 100.0; // Convert percentage to decimal (e.g., 100% = 1.0)
+
+        var displayOptions = new
+        {
+            nodeSize = nodeSize,
+            edgeThickness = edgeThickness,
+            showEdgeLabels = showEdgeLabels,
+            textSizeScale = textScale
+        };
+
+        var dotNetHelper = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("renderOntologyGraph", GraphId, elements, dotNetHelper, displayOptions);
+
+        // Wait for Cytoscape instance to be fully initialized and stored
+        // This prevents race conditions where grouping initializes before the graph is ready
+        var initialized = false;
+        var maxAttempts = 20; // Try for up to 2 seconds (20 * 100ms)
+        var attempts = 0;
+
+        while (!initialized && attempts < maxAttempts)
+        {
+            try
+            {
+                initialized = await JS.InvokeAsync<bool>("isGraphInitialized", GraphId);
+                if (!initialized)
+                {
+                    await Task.Delay(100);
+                    attempts++;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error checking graph initialization status for {GraphId}, attempt {Attempt}", GraphId, attempts);
+                await Task.Delay(100);
+                attempts++;
+            }
+        }
+
+        if (initialized)
+        {
+            await InitializeConceptGrouping();
+        }
+        else
+        {
+            Logger.LogError("Graph failed to initialize within timeout period for {GraphId}", GraphId);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnNodeCtrlClick(int conceptId)
+    {
+        await OnNodeCtrlClicked.InvokeAsync(conceptId);
+    }
+
+    [JSInvokable]
+    public async Task OnNodeClick(int conceptId)
+    {
+        await OnNodeClicked.InvokeAsync(conceptId);
+    }
+
+    [JSInvokable]
+    public async Task OnNodeEditClick(int conceptId)
+    {
+        // If parent hasn't wired up the event, handle it here
+        if (OnNodeEditClicked.HasDelegate)
+        {
+            await OnNodeEditClicked.InvokeAsync(conceptId);
+        }
+        else
+        {
+            // Fallback: Show a toast indicating the feature is working
+            // but the parent component needs to wire up the edit handler
+            ToastService.ShowInfo($"Edit concept {conceptId} - Parent component needs to wire up OnNodeEditClicked event");
+            Logger.LogWarning("OnNodeEditClicked event not handled by parent component for concept {ConceptId}", conceptId);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnEdgeClick(int relationshipId)
+    {
+        await OnEdgeClicked.InvokeAsync(relationshipId);
+    }
+
+    [JSInvokable]
+    public async Task OnIndividualClick(int individualId)
+    {
+        await OnIndividualClicked.InvokeAsync(individualId);
+    }
+
+    [JSInvokable]
+    public async Task OnOntologyLinkClick(int linkId)
+    {
+        // Toggle expansion state
+        if (expandedLinkIds.Contains(linkId))
+        {
+            expandedLinkIds.Remove(linkId);
+        }
+        else
+        {
+            expandedLinkIds.Add(linkId);
+        }
+
+        // Re-render the graph to show/hide child concepts
+        await RenderGraph();
+
+        // Still notify parent component
+        await OnOntologyLinkClicked.InvokeAsync(linkId);
+    }
+
+    [JSInvokable]
+    public async Task OnVirtualConceptClick(string nodeId, string label)
+    {
+        // Show info about virtual concept
+        await OnVirtualConceptClicked.InvokeAsync((nodeId, label));
+    }
+
+    [JSInvokable]
+    public async Task OnVirtualConceptCtrlClick(string nodeId, string label)
+    {
+        // Handle Ctrl+click for creating relationships with virtual concepts
+        await OnVirtualConceptCtrlClicked.InvokeAsync((nodeId, label));
+    }
+
+    [JSInvokable]
+    public async Task OnBackgroundCmdShiftClick()
+    {
+        await OnBackgroundCmdShiftClicked.InvokeAsync();
+    }
+
+    public async Task RefreshGraph()
+    {
+        await RenderGraph();
+    }
+
+    private async Task OnTextSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            textSizeScale = newSize;
+
+            // Save to user preferences
+            try
+            {
+                var prefs = await PreferencesService.GetCurrentUserPreferencesAsync();
+                prefs.TextSizeScale = textSizeScale;
+                await PreferencesService.UpdatePreferencesAsync(prefs);
+            }
+            catch
+            {
+                // Silently fail - text size will still work for this session
+            }
+
+            await RenderGraph();
+        }
+    }
+
+    /// <summary>
+    /// Saves node positions in batch when users drag nodes in the graph.
+    /// Called from JavaScript via JSInvokable.
+    /// </summary>
+    [JSInvokable]
+    public async Task SaveNodePositionsBatch(List<NodePositionUpdate> updates)
+    {
+        if (updates == null || updates.Count == 0)
+            return;
+
+        try
+        {
+            // Separate concepts and ontology links
+            // Use GroupBy to handle duplicate IDs (take the last update for each node)
+            var conceptUpdates = updates
+                .Where(u => u.Type == "concept")
+                .GroupBy(u => u.Id)
+                .ToDictionary(g => g.Key, g => (g.Last().X, g.Last().Y));
+
+            var linkUpdates = updates
+                .Where(u => u.Type == "ontologyLink")
+                .GroupBy(u => u.Id)
+                .Select(g => g.Last())
+                .ToList();
+
+            // Batch update concepts (more efficient)
+            if (conceptUpdates.Any())
+            {
+                await ConceptService.UpdatePositionsBatchAsync(conceptUpdates);
+            }
+
+            // Update ontology links individually (usually fewer)
+            foreach (var update in linkUpdates)
+            {
+                await OntologyLinkService.UpdatePositionAsync(update.Id, update.X, update.Y);
+            }
+
+            Logger.LogInformation("Saved positions for {Count} nodes in ontology {OntologyId}",
+                updates.Count, Ontology?.Id ?? 0);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving node positions for ontology {OntologyId}", Ontology?.Id ?? 0);
+        }
+    }
+
+    /// <summary>
+    /// Zooms to and highlights a specific concept in the graph.
+    /// </summary>
+    /// <param name="conceptId">The ID of the concept to zoom to</param>
+    /// <returns>True if the concept was found and zoomed to, false otherwise</returns>
+    public async Task<bool> ZoomToConcept(int conceptId)
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("zoomToConcept", GraphId, conceptId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error zooming to concept {ConceptId}", conceptId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// DTO for node position updates from JavaScript
+    /// </summary>
+    public class NodePositionUpdate
+    {
+        public int Id { get; set; }
+        public string Type { get; set; } = string.Empty; // "concept" or "ontologyLink"
+        public double X { get; set; }
+        public double Y { get; set; }
+    }
+
+    // ====================================================================================
+    // Concept Grouping Functionality
+    // ====================================================================================
+
+    /// <summary>
+    /// Initializes the concept grouping system for this graph instance.
+    /// Loads existing groups from the database and sets up drag-and-drop handlers.
+    /// </summary>
+    private async Task InitializeConceptGrouping()
+    {
+        if (Ontology == null)
+            return;
+
+        try
+        {
+            // Get current user ID
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                Logger.LogWarning("Cannot initialize concept grouping - user not authenticated");
+                return;
+            }
+
+            // Load existing groups for this ontology and user
+            var groups = await ConceptGroupService.GetGroupsForOntologyAsync(Ontology.Id, userId);
+
+            // Get user preferences for grouping radius
+            var preferences = await PreferencesService.GetCurrentUserPreferencesAsync();
+            var groupingRadius = preferences?.GroupingRadius ?? 100; // Default to 100px if not set
+
+            // Convert groups to JavaScript-friendly format
+            var groupsData = groups.Select(g => new
+            {
+                id = g.Id,
+                parentConceptId = g.ParentConceptId,
+                childConceptIds = g.ChildConceptIds,
+                collapsedRelationships = g.CollapsedRelationships,
+                isCollapsed = g.IsCollapsed,
+                groupName = g.GroupName,
+                maxDepth = g.MaxDepth
+            }).ToList();
+
+            // Initialize grouping in JavaScript
+            var dotNetHelper = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("initializeConceptGrouping", GraphId, null, dotNetHelper, groupsData, groupingRadius);
+
+            Logger.LogInformation("Initialized concept grouping for ontology {OntologyId} with {GroupCount} groups",
+                Ontology.Id, groups.Count);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing concept grouping for ontology {OntologyId}", Ontology?.Id ?? 0);
+        }
+    }
+
+    /// <summary>
+    /// Checks if a concept group can be created (used for client-side validation).
+    /// Called from JavaScript via JSInvokable.
+    /// </summary>
+    [JSInvokable("CanCreateGroup")]
+    public async Task<bool> CanCreateGroup(int parentConceptId, int[] childConceptIds)
+    {
+        if (Ontology == null)
+            return false;
+
+        try
+        {
+            // Get current user ID
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return false;
+
+            return await ConceptGroupService.CanCreateGroupAsync(Ontology.Id, userId, parentConceptId, childConceptIds.ToList());
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error checking if group can be created");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Creates a new concept group when a node is dragged onto another.
+    /// Called from JavaScript via JSInvokable.
+    /// </summary>
+    [JSInvokable]
+    public async Task CreateConceptGroup(int parentConceptId, int[] childConceptIds)
+    {
+        if (Ontology == null)
+            return;
+
+        try
+        {
+            // Get current user ID
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                Logger.LogWarning("Cannot create concept group - user not authenticated");
+                return;
+            }
+
+            // Check if nesting depth is allowed
+            var canNest = await ConceptGroupService.CanNestGroup(Ontology.Id, userId, parentConceptId);
+            if (!canNest)
+            {
+                Logger.LogWarning("Cannot create group - maximum nesting depth exceeded");
+                return;
+            }
+
+            // Create the group
+            Logger.LogInformation("Creating concept group with parent {ParentId} and children {Children}",
+                parentConceptId, string.Join(",", childConceptIds));
+
+            var group = await ConceptGroupService.CreateGroupAsync(
+                Ontology.Id,
+                userId,
+                parentConceptId,
+                childConceptIds.ToList());
+
+            Logger.LogInformation("Created concept group {GroupId} with parent {ParentId} and {ChildCount} children",
+                group.Id, parentConceptId, childConceptIds.Length);
+
+            // Update groups in JavaScript instead of full graph refresh
+            Logger.LogInformation("Updating groups in JavaScript for graph {GraphId}", GraphId);
+            var allGroups = await ConceptGroupService.GetGroupsForOntologyAsync(Ontology.Id, userId);
+            var groupsData = allGroups.Select(g => new
+            {
+                id = g.Id,
+                parentConceptId = g.ParentConceptId,
+                childConceptIds = g.ChildConceptIds,
+                collapsedRelationships = g.CollapsedRelationships,
+                isCollapsed = g.IsCollapsed,
+                groupName = g.GroupName,
+                maxDepth = g.MaxDepth
+            }).ToList();
+
+            await JS.InvokeVoidAsync("updateConceptGroups", GraphId, groupsData);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("circular reference"))
+        {
+            Logger.LogWarning(ex, "Circular reference prevented when creating concept group");
+            ToastService.ShowWarning("Cannot group these concepts - would create a circular reference");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating concept group for ontology {OntologyId}", Ontology?.Id ?? 0);
+            ToastService.ShowError("Failed to create concept group");
+        }
+    }
+
+    /// <summary>
+    /// Toggles the collapse/expand state of a concept group.
+    /// Called from JavaScript via JSInvokable.
+    /// </summary>
+    [JSInvokable]
+    public async Task ToggleConceptGroup(int groupId)
+    {
+        if (Ontology == null)
+            return;
+
+        try
+        {
+            await ConceptGroupService.ToggleCollapseAsync(groupId);
+
+            Logger.LogInformation("Toggled concept group {GroupId}", groupId);
+
+            // Get current user ID
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                Logger.LogWarning("Cannot update groups - user not authenticated");
+                return;
+            }
+
+            // Update groups in JavaScript instead of re-rendering the entire graph
+            var allGroups = await ConceptGroupService.GetGroupsForOntologyAsync(Ontology.Id, userId);
+            var groupsData = allGroups.Select(g => new
+            {
+                id = g.Id,
+                parentConceptId = g.ParentConceptId,
+                childConceptIds = g.ChildConceptIds,
+                collapsedRelationships = g.CollapsedRelationships,
+                isCollapsed = g.IsCollapsed,
+                groupName = g.GroupName,
+                maxDepth = g.MaxDepth
+            }).ToList();
+
+            await JS.InvokeVoidAsync("updateConceptGroups", GraphId, groupsData);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error toggling concept group {GroupId}", groupId);
+        }
+    }
+
+    /// <summary>
+    /// Shows a context menu for managing a concept group.
+    /// Called from JavaScript via JSInvokable.
+    /// </summary>
+    [JSInvokable]
+    public async Task ShowGroupContextMenu(int groupId, double x, double y)
+    {
+        // For now, just log - we can implement a context menu UI later
+        Logger.LogInformation("Context menu requested for group {GroupId} at ({X}, {Y})", groupId, x, y);
+        await Task.CompletedTask;
+    }
+}

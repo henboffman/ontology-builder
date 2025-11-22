@@ -22,7 +22,8 @@ else if (result == null || !result.Ontologies.Any())
 {
     <div class="alert alert-info">
         <i class="bi bi-info-circle me-2"></i>
-        No recently accessed shared ontologies. When others share ontologies with you via links or groups, they'll appear here.
+        No recently accessed shared ontologies. When others share ontologies with you via links or groups, they'll appear
+        here.
     </div>
 }
 else
@@ -35,7 +36,7 @@ else
                     <div class="input-group input-group-sm">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input type="text" class="form-control form-control-sm" placeholder="Search..."
-                               @bind="filter.SearchTerm" @bind:event="oninput" @bind:after="ApplyFilters" />
+                            @bind="filter.SearchTerm" @bind:event="oninput" @bind:after="ApplyFilters" />
                     </div>
                 </div>
                 <div class="col-md-2">
@@ -56,8 +57,8 @@ else
                 </div>
                 <div class="col-md-2">
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="showPinnedOnly"
-                               @bind="filter.PinnedOnly" @bind:after="ApplyFilters" />
+                        <input class="form-check-input" type="checkbox" id="showPinnedOnly" @bind="filter.PinnedOnly"
+                            @bind:after="ApplyFilters" />
                         <label class="form-check-label small" for="showPinnedOnly">Pinned Only</label>
                     </div>
                 </div>
@@ -76,7 +77,7 @@ else
         {
             <div class="col">
                 <div class="card h-100 shared-ontology-card @(ontology.IsPinned ? "pinned" : "")"
-                     @onclick="() => OpenOntology(ontology.OntologyId)">
+                    @onclick="() => OpenOntology(ontology.OntologyId)">
                     <div class="card-body">
                         <!-- Header with badges -->
                         <div class="d-flex justify-content-between align-items-start mb-2">
@@ -114,7 +115,8 @@ else
                         <p class="card-text text-muted small mb-2">
                             @if (!string.IsNullOrWhiteSpace(ontology.Description))
                             {
-                                @(ontology.Description.Length > 80 ? ontology.Description.Substring(0, 80) + "..." : ontology.Description)
+                                @(ontology.Description.Length > 80 ? ontology.Description.Substring(0, 80) + "..." :
+                                                    ontology.Description)
                             }
                             else
                             {
@@ -161,15 +163,17 @@ else
                     <!-- Action Buttons -->
                     <div class="card-footer bg-transparent border-top-0 pt-0">
                         <div class="btn-group btn-group-sm w-100" role="group">
-                            <button class="btn btn-outline-primary" @onclick="() => OpenOntology(ontology.OntologyId)" @onclick:stopPropagation="true">
+                            <button class="btn btn-outline-primary" @onclick="() => OpenOntology(ontology.OntologyId)"
+                                @onclick:stopPropagation="true">
                                 <i class="bi bi-eye"></i> Open
                             </button>
                             <button class="btn @(ontology.IsPinned ? "btn-primary" : "btn-outline-secondary")"
-                                    @onclick="() => TogglePin(ontology)" @onclick:stopPropagation="true"
-                                    title="@(ontology.IsPinned ? "Unpin" : "Pin for quick access")">
+                                @onclick="() => TogglePin(ontology)" @onclick:stopPropagation="true"
+                                title="@(ontology.IsPinned ? "Unpin" : "Pin for quick access")">
                                 <i class="bi @(ontology.IsPinned ? "bi-pin-fill" : "bi-pin")"></i>
                             </button>
-                            <button class="btn btn-outline-secondary" @onclick="() => HideOntology(ontology)" @onclick:stopPropagation="true" title="Hide from list">
+                            <button class="btn btn-outline-secondary" @onclick="() => HideOntology(ontology)"
+                                @onclick:stopPropagation="true" title="Hide from list">
                                 <i class="bi bi-eye-slash"></i>
                             </button>
                         </div>
@@ -216,7 +220,7 @@ else
 
     .shared-ontology-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
     .shared-ontology-card.pinned {
@@ -231,7 +235,8 @@ else
     }
 </style>
 
-@code {
+@code
+{
     private SharedOntologyResult? result;
     private SharedOntologyFilterModel filter = new();
     private bool isLoading = true;
@@ -355,7 +360,7 @@ else
 
     private void OpenOntology(int ontologyId)
     {
-        Navigation.NavigateTo($"/ontology/{ontologyId}");
+        Navigation.NavigateTo($"ontology/{ontologyId}");
     }
 
     private async Task PreviousPage()

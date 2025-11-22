@@ -24,19 +24,22 @@
                         </p>
 
                         <div class="d-grid gap-2">
-                            <button type="button" @onclick='() => SwitchToUser("dev@localhost.local")' class="btn btn-lg btn-primary">
+                            <button type="button" @onclick='() => SwitchToUser("dev@localhost.local")'
+                                class="btn btn-lg btn-primary">
                                 <i class="bi bi-person-fill"></i> Switch to Dev User
                                 <br />
                                 <small class="opacity-75">dev@localhost.local</small>
                             </button>
 
-                            <button type="button" @onclick='() => SwitchToUser("test@test.com")' class="btn btn-lg btn-success">
+                            <button type="button" @onclick='() => SwitchToUser("test@test.com")'
+                                class="btn btn-lg btn-success">
                                 <i class="bi bi-person-badge"></i> Switch to Test User
                                 <br />
                                 <small class="opacity-75">test@test.com</small>
                             </button>
 
-                            <button type="button" @onclick='() => SwitchToUser("collab@test.com")' class="btn btn-lg btn-info">
+                            <button type="button" @onclick='() => SwitchToUser("collab@test.com")'
+                                class="btn btn-lg btn-info">
                                 <i class="bi bi-people-fill"></i> Switch to Collaborator User
                                 <br />
                                 <small class="opacity-75">collab@test.com</small>
@@ -69,7 +72,8 @@ else
     </div>
 }
 
-@code {
+@code
+{
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
@@ -83,14 +87,14 @@ else
             if (authState.User?.Identity?.IsAuthenticated == true)
             {
                 currentUserEmail = authState.User.FindFirst(ClaimTypes.Email)?.Value
-                    ?? authState.User.Identity.Name
-                    ?? "Unknown";
+                ?? authState.User.Identity.Name
+                ?? "Unknown";
             }
         }
     }
 
     private void SwitchToUser(string email)
     {
-        Navigation.NavigateTo($"/dev/api/switch-user/{email}", forceLoad: true);
+        Navigation.NavigateTo($"dev/api/switch-user/{email}", forceLoad: true);
     }
 }
