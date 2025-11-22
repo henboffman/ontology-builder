@@ -99,35 +99,135 @@
                 <section id="creating-ontology" class="doc-section">
                     <h2><i class="bi bi-plus-circle text-primary"></i> Creating a Workspace</h2>
 
-                    <h3>Step-by-Step</h3>
+                    <h3>Quick Start</h3>
                     <ol>
                         <li>From your dashboard, click the <span class="badge bg-success">Create New Workspace</span> button</li>
                         <li>Enter a descriptive name for your workspace (e.g., "E-commerce Product Catalog")</li>
                         <li>Optionally add a description to explain its purpose</li>
-                        <li>Click <strong>Create</strong></li>
+                        <li>Choose your privacy settings (see below)</li>
+                        <li>Click <strong>Create Workspace</strong></li>
                     </ol>
 
                     <div class="alert alert-success">
-                        <i class="bi bi-check-circle"></i> <strong>What happens next:</strong> Eidos automatically creates an ontology for your workspace, sets up note-taking capabilities, and opens the workspace view where you can start adding concepts and notes!
+                        <i class="bi bi-check-circle"></i> <strong>What happens next:</strong> Eidos automatically creates an ontology for your workspace (version 0.1), sets up note-taking capabilities, configures your chosen permissions, and opens the workspace view where you can start adding concepts and notes!
                     </div>
+
+                    <h3>Privacy & Access Control</h3>
+                    <p>When creating a workspace, you can configure who has access right from the start:</p>
+
+                    <h4>Privacy Levels</h4>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">🔒 Private</h5>
+                                    <p class="card-text">Only you can access this workspace. You can invite specific users later.</p>
+                                    <p class="text-muted small mb-0"><strong>Best for:</strong> Personal projects, early drafts</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">👥 Group</h5>
+                                    <p class="card-text">Shared with members of a specific user group. Perfect for team collaboration!</p>
+                                    <p class="text-muted small mb-0"><strong>Best for:</strong> Team projects, departments, research groups</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">🌍 Public</h5>
+                                    <p class="card-text">Anyone with the link can view this workspace. Appears in public listings.</p>
+                                    <p class="text-muted small mb-0"><strong>Best for:</strong> Open knowledge bases, public documentation</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4>Group-Based Sharing</h4>
+                    <p>When you select "Group" privacy, you can create a new group or use an existing one:</p>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6>Create a New Group (Inline)</h6>
+                            <ol>
+                                <li>Select <strong>Group</strong> privacy level</li>
+                                <li>In the "Select Group" dropdown, choose <strong>+ Create New Group</strong></li>
+                                <li>Enter a group name (e.g., "Research Team Alpha")</li>
+                                <li>Add group members using the user picker (type to search by name or email)</li>
+                                <li>Create your workspace - the group and permissions are set up automatically!</li>
+                            </ol>
+                            <div class="alert alert-info small mb-0">
+                                <i class="bi bi-info-circle"></i> Groups you create are reusable! You can use the same group for multiple workspaces.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6>Use an Existing Group</h6>
+                            <ol>
+                                <li>Select <strong>Group</strong> privacy level</li>
+                                <li>In the "Select Group" dropdown, choose from your existing groups</li>
+                                <li>All group members automatically get <strong>View, Add & Edit</strong> permissions</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <h4>Direct User Access</h4>
+                    <p>You can also grant access to specific users individually, regardless of privacy level:</p>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6>How to Grant Direct Access</h6>
+                            <ol>
+                                <li>Check the box "Grant access to specific users"</li>
+                                <li>Use the user picker to search and select users</li>
+                                <li>Choose their permission level:
+                                    <ul>
+                                        <li><span class="badge bg-info">View</span> - Read-only access</li>
+                                        <li><span class="badge bg-success">View & Add</span> - Can add new content</li>
+                                        <li><span class="badge bg-warning text-dark">View, Add & Edit</span> - Can modify existing content (default)</li>
+                                        <li><span class="badge bg-danger">Full Access</span> - Administrative permissions</li>
+                                    </ul>
+                                </li>
+                                <li>Users get immediate access when the workspace is created</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <h4>User Picker</h4>
+                    <p>The user picker makes it easy to find and select collaborators:</p>
+                    <ul>
+                        <li><strong>Smart Search:</strong> Type at least 2 characters to search by name or email</li>
+                        <li><strong>Prioritized Results:</strong> Users you've collaborated with before appear first with a "Past collaborator" badge</li>
+                        <li><strong>Multi-Select:</strong> Click users to add them, click the X on badges to remove</li>
+                        <li><strong>Visual Feedback:</strong> See user initials and names at a glance</li>
+                    </ul>
 
                     <div class="alert alert-info">
                         <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> Use clear, descriptive names that reflect the domain or project. Examples: "Healthcare Terminology", "Product Taxonomy", "Research Notes - AI Ethics"
                     </div>
 
-                    <h3>Workspace Settings</h3>
-                    <p>You can configure your workspace by clicking the <i class="bi bi-gear"></i> Settings button in the toolbar:</p>
+                    <h3>Public Workspace Options</h3>
+                    <p>When creating a public workspace, you have an additional option:</p>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" disabled>
+                        <label class="form-check-label">
+                            <strong>Allow anyone to edit</strong> (not just view)
+                        </label>
+                    </div>
+                    <p class="text-muted">When enabled, anyone with the link can add and edit content in your workspace - perfect for wikis and community knowledge bases!</p>
+
+                    <h3>After Creation</h3>
+                    <p>Once your workspace is created, you can:</p>
                     <ul>
-                        <li><strong>Name & Description</strong> - Update basic information for both workspace and ontology</li>
-                        <li><strong>Visibility</strong> - Control access:
-                            <ul>
-                                <li><strong>Private</strong> - Only you and users you explicitly share with</li>
-                                <li><strong>Group</strong> - Shared with specific user groups (great for collaboration)</li>
-                                <li><strong>Public</strong> - Anyone can view (optional edit permissions)</li>
-                            </ul>
-                        </li>
-                        <li><strong>Permissions</strong> - Manage who can view, edit, or manage your workspace</li>
-                        <li><strong>Sharing</strong> - Use the <i class="bi bi-share"></i> Share button to invite collaborators</li>
+                        <li><strong>View Permissions:</strong> Go to Settings > Permissions to see who has access</li>
+                        <li><strong>Manage Groups:</strong> View group members and their permission levels</li>
+                        <li><strong>Add More Users:</strong> Grant additional users access anytime</li>
+                        <li><strong>Change Privacy:</strong> Update visibility and permissions in Settings</li>
                     </ul>
 
                     <h3>Navigating Your Workspace</h3>

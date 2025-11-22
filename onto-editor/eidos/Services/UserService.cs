@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Eidos.Data;
 using Eidos.Models;
+using Eidos.Models.DTOs;
 using Eidos.Services.Interfaces;
 
 namespace Eidos.Services;
@@ -90,6 +91,79 @@ public class UserService : IUserService
     public async Task<IEnumerable<ApplicationUser>> GetAllUsersAsync()
     {
         return await _userManager.Users.ToListAsync();
+    }
+
+    /// <summary>
+    /// Search users by name or email
+    /// Prioritizes users the current user has collaborated with (shared workspaces/ontologies)
+    /// </summary>
+    public async Task<List<UserSearchResult>> SearchUsersAsync(
+        string query,
+        string? currentUserId = null,
+        int limit = 10)
+    {
+        if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+        {
+            return new List<UserSearchResult>();
+        }
+
+        var queryLower = query.ToLower();
+
+        // Get all matching users from Identity
+        var matchingUsers = await _userManager.Users
+            .Where(u =>
+                u.Email!.ToLower().Contains(queryLower) ||
+                (u.DisplayName != null && u.DisplayName.ToLower().Contains(queryLower)) ||
+                (u.UserName != null && u.UserName.ToLower().Contains(queryLower)))
+            .Take(50) // Get more than we need for prioritization
+            .ToListAsync();
+
+        // Get users who have collaborated with current user (if provided)
+        HashSet<string> collaboratorIds = new();
+        if (!string.IsNullOrEmpty(currentUserId))
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            // Find users who share workspaces with current user
+            var sharedWorkspaceUsers = await context.WorkspaceUserAccesses
+                .Include(w => w.Workspace)
+                .Where(w => w.Workspace.UserId == currentUserId || w.SharedWithUserId == currentUserId)
+                .Select(w => w.Workspace.UserId == currentUserId ? w.SharedWithUserId : w.Workspace.UserId)
+                .Distinct()
+                .ToListAsync();
+
+            // Find users in same groups
+            var groupMemberIds = await context.UserGroupMembers
+                .Where(ugm => ugm.UserId == currentUserId)
+                .Select(ugm => ugm.UserGroupId)
+                .ToListAsync();
+
+            var groupCollaborators = await context.UserGroupMembers
+                .Where(ugm => groupMemberIds.Contains(ugm.UserGroupId) && ugm.UserId != currentUserId)
+                .Select(ugm => ugm.UserId)
+                .Distinct()
+                .ToListAsync();
+
+            // Combine all collaborators
+            collaboratorIds = sharedWorkspaceUsers.Concat(groupCollaborators).ToHashSet();
+        }
+
+        // Map to search results and prioritize
+        var results = matchingUsers
+            .Select(u => new UserSearchResult
+            {
+                Id = u.Id,
+                Email = u.Email ?? "",
+                DisplayName = u.DisplayName ?? u.Email ?? "Unknown User",
+                PhotoUrl = null, // TODO: Add PhotoUrl to ApplicationUser model or use Gravatar
+                HasCollaborated = collaboratorIds.Contains(u.Id)
+            })
+            .OrderByDescending(u => u.HasCollaborated) // Collaborators first
+            .ThenBy(u => u.DisplayName) // Then alphabetically
+            .Take(limit)
+            .ToList();
+
+        return results;
     }
 
     /// <summary>

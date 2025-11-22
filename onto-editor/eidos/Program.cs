@@ -472,6 +472,7 @@ builder.Services.AddScoped<NoteConceptLinkRepository>();
 builder.Services.AddScoped<ConceptRepository>();
 builder.Services.AddScoped<RelationshipRepository>();
 builder.Services.AddScoped<WorkspaceService>();
+builder.Services.AddScoped<WorkspacePermissionService>();
 builder.Services.AddScoped<NoteService>();
 builder.Services.AddScoped<TagService>();
 builder.Services.AddScoped<AttachmentService>();
@@ -621,6 +622,9 @@ app.MapAttachmentEndpoints();
 
 // Map shared ontology endpoints
 app.MapSharedOntologyEndpoints();
+
+// Map user search endpoints
+app.MapUserSearchEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

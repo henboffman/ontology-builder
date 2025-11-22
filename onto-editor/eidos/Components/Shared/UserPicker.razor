@@ -1,0 +1,241 @@
+@using Eidos.Models.DTOs
+@using System.Timers
+@inject HttpClient Http
+@inject ILogger<UserPicker> Logger
+
+<div class="user-picker">
+    <!-- Search input -->
+    <div class="mb-2">
+        <input type="text"
+               class="form-control"
+               placeholder="Search users by name or email..."
+               value="@searchQuery"
+               @oninput="HandleSearchInput"
+               @onfocus="() => showResults = true" />
+    </div>
+
+    <!-- Search results dropdown -->
+    @if (showResults && searchResults.Any())
+    {
+        <div class="search-results border rounded mb-2" style="max-height: 200px; overflow-y: auto;">
+            @foreach (var user in searchResults)
+            {
+                <div class="search-result-item p-2 border-bottom"
+                     style="cursor: pointer;"
+                     @onclick="() => SelectUser(user)"
+                     @onmouseenter="@(() => hoveredUserId = user.Id)"
+                     @onmouseleave="@(() => hoveredUserId = null)">
+                    <div class="d-flex align-items-center" style="background-color: @(hoveredUserId == user.Id ? "#f8f9fa" : "transparent")">
+                        <div class="me-2">
+                            @if (!string.IsNullOrEmpty(user.PhotoUrl))
+                            {
+                                <img src="@user.PhotoUrl" alt="@user.DisplayName" class="rounded-circle" width="32" height="32" />
+                            }
+                            else
+                            {
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
+                                     style="width: 32px; height: 32px; font-size: 14px;">
+                                    @GetInitials(user.DisplayName)
+                                </div>
+                            }
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">
+                                @user.DisplayName
+                                @if (user.HasCollaborated)
+                                {
+                                    <span class="badge bg-success ms-1" style="font-size: 0.65rem;">Past collaborator</span>
+                                }
+                            </div>
+                            <small class="text-muted">@user.Email</small>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else if (showResults && !string.IsNullOrWhiteSpace(searchQuery) && searchQuery.Length >= 2 && !searching)
+    {
+        <div class="alert alert-info py-2 mb-2">
+            <small>No users found matching "@searchQuery"</small>
+        </div>
+    }
+    else if (searching)
+    {
+        <div class="text-muted py-2 mb-2">
+            <small><i class="bi bi-hourglass-split"></i> Searching...</small>
+        </div>
+    }
+
+    <!-- Selected users -->
+    @if (selectedUserObjects.Any())
+    {
+        <div class="selected-users">
+            <label class="form-label small text-muted mb-1">Selected Users:</label>
+            <div class="d-flex flex-wrap gap-2">
+                @foreach (var user in selectedUserObjects)
+                {
+                    <span class="badge bg-primary d-flex align-items-center" style="font-size: 0.875rem; padding: 0.4rem 0.6rem;">
+                        @if (!string.IsNullOrEmpty(user.PhotoUrl))
+                        {
+                            <img src="@user.PhotoUrl" alt="@user.DisplayName" class="rounded-circle me-1" width="20" height="20" />
+                        }
+                        else
+                        {
+                            <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center me-1"
+                                 style="width: 20px; height: 20px; font-size: 10px; font-weight: bold;">
+                                @GetInitials(user.DisplayName)
+                            </div>
+                        }
+                        <span>@user.DisplayName</span>
+                        <button type="button"
+                                class="btn-close btn-close-white ms-2"
+                                style="font-size: 0.65rem;"
+                                @onclick="() => RemoveUser(user.Id)"
+                                @onclick:stopPropagation="true"
+                                aria-label="Remove @user.DisplayName">
+                        </button>
+                    </span>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .search-result-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .search-result-item:active {
+        background-color: #e9ecef;
+    }
+</style>
+
+@code {
+    [Parameter] public List<string> SelectedUserIds { get; set; } = new();
+    [Parameter] public EventCallback<List<string>> SelectedUserIdsChanged { get; set; }
+
+    private string searchQuery = "";
+    private List<UserSearchResult> searchResults = new();
+    private List<UserSearchResult> selectedUserObjects = new();
+    private bool showResults = false;
+    private bool searching = false;
+    private string? hoveredUserId = null;
+    private System.Timers.Timer? debounceTimer;
+
+    private async Task HandleSearchInput(ChangeEventArgs e)
+    {
+        searchQuery = e.Value?.ToString() ?? "";
+
+        // Stop any existing timer
+        debounceTimer?.Stop();
+        debounceTimer?.Dispose();
+
+        // Don't search if query is too short
+        if (string.IsNullOrWhiteSpace(searchQuery) || searchQuery.Length < 2)
+        {
+            searchResults.Clear();
+            showResults = false;
+            searching = false;
+            StateHasChanged();
+            return;
+        }
+
+        // Show searching state
+        searching = true;
+        StateHasChanged();
+
+        // Create new debounce timer (300ms)
+        debounceTimer = new System.Timers.Timer(300);
+        debounceTimer.Elapsed += async (s, args) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await SearchUsers();
+            });
+        };
+        debounceTimer.AutoReset = false;
+        debounceTimer.Start();
+    }
+
+    private async Task SearchUsers()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(searchQuery) || searchQuery.Length < 2)
+            {
+                searchResults.Clear();
+                showResults = false;
+                searching = false;
+                StateHasChanged();
+                return;
+            }
+
+            // Call the API endpoint
+            var response = await Http.GetFromJsonAsync<List<UserSearchResult>>(
+                $"/api/users/search?query={Uri.EscapeDataString(searchQuery)}");
+
+            searchResults = response ?? new List<UserSearchResult>();
+
+            // Remove already selected users from results
+            searchResults = searchResults
+                .Where(u => !SelectedUserIds.Contains(u.Id))
+                .ToList();
+
+            showResults = true;
+            searching = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching users with query: {Query}", searchQuery);
+            searchResults.Clear();
+            showResults = false;
+            searching = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SelectUser(UserSearchResult user)
+    {
+        if (!SelectedUserIds.Contains(user.Id))
+        {
+            SelectedUserIds.Add(user.Id);
+            selectedUserObjects.Add(user);
+            await SelectedUserIdsChanged.InvokeAsync(SelectedUserIds);
+        }
+
+        // Clear search
+        searchQuery = "";
+        searchResults.Clear();
+        showResults = false;
+        StateHasChanged();
+    }
+
+    private async Task RemoveUser(string userId)
+    {
+        SelectedUserIds.Remove(userId);
+        selectedUserObjects.RemoveAll(u => u.Id == userId);
+        await SelectedUserIdsChanged.InvokeAsync(SelectedUserIds);
+        StateHasChanged();
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "?";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+
+        return parts[0][0].ToString().ToUpper();
+    }
+
+    public void Dispose()
+    {
+        debounceTimer?.Stop();
+        debounceTimer?.Dispose();
+    }
+}

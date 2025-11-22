@@ -1,6 +1,7 @@
 @page "/workspaces"
 @using Eidos.Models
 @using Eidos.Services
+@using Eidos.Components.Workspace
 @using Microsoft.AspNetCore.Components.Authorization
 @inject WorkspaceService WorkspaceService
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -68,56 +69,16 @@
     }
 </div>
 
-@if (showCreateDialog)
-{
-    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Create New Workspace</h5>
-                    <button type="button" class="btn-close" @onclick="HideCreateDialog"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Workspace Name</label>
-                        <input type="text"
-                               class="form-control"
-                               @bind="newWorkspaceName"
-                               placeholder="My Knowledge Base" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Description (optional)</label>
-                        <textarea class="form-control"
-                                  rows="3"
-                                  @bind="newWorkspaceDescription"
-                                  placeholder="What will you use this workspace for?"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="HideCreateDialog">Cancel</button>
-                    <button type="button"
-                            class="btn btn-primary"
-                            @onclick="CreateWorkspace"
-                            disabled="@creating">
-                        @if (creating)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2"></span>
-                        }
-                        Create
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+<CreateWorkspaceDialog
+    IsVisible="@showCreateDialog"
+    IsVisibleChanged="@((value) => showCreateDialog = value)"
+    OnWorkspaceCreated="@HandleWorkspaceCreated"
+    CurrentUserId="@currentUserId" />
 
 @code {
     private List<Workspace> workspaces = new();
     private bool loading = true;
     private bool showCreateDialog = false;
-    private bool creating = false;
-    private string newWorkspaceName = string.Empty;
-    private string newWorkspaceDescription = string.Empty;
     private string? currentUserId;
 
     protected override async Task OnInitializedAsync()
@@ -153,48 +114,16 @@
 
     private void ShowCreateDialog()
     {
-        newWorkspaceName = string.Empty;
-        newWorkspaceDescription = string.Empty;
         showCreateDialog = true;
     }
 
-    private void HideCreateDialog()
+    private async Task HandleWorkspaceCreated(Workspace workspace)
     {
-        showCreateDialog = false;
-    }
+        // Add to list
+        workspaces.Insert(0, workspace);
 
-    private async Task CreateWorkspace()
-    {
-        if (string.IsNullOrWhiteSpace(newWorkspaceName))
-        {
-            ToastService.ShowWarning("Please enter a workspace name");
-            return;
-        }
-
-        try
-        {
-            creating = true;
-            var workspace = await WorkspaceService.CreateWorkspaceAsync(
-                currentUserId!,
-                newWorkspaceName,
-                newWorkspaceDescription
-            );
-
-            workspaces.Insert(0, workspace);
-            ToastService.ShowSuccess($"Created workspace '{newWorkspaceName}'");
-            HideCreateDialog();
-
-            // Navigate to the new workspace
-            Navigation.NavigateTo($"/workspace/{workspace.Id}");
-        }
-        catch (Exception ex)
-        {
-            ToastService.ShowError($"Error creating workspace: {ex.Message}");
-        }
-        finally
-        {
-            creating = false;
-        }
+        // Navigate to the new workspace
+        Navigation.NavigateTo($"/workspace/{workspace.Id}");
     }
 
     private void OpenWorkspace(int workspaceId)

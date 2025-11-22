@@ -1,4 +1,5 @@
 using Eidos.Models;
+using Eidos.Models.DTOs;
 
 namespace Eidos.Services.Interfaces;
 
@@ -37,6 +38,15 @@ public interface IUserService
     /// Get all users (ApplicationUsers from Identity)
     /// </summary>
     Task<IEnumerable<ApplicationUser>> GetAllUsersAsync();
+
+    /// <summary>
+    /// Search users by name or email
+    /// Returns users prioritizing those the current user has collaborated with
+    /// </summary>
+    /// <param name="query">Search query (matches email, display name, username)</param>
+    /// <param name="currentUserId">Current user ID for prioritizing collaborators</param>
+    /// <param name="limit">Maximum number of results (default 10)</param>
+    Task<List<UserSearchResult>> SearchUsersAsync(string query, string? currentUserId = null, int limit = 10);
 
     /// <summary>
     /// Legacy: Create a new user in the old Users table (for backward compatibility)

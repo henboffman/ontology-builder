@@ -1,0 +1,342 @@
+@using Eidos.Models
+@using Eidos.Models.Enums
+@using Eidos.Services
+@using Eidos.Components.Shared
+@inject WorkspaceService WorkspaceService
+@inject UserGroupService UserGroupService
+@inject ToastService ToastService
+@inject ILogger<CreateWorkspaceDialog> Logger
+
+@if (IsVisible)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Workspace</h5>
+                    <button type="button" class="btn-close" @onclick="Cancel"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Name -->
+                    <div class="mb-3">
+                        <label class="form-label">Workspace Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="workspaceName" placeholder="My Knowledge Base"
+                            maxlength="200" />
+                        <small class="text-muted">Give your workspace a clear, descriptive name</small>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" rows="3" @bind="workspaceDescription" maxlength="1000"
+                        placeholder="What will you use this workspace for?"></textarea>
+                        <small class="text-muted">Help others understand what this workspace is about</small>
+                    </div>
+
+                    <!-- Privacy Level -->
+                    <div class="mb-3">
+                        <label class="form-label">Privacy Level <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="selectedPrivacy">
+                            <option value="private">Private - Only you and invited users</option>
+                            <option value="group">Group - Share with a team or group</option>
+                            <option value="public">Public - Anyone can view</option>
+                        </select>
+                        <small class="text-muted">@GetPrivacyDescription()</small>
+                    </div>
+
+                    <!-- Public Edit Option -->
+                    @if (selectedPrivacy == "public")
+                    {
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="allowPublicEdit" @bind="allowPublicEdit" />
+                                <label class="form-check-label" for="allowPublicEdit">
+                                    Allow anyone to edit (not just view)
+                                </label>
+                            </div>
+                            <small class="text-muted d-block ms-4">
+                                When enabled, anyone can add and edit content in this workspace
+                            </small>
+                        </div>
+                    }
+
+                    <!-- Group Selection (when privacy is "group") -->
+                    @if (selectedPrivacy == "group")
+                    {
+                        <div class="mb-3 p-3 border rounded bg-light">
+                            <h6 class="mb-3">Group Settings</h6>
+
+                            <label class="form-label">Select Group</label>
+                            <select class="form-select mb-3" @bind="selectedGroupId" @bind:after="HandleGroupSelectionChanged">
+                                <option value="0">-- Select a group --</option>
+                                <option value="-1">+ Create New Group</option>
+                                @foreach (var group in availableGroups)
+                                {
+                                    <option value="@group.Id">@group.Name (@group.Members.Count members)</option>
+                                }
+                            </select>
+
+                            <!-- Inline Group Creation -->
+                            @if (selectedGroupId == -1)
+                            {
+                                <div class="create-group-form p-3 border rounded bg-white">
+                                    <h6 class="mb-3">Create New Group</h6>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Group Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" @bind="newGroupName"
+                                            placeholder="Research Team Alpha" maxlength="100" />
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Description</label>
+                                        <textarea class="form-control" rows="2" @bind="newGroupDescription" maxlength="500"
+                                placeholder="Purpose of this group"></textarea>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Group Members</label>
+                                        <UserPicker @bind-SelectedUserIds="newGroupMemberIds" />
+                                        <small class="text-muted">
+                                            Search and select users to add to this group
+                                        </small>
+                                    </div>
+
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="CancelNewGroup">
+                                        <i class="bi bi-x"></i> Cancel Group Creation
+                                    </button>
+                                </div>
+                            }
+
+                            @if (selectedGroupId > 0)
+                            {
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i>
+                                    Group members will have <strong>View, Add & Edit</strong> permissions by default.
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <!-- Direct User Access -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="enableUserAccess"
+                                @bind="enableDirectAccess" />
+                            <label class="form-check-label" for="enableUserAccess">
+                                Grant access to specific users
+                            </label>
+                        </div>
+                        <small class="text-muted d-block ms-4">
+                            Share with individual users regardless of privacy level
+                        </small>
+                    </div>
+
+                    @if (enableDirectAccess)
+                    {
+                        <div class="user-access-section p-3 border rounded bg-light">
+                            <h6 class="mb-3">Direct User Access</h6>
+
+                            <div class="mb-3">
+                                <label class="form-label">Select Users</label>
+                                <UserPicker @bind-SelectedUserIds="directAccessUserIds" />
+                                <small class="text-muted">
+                                    Grant these users access to your workspace
+                                </small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Permission Level</label>
+                                <select class="form-select" @bind="directAccessPermissionLevel">
+                                    <option value="View">View Only</option>
+                                    <option value="ViewAndAdd">View & Add</option>
+                                    <option value="ViewAddEdit">View, Add & Edit</option>
+                                    <option value="FullAccess">Full Access (Manage)</option>
+                                </select>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="CreateWorkspace"
+                        disabled="@(creating || string.IsNullOrWhiteSpace(workspaceName))">
+                        @if (creating)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Create Workspace
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code
+{
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback<Workspace> OnWorkspaceCreated { get; set; }
+    [Parameter] public string? CurrentUserId { get; set; }
+
+    private string workspaceName = string.Empty;
+    private string workspaceDescription = string.Empty;
+    private string selectedPrivacy = "private";
+    private bool allowPublicEdit = false;
+    private bool creating = false;
+
+    // Group-related fields
+    private List<UserGroup> availableGroups = new();
+    private int selectedGroupId = 0;
+    private string newGroupName = string.Empty;
+    private string newGroupDescription = string.Empty;
+    private List<string> newGroupMemberIds = new();
+
+    // Direct user access fields
+    private bool enableDirectAccess = false;
+    private List<string> directAccessUserIds = new();
+    private string directAccessPermissionLevel = "ViewAddEdit";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible && !string.IsNullOrEmpty(CurrentUserId))
+        {
+            await LoadAvailableGroups();
+        }
+    }
+
+    private async Task LoadAvailableGroups()
+    {
+        try
+        {
+            availableGroups = await UserGroupService.GetUserGroupsAsync(CurrentUserId!);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load available groups for user {UserId}", CurrentUserId);
+            availableGroups = new List<UserGroup>();
+        }
+    }
+
+    private string GetPrivacyDescription()
+    {
+        return selectedPrivacy switch
+        {
+            "private" => "Only you can access this workspace. You can invite specific users later.",
+            "group" => "This workspace will be shared with members of the selected group.",
+            "public" => "Anyone with the link can view this workspace. It will appear in public listings.",
+            _ => ""
+        };
+    }
+
+    private void HandleGroupSelectionChanged()
+    {
+        // Clear new group fields if switching away from "Create New Group"
+        if (selectedGroupId != -1)
+        {
+            newGroupName = string.Empty;
+            newGroupDescription = string.Empty;
+            newGroupMemberIds.Clear();
+        }
+    }
+
+    private void CancelNewGroup()
+    {
+        selectedGroupId = 0;
+        newGroupName = string.Empty;
+        newGroupDescription = string.Empty;
+        newGroupMemberIds.Clear();
+    }
+
+    private async Task CreateWorkspace()
+    {
+        if (string.IsNullOrWhiteSpace(workspaceName))
+        {
+            ToastService.ShowWarning("Please enter a workspace name");
+            return;
+        }
+
+        // Validate group selection
+        if (selectedPrivacy == "group" && selectedGroupId == 0)
+        {
+            ToastService.ShowWarning("Please select a group or create a new one");
+            return;
+        }
+
+        // Validate new group name
+        if (selectedPrivacy == "group" && selectedGroupId == -1 && string.IsNullOrWhiteSpace(newGroupName))
+        {
+            ToastService.ShowWarning("Please enter a name for the new group");
+            return;
+        }
+
+        try
+        {
+            creating = true;
+
+            // Debug logging
+            Logger.LogInformation(
+            "Creating workspace - Privacy: {Privacy}, GroupId: {GroupId}, NewGroupName: {NewGroupName}, MemberCount: {MemberCount}",
+            selectedPrivacy, selectedGroupId, newGroupName ?? "(null)", newGroupMemberIds?.Count ?? 0);
+
+            // Use comprehensive creation method with full permission support
+            var workspace = await WorkspaceService.CreateWorkspaceWithAccessAsync(
+            userId: CurrentUserId!,
+            name: workspaceName.Trim(),
+            description: string.IsNullOrWhiteSpace(workspaceDescription) ? null : workspaceDescription.Trim(),
+            visibility: selectedPrivacy,
+            allowPublicEdit: allowPublicEdit,
+            groupId: selectedGroupId == 0 ? null : selectedGroupId,
+            newGroupName: string.IsNullOrWhiteSpace(newGroupName) ? null : newGroupName.Trim(),
+            newGroupMemberIds: newGroupMemberIds,
+            directAccessUserIds: directAccessUserIds,
+            directAccessPermissionLevel: directAccessPermissionLevel
+            );
+
+            ToastService.ShowSuccess($"Created workspace '{workspaceName}' with all permissions configured");
+
+            // Reset form
+            ResetForm();
+
+            // Notify parent
+            await OnWorkspaceCreated.InvokeAsync(workspace);
+            await Hide();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating workspace");
+            ToastService.ShowError($"Error creating workspace: {ex.Message}");
+        }
+        finally
+        {
+            creating = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        workspaceName = string.Empty;
+        workspaceDescription = string.Empty;
+        selectedPrivacy = "private";
+        allowPublicEdit = false;
+        selectedGroupId = 0;
+        newGroupName = string.Empty;
+        newGroupDescription = string.Empty;
+        newGroupMemberIds.Clear();
+        enableDirectAccess = false;
+        directAccessUserIds.Clear();
+        directAccessPermissionLevel = "ViewAddEdit";
+    }
+
+    private async Task Cancel()
+    {
+        ResetForm();
+        await Hide();
+    }
+
+    private async Task Hide()
+    {
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+}
