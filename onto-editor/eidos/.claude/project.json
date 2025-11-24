@@ -7,7 +7,12 @@
     "name": ".NET",
     "version": "9.0"
   },
-  "languages": ["C#", "Razor", "JavaScript", "CSS"],
+  "languages": [
+    "C#",
+    "Razor",
+    "JavaScript",
+    "CSS"
+  ],
   "mainFiles": [
     "Program.cs",
     "DEVELOPMENT_LEDGER.md",
@@ -73,7 +78,7 @@
     "UserGroupService - Group and membership management",
     "IPresenceService - Real-time user presence tracking"
   ],
-  "databaseProvider": "SQLite (dev) / Azure SQL (prod)",
+  "databaseProvider": "SQL Server (dev) / Azure SQL (prod)",
   "authentication": "ASP.NET Core Identity with OAuth (Google, Microsoft, GitHub, Entra ID)",
   "realtime": "SignalR for presence tracking and concurrent editing"
 }

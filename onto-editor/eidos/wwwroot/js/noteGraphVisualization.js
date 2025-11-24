@@ -39,7 +39,6 @@ window.renderNoteGraph = function (elementId, graphDataJson, layout = 'cose') {
         // Fit graph to view
         cy.fit(null, 50);
 
-        console.log(`Note graph rendered: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);
     } catch (error) {
         console.error('Error rendering note graph:', error);
     }
@@ -264,7 +263,6 @@ function setupNoteGraphInteractivity(cy, elementId) {
         // Trigger Blazor callback to navigate to note
         if (typeof DotNet !== 'undefined') {
             // This will be handled by Blazor component's OnNoteSelected callback
-            console.log(`Navigate to note ${noteId}`);
         }
     });
 
@@ -304,24 +302,10 @@ function showNoteDetails(noteId, label, conceptCount, isConceptNote, tags) {
     const noteType = isConceptNote ? 'Concept Note' : 'User Note';
     const tagList = tags.length > 0 ? tags.join(', ') : 'None';
 
-    console.log(`=== Note Details ===
-Note ID: ${noteId}
-Title: ${label}
-Type: ${noteType}
-Concepts: ${conceptCount}
-Tags: ${tagList}
-===================`);
-
     // TODO: Could enhance this with a tooltip or popup panel
 }
 
 function showEdgeDetails(source, target, weight) {
-    console.log(`=== Connection Details ===
-From: ${source}
-To: ${target}
-Shared Concepts: ${weight}
-==========================`);
-
     // TODO: Could enhance this with a tooltip showing which concepts are shared
 }
 

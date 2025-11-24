@@ -12,7 +12,6 @@ const mindMapInstances = new Map();
  * @param {Object} options - Configuration options
  */
 window.initializeMindMap = function(containerId, concepts, relationships, options) {
-    console.log('Initializing mind map:', containerId, concepts.length, 'concepts');
 
     // Dispose existing instance if present
     if (mindMapInstances.has(containerId)) {
@@ -179,7 +178,6 @@ window.initializeMindMap = function(containerId, concepts, relationships, option
     // Event handlers
     cy.on('tap', 'node', function(evt) {
         const node = evt.target;
-        console.log('Node clicked:', node.id());
 
         // Remove previous highlights
         cy.elements().removeClass('highlighted');
@@ -204,14 +202,12 @@ window.initializeMindMap = function(containerId, concepts, relationships, option
     // Double-click to drill into node
     cy.on('dbltap', 'node', function(evt) {
         const node = evt.target;
-        console.log('Node double-clicked (drill in):', node.id());
         // This will be handled by Blazor
     });
 
     // Zoom event listener to update zoom level display
     cy.on('zoom', function() {
         const zoomLevel = cy.zoom();
-        console.log('Zoom level:', zoomLevel);
         // Level-of-detail could be implemented here
         applyLevelOfDetail(cy, zoomLevel, options);
     });
@@ -414,7 +410,6 @@ window.disposeMindMap = function(containerId) {
         try {
             cy.destroy();
             mindMapInstances.delete(containerId);
-            console.log('Mind map disposed:', containerId);
             return true;
         } catch (e) {
             console.error('Error disposing mind map:', e);

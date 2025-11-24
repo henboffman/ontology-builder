@@ -51,7 +51,19 @@ public class ConceptRepository : BaseRepository<Concept>, IConceptRepository
         using var context = await _contextFactory.CreateDbContextAsync();
         concept.CreatedAt = DateTime.UtcNow;
         context.Concepts.Add(concept);
-        await context.SaveChangesAsync();
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE") == true
+                                          || ex.InnerException?.Message.Contains("duplicate") == true)
+        {
+            // Unique constraint violation - duplicate concept name
+            throw new InvalidOperationException(
+                $"A concept named '{concept.Name}' already exists in this ontology. Please choose a different name.", ex);
+        }
+
         return concept;
     }
 
@@ -83,7 +95,17 @@ public class ConceptRepository : BaseRepository<Concept>, IConceptRepository
         entry.Collection(c => c.RelationshipsAsTarget).IsModified = false;
         entry.Collection(c => c.Restrictions).IsModified = false;
 
-        await context.SaveChangesAsync();
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE") == true
+                                          || ex.InnerException?.Message.Contains("duplicate") == true)
+        {
+            // Unique constraint violation - duplicate concept name
+            throw new InvalidOperationException(
+                $"A concept named '{concept.Name}' already exists in this ontology. Please choose a different name.", ex);
+        }
     }
 
     public override async Task DeleteAsync(int id)
@@ -95,8 +117,19 @@ public class ConceptRepository : BaseRepository<Concept>, IConceptRepository
 
         if (concept != null)
         {
-            context.Concepts.Remove(concept);
-            await context.SaveChangesAsync();
+            try
+            {
+                context.Concepts.Remove(concept);
+                await context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("FOREIGN KEY") == true
+                                              || ex.InnerException?.Message.Contains("foreign key") == true)
+            {
+                // Foreign key constraint violation - concept is still referenced
+                throw new InvalidOperationException(
+                    $"Cannot delete concept '{concept.Name}' because it is still referenced by other entities. " +
+                    $"Please remove those references first, then try again.", ex);
+            }
         }
     }
 }

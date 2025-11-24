@@ -38,6 +38,7 @@
 @inject IOntologyViewHistoryService ViewHistoryService
 @inject Data.Repositories.NoteRepository NoteRepository
 @inject WorkspaceService WorkspaceService
+@inject Eidos.Services.Commands.CommandInvoker CommandInvoker
 @rendermode InteractiveServer
 
 <PageTitle>@(ontology?.Name ?? "Ontology")</PageTitle>
@@ -289,13 +290,6 @@ else
                 else if (viewMode == ViewMode.Ttl)
                 {
                     <TtlViewPanel Ontology="@ontology" />
-                }
-                else if (viewMode == ViewMode.Notes)
-                {
-                    <NotesView Notes="@editingNotes"
-                              NotesChanged="@((value) => editingNotes = value)"
-                              OnSaveClick="@GetConditionalCallback(CanEdit(), SaveNotes)"
-                              CanEdit="@CanEdit()" />
                 }
                 else if (viewMode == ViewMode.Templates)
                 {

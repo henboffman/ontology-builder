@@ -1,0 +1,298 @@
+@using Eidos.Models
+@using Microsoft.JSInterop
+@rendermode InteractiveServer
+
+<div class="grid-note @(NoteState.IsFocused ? "focused" : "") @(NoteState.IsDirty ? "dirty" : "") @AnimationClass"
+     @onclick="HandleClick"
+     @onfocus="HandleFocus"
+     tabindex="0">
+
+    <!-- Note Header -->
+    <div class="grid-note-header">
+        @if (isEditingTitle)
+        {
+            <input type="text"
+                   class="grid-note-title-input"
+                   @bind="editedTitle"
+                   @bind:event="oninput"
+                   @onblur="SaveTitle"
+                   @onkeydown="HandleTitleKeyDown"
+                   @ref="titleInputRef"
+                   @onclick:stopPropagation="true"
+                   maxlength="200" />
+        }
+        else
+        {
+            <div class="grid-note-title"
+                 title="@NoteState.Title (click to rename)"
+                 @onclick="StartEditingTitle"
+                 @onclick:stopPropagation="true">
+                @NoteState.Title
+            </div>
+        }
+        <div class="grid-note-actions">
+            @if (NoteState.IsSaving)
+            {
+                <span class="grid-note-status saving">Saving...</span>
+            }
+            else if (showDirtyStatus)
+            {
+                <span class="grid-note-status dirty">Unsaved</span>
+            }
+            else
+            {
+                <span class="grid-note-status">Saved</span>
+            }
+
+            @if (ShowClose)
+            {
+                <button class="grid-note-close-btn"
+                        @onclick="HandleClose"
+                        @onclick:stopPropagation="true"
+                        title="Close this note (Alt+W)">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- Note Content -->
+    <div class="grid-note-content">
+        <textarea @bind="Content"
+                  @bind:event="oninput"
+                  @onfocus="HandleFocus"
+                  placeholder="Start writing..."
+                  spellcheck="true"></textarea>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public OpenNoteState NoteState { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<OpenNoteState> OnContentChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<(int NoteId, string NewTitle)> OnTitleChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnFocus { get; set; }
+
+    [Parameter]
+    public bool ShowClose { get; set; } = true;
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = null!;
+
+    private string AnimationClass { get; set; } = string.Empty;
+    private System.Timers.Timer? autoSaveTimer;
+    private System.Timers.Timer? statusDebounceTimer;
+    private const int AutoSaveDelayMs = 2000; // 2 seconds between typing and save
+    private const int StatusDebounceMs = 300; // Delay status change to prevent bouncing
+    private bool showDirtyStatus = false; // Track if we should show "Unsaved" status
+    private bool isSaveInProgress = false; // Prevent concurrent saves
+
+    // Title editing
+    private bool isEditingTitle = false;
+    private string editedTitle = string.Empty;
+    private ElementReference titleInputRef;
+
+    private string Content
+    {
+        get => NoteState.Content;
+        set
+        {
+            if (NoteState.Content != value)
+            {
+                NoteState.Content = value;
+                NoteState.IsDirty = value != NoteState.OriginalContent;
+                NoteState.LastModified = DateTime.UtcNow;
+
+                // Reset auto-save timer
+                ResetAutoSaveTimer();
+
+                // Reset status debounce timer - delay showing "Unsaved" to prevent bouncing
+                ResetStatusDebounceTimer();
+
+                // DON'T notify parent here - only notify when AutoSave timer elapses
+                // This was causing immediate saves on every keystroke
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initialize auto-save timer
+        autoSaveTimer = new System.Timers.Timer(AutoSaveDelayMs);
+        autoSaveTimer.Elapsed += async (sender, e) => await AutoSave();
+        autoSaveTimer.AutoReset = false; // One-shot timer
+
+        // Initialize status debounce timer
+        statusDebounceTimer = new System.Timers.Timer(StatusDebounceMs);
+        statusDebounceTimer.Elapsed += async (sender, e) => await UpdateDirtyStatus();
+        statusDebounceTimer.AutoReset = false; // One-shot timer
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Trigger entry animation
+            AnimationClass = "entering";
+            StateHasChanged();
+
+            // Remove animation class after animation completes
+            await Task.Delay(350);
+            AnimationClass = string.Empty;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleClick()
+    {
+        if (!NoteState.IsFocused)
+        {
+            HandleFocus();
+        }
+    }
+
+    private void HandleFocus()
+    {
+        if (!NoteState.IsFocused)
+        {
+            OnFocus.InvokeAsync(NoteState.NoteId);
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        // Trigger exit animation
+        AnimationClass = "exiting";
+        StateHasChanged();
+
+        // Wait for animation to complete
+        await Task.Delay(300);
+
+        // Save before closing if dirty
+        if (NoteState.IsDirty)
+        {
+            await AutoSave();
+        }
+
+        await OnClose.InvokeAsync(NoteState.NoteId);
+    }
+
+    private void ResetAutoSaveTimer()
+    {
+        autoSaveTimer?.Stop();
+        autoSaveTimer?.Start();
+    }
+
+    private void ResetStatusDebounceTimer()
+    {
+        statusDebounceTimer?.Stop();
+        statusDebounceTimer?.Start();
+
+        // Hide "Unsaved" immediately when typing to prevent bouncing
+        showDirtyStatus = false;
+    }
+
+    private async Task UpdateDirtyStatus()
+    {
+        // Show "Unsaved" status after debounce delay
+        if (NoteState.IsDirty && !NoteState.IsSaving)
+        {
+            showDirtyStatus = true;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task AutoSave()
+    {
+        // Prevent concurrent saves - this is critical to avoid DbUpdateConcurrencyException
+        if (isSaveInProgress)
+        {
+            return;
+        }
+
+        if (NoteState.IsDirty && !NoteState.IsSaving)
+        {
+            isSaveInProgress = true;
+            NoteState.IsSaving = true;
+            showDirtyStatus = false; // Hide "Unsaved" while saving
+            await InvokeAsync(StateHasChanged);
+
+            try
+            {
+                // Notify parent to save the note content
+                await OnContentChanged.InvokeAsync(NoteState);
+
+                // Parent's SaveGridNote will update IsDirty and OriginalContent
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (Exception)
+            {
+                NoteState.IsSaving = false;
+                await InvokeAsync(StateHasChanged);
+            }
+            finally
+            {
+                isSaveInProgress = false;
+            }
+        }
+    }
+
+    // Title editing methods
+    private async Task StartEditingTitle()
+    {
+        isEditingTitle = true;
+        editedTitle = NoteState.Title;
+        StateHasChanged();
+
+        // Focus the input after render
+        await Task.Delay(50);
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", $"document.querySelector('.grid-note-title-input').select()");
+        }
+        catch
+        {
+            // Silently fail if can't focus
+        }
+    }
+
+    private async Task SaveTitle()
+    {
+        if (isEditingTitle && !string.IsNullOrWhiteSpace(editedTitle) && editedTitle != NoteState.Title)
+        {
+            await OnTitleChanged.InvokeAsync((NoteState.NoteId, editedTitle.Trim()));
+            NoteState.Title = editedTitle.Trim();
+        }
+        isEditingTitle = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleTitleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveTitle();
+        }
+        else if (e.Key == "Escape")
+        {
+            editedTitle = NoteState.Title; // Revert changes
+            isEditingTitle = false;
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        autoSaveTimer?.Dispose();
+        statusDebounceTimer?.Dispose();
+    }
+}

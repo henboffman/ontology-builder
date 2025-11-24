@@ -1,0 +1,203 @@
+@using Eidos.Models
+@rendermode InteractiveServer
+
+@if (HiddenNotes.Any())
+{
+    <div class="note-grid-switcher @(IsExpanded ? "expanded" : "collapsed")">
+        <button class="switcher-toggle" @onclick="ToggleExpanded" title="@GetToggleTitle()">
+            <i class="bi bi-grid-3x3"></i>
+            <span class="badge bg-primary rounded-pill ms-1">@HiddenNotes.Count</span>
+        </button>
+
+        @if (IsExpanded)
+        {
+            <div class="switcher-panel">
+                <div class="switcher-header">
+                    <span class="fw-semibold">Hidden Notes</span>
+                    <button class="btn-close btn-sm" @onclick="ToggleExpanded" aria-label="Close"></button>
+                </div>
+                <div class="switcher-list">
+                    @foreach (var note in HiddenNotes)
+                    {
+                        <div class="switcher-item">
+                            <button class="switcher-note-btn" @onclick="() => OnSwapNote.InvokeAsync(note.NoteId)" title="Bring to grid">
+                                <i class="bi bi-file-text me-2"></i>
+                                <span class="note-name">@note.Title</span>
+                                @if (note.IsDirty)
+                                {
+                                    <span class="ms-auto text-warning">
+                                        <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i>
+                                    </span>
+                                }
+                            </button>
+                            <button class="switcher-close-btn" @onclick="() => OnCloseNote.InvokeAsync(note.NoteId)" title="Close note">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .note-grid-switcher {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 1030;
+    }
+
+    .switcher-toggle {
+        background: var(--bs-primary);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        padding: 0.75rem 1.25rem;
+        font-size: 1.25rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .switcher-toggle:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .switcher-panel {
+        position: absolute;
+        bottom: 100%;
+        right: 0;
+        margin-bottom: 0.5rem;
+        background: var(--bs-body-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        min-width: 300px;
+        max-width: 400px;
+        max-height: 400px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        animation: slideUp 0.2s ease-out;
+    }
+
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .switcher-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--bs-border-color);
+        background: var(--bs-secondary-bg);
+    }
+
+    .switcher-list {
+        overflow-y: auto;
+        max-height: 350px;
+    }
+
+    .switcher-item {
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid var(--bs-border-color);
+        transition: background-color 0.2s;
+    }
+
+    .switcher-item:last-child {
+        border-bottom: none;
+    }
+
+    .switcher-item:hover {
+        background: var(--bs-secondary-bg);
+    }
+
+    .switcher-note-btn {
+        flex: 1;
+        background: none;
+        border: none;
+        padding: 0.75rem 1rem;
+        text-align: left;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        color: var(--bs-body-color);
+        transition: all 0.2s;
+    }
+
+    .switcher-note-btn:hover {
+        background: var(--bs-secondary-bg);
+    }
+
+    .note-name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .switcher-close-btn {
+        background: none;
+        border: none;
+        padding: 0.5rem;
+        color: var(--bs-secondary-color);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .switcher-close-btn:hover {
+        color: var(--bs-danger);
+    }
+
+    [data-bs-theme="dark"] .switcher-panel {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public List<OpenNoteState> AllNotes { get; set; } = new();
+
+    [Parameter]
+    public int MaxVisibleNotes { get; set; } = 4;
+
+    [Parameter]
+    public EventCallback<int> OnSwapNote { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnCloseNote { get; set; }
+
+    private bool IsExpanded { get; set; } = false;
+
+    /// <summary>
+    /// Gets notes that are hidden (beyond the visible grid)
+    /// </summary>
+    private List<OpenNoteState> HiddenNotes =>
+        AllNotes.OrderBy(n => n.GridPosition).Skip(MaxVisibleNotes).ToList();
+
+    private void ToggleExpanded()
+    {
+        IsExpanded = !IsExpanded;
+    }
+
+    private string GetToggleTitle()
+    {
+        var count = HiddenNotes.Count;
+        return count == 1 ? "1 hidden note" : $"{count} hidden notes";
+    }
+}

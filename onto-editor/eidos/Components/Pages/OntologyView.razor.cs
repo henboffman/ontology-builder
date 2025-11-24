@@ -457,6 +457,53 @@ public partial class OntologyView : ComponentBase, IAsyncDisposable
         {
             globalSearch?.Show();
         }
+
+        // Escape key to close dialogs
+        if (e.Key == "Escape")
+        {
+            // Close dialogs in priority order (most recent first)
+            if (showAddConcept)
+            {
+                CancelConceptDialog();
+            }
+            else if (showAddRelationship)
+            {
+                CancelRelationshipDialog();
+            }
+            else if (showAddIndividual)
+            {
+                CancelIndividualDialog();
+            }
+            else if (showBulkCreate)
+            {
+                showBulkCreate = false;
+                StateHasChanged();
+            }
+            else if (showImportDialog)
+            {
+                CancelImport();
+            }
+            else if (showShareModal)
+            {
+                showShareModal = false;
+                StateHasChanged();
+            }
+            else if (selectedConcept != null)
+            {
+                selectedConcept = null;
+                StateHasChanged();
+            }
+            else if (selectedRelationship != null)
+            {
+                selectedRelationship = null;
+                StateHasChanged();
+            }
+            else if (selectedIndividual != null)
+            {
+                selectedIndividual = null;
+                StateHasChanged();
+            }
+        }
     }
 
     private void HandleGlobalSearch()
@@ -776,11 +823,7 @@ public partial class OntologyView : ComponentBase, IAsyncDisposable
         // Update presence with current view
         await UpdateCurrentView(mode.ToString());
 
-        if (mode == ViewMode.Notes)
-        {
-            editingNotes = ontology?.Notes ?? string.Empty;
-        }
-        else if (mode == ViewMode.Hierarchy)
+        if (mode == ViewMode.Hierarchy)
         {
             if (ontology != null)
             {
@@ -2449,62 +2492,112 @@ public partial class OntologyView : ComponentBase, IAsyncDisposable
         if (firstRender)
         {
             // Set up keyboard shortcut event listeners
-            await JS.InvokeVoidAsync("eval", @"
-                // Handle action shortcuts (add concept, etc.)
-                document.addEventListener('keyboardShortcut', (e) => {
-                    if (e.detail.action === 'openCommandPalette') {
-                        // Trigger the global search via Cmd+Shift+Space
-                        const event = new KeyboardEvent('keydown', {
-                            key: ' ',
-                            code: 'Space',
-                            metaKey: true,
-                            shiftKey: true,
-                            bubbles: true
-                        });
-                        document.dispatchEvent(event);
-                    } else if (e.detail.action === 'addConcept') {
-                        // Find and click the Add Concept button
-                        const addBtn = document.querySelector('button[title*=""Add Concept""], button:has(i.bi-plus-circle)');
-                        if (addBtn) addBtn.click();
-                    } else if (e.detail.action === 'addRelationship') {
-                        // Find and click the Add Relationship button
-                        const addBtn = document.querySelector('button[title*=""Add Relationship""], button:has(i.bi-arrow-left-right)');
-                        if (addBtn) addBtn.click();
-                    } else if (e.detail.action === 'importTtl') {
-                        // Find and click the Import button
-                        const importBtn = document.querySelector('button[title*=""Import""]');
-                        if (importBtn) importBtn.click();
-                    } else if (e.detail.action === 'openSettings') {
-                        // Find and click the Settings button
-                        const settingsBtn = document.querySelector('button[title*=""Settings""], a[href*=""settings""]');
-                        if (settingsBtn) settingsBtn.click();
-                    }
-                });
+            try
+            {
+                Logger.LogInformation("[KeyboardShortcut] Setting up keyboard shortcut event listeners");
 
-                // Handle view mode change shortcuts
-                document.addEventListener('viewModeChange', (e) => {
-                    const mode = e.detail.mode;
-                    // Find the corresponding view mode button and click it
-                    const buttons = document.querySelectorAll('.view-mode-nav button');
-                    buttons.forEach(btn => {
-                        const text = btn.textContent.trim();
-                        if (text.toLowerCase() === mode.toLowerCase() ||
-                            (mode === 'Ttl' && text.toUpperCase() === 'TTL')) {
-                            btn.click();
+                await JS.InvokeVoidAsync("eval", @"
+                    document.addEventListener('keyboardShortcut', (e) => {
+                        console.log('[OntologyView] Keyboard shortcut event received:', e.detail.action);
+
+                        if (e.detail.action === 'addConcept') {
+                            // Try multiple selectors
+                            const addBtn = document.querySelector('button[title*=""Add a new concept""]') ||
+                                         document.querySelector('button[title*=""Add Concept""]') ||
+                                         Array.from(document.querySelectorAll('button')).find(btn =>
+                                             btn.textContent.includes('Add Concept'));
+                            if (addBtn) {
+                                console.log('[OntologyView] Clicking Add Concept button');
+                                addBtn.click();
+                            } else {
+                                console.error('[OntologyView] Add Concept button not found');
+                            }
+                        } else if (e.detail.action === 'addRelationship') {
+                            // Try multiple selectors
+                            const addBtn = document.querySelector('button[title*=""Add a new relationship""]') ||
+                                         document.querySelector('button[title*=""Add Relationship""]') ||
+                                         Array.from(document.querySelectorAll('button')).find(btn =>
+                                             btn.textContent.includes('Add Relationship'));
+                            if (addBtn) {
+                                console.log('[OntologyView] Clicking Add Relationship button');
+                                addBtn.click();
+                            } else {
+                                console.error('[OntologyView] Add Relationship button not found');
+                            }
+                        } else if (e.detail.action === 'switchView') {
+                            // Find the dropdown item that contains the view mode text
+                            const dropdownItems = document.querySelectorAll('.dropdown-item');
+                            let viewBtn = null;
+
+                            // Convert mode to uppercase for TTL case
+                            const searchMode = e.detail.mode === 'Ttl' ? 'TTL' : e.detail.mode;
+
+                            for (const item of dropdownItems) {
+                                const text = item.textContent.trim();
+                                // Match against the view mode name (e.g., 'Graph', 'List', 'Hierarchy', 'TTL')
+                                if (text.includes(searchMode)) {
+                                    viewBtn = item;
+                                    break;
+                                }
+                            }
+
+                            if (viewBtn) {
+                                console.log('[OntologyView] Clicking view button:', searchMode);
+                                viewBtn.click();
+                            } else {
+                                console.error('[OntologyView] View button not found:', searchMode);
+                            }
+                        } else if (e.detail.action === 'undo') {
+                            const undoBtn = document.querySelector('button[title*=""Undo""]');
+                            if (undoBtn && !undoBtn.disabled) {
+                                console.log('[OntologyView] Clicking Undo button');
+                                undoBtn.click();
+                            }
+                        } else if (e.detail.action === 'redo') {
+                            const redoBtn = document.querySelector('button[title*=""Redo""]');
+                            if (redoBtn && !redoBtn.disabled) {
+                                console.log('[OntologyView] Clicking Redo button');
+                                redoBtn.click();
+                            }
+                        } else if (e.detail.action === 'settings') {
+                            const settingsBtn = document.querySelector('button[title*=""Settings""]');
+                            if (settingsBtn) {
+                                console.log('[OntologyView] Clicking Settings button');
+                                settingsBtn.click();
+                            }
+                        } else if (e.detail.action === 'toggleFullScreen') {
+                            const fullScreenBtn = document.querySelector('button[title*=""Toggle full screen""]') ||
+                                                document.querySelector('.bi-arrows-fullscreen')?.closest('button') ||
+                                                document.querySelector('.exit-fullscreen-btn');
+                            if (fullScreenBtn) {
+                                console.log('[OntologyView] Toggling full screen mode');
+                                fullScreenBtn.click();
+                            } else {
+                                console.error('[OntologyView] Full screen button not found');
+                            }
                         }
                     });
-                });
-            ");
+                ");
+
+                Logger.LogInformation("[KeyboardShortcut] Event listeners registered successfully");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error setting up keyboard shortcuts");
+            }
+
+            // Still need dotNetRef for SignalR
+            dotNetRef = DotNetObjectReference.Create(this);
         }
 
         // Initialize SignalR once the ontology is loaded (may not happen on firstRender if data is loading async)
         if (ontology != null && !hasRendered)
         {
             hasRendered = true;
-            dotNetRef = DotNetObjectReference.Create(this);
 
             try
             {
+                // Initialize SignalR for real-time collaboration
                 await JS.InvokeVoidAsync("ontologyHub.init", dotNetRef, ontology.Id);
 
                 // Send initial view to other users
@@ -2516,7 +2609,7 @@ public partial class OntologyView : ComponentBase, IAsyncDisposable
             catch (Exception ex)
             {
                 // Log error but don't fail - real-time updates are optional
-                Console.WriteLine($"Error initializing SignalR: {ex.Message}");
+                Logger.LogWarning(ex, "Error initializing SignalR");
             }
         }
     }
@@ -2645,6 +2738,98 @@ public partial class OntologyView : ComponentBase, IAsyncDisposable
         }
         return Task.CompletedTask;
     }
+
+    #region Keyboard Shortcut JSInvokable Methods
+
+    [JSInvokable]
+    public async Task HandleAddConceptShortcut()
+    {
+        Logger.LogInformation("[KeyboardShortcut] HandleAddConceptShortcut called, permission level: {PermissionLevel}", userPermissionLevel);
+        if (userPermissionLevel >= PermissionLevel.ViewAndAdd)
+        {
+            Logger.LogInformation("[KeyboardShortcut] Showing add concept dialog");
+            await ShowAddConceptDialog();
+        }
+        else
+        {
+            Logger.LogWarning("[KeyboardShortcut] Insufficient permissions to add concept");
+        }
+    }
+
+    [JSInvokable]
+    public Task HandleAddRelationshipShortcut()
+    {
+        if (userPermissionLevel >= PermissionLevel.ViewAndAdd)
+        {
+            return ShowAddRelationshipDialog();
+        }
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public async Task HandleUndoShortcut()
+    {
+        if (CommandInvoker != null && CommandInvoker.CanUndo())
+        {
+            try
+            {
+                var success = await CommandInvoker.UndoAsync();
+                if (success)
+                {
+                    ToastService.ShowSuccess("Undo successful");
+                    await LoadOntology(); // Refresh the view
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to undo operation");
+                ToastService.ShowError($"Undo failed: {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleRedoShortcut()
+    {
+        if (CommandInvoker != null && CommandInvoker.CanRedo())
+        {
+            try
+            {
+                var success = await CommandInvoker.RedoAsync();
+                if (success)
+                {
+                    ToastService.ShowSuccess("Redo successful");
+                    await LoadOntology(); // Refresh the view
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to redo operation");
+                ToastService.ShowError($"Redo failed: {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public void HandleSettingsShortcut()
+    {
+        if (userPermissionLevel >= PermissionLevel.FullAccess)
+        {
+            ShowSettingsDialog();
+        }
+    }
+
+    [JSInvokable]
+    public void HandleViewModeShortcut(string mode)
+    {
+        if (Enum.TryParse<ViewMode>(mode, true, out var parsedViewMode))
+        {
+            viewMode = parsedViewMode;
+            StateHasChanged();
+        }
+    }
+
+    #endregion
 
     private void StartHeartbeatTimer()
     {

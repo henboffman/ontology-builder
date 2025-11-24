@@ -25,7 +25,7 @@ Eidos follows a **layered architecture** with clear separation of concerns:
                             ↓
 ┌─────────────────────────────────────────────────────────┐
 │                       Database Layer                      │
-│              (SQLite/Azure SQL, Redis Cache)             │
+│              (SQL Server/Azure SQL, Redis Cache)          │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -34,12 +34,14 @@ Eidos follows a **layered architecture** with clear separation of concerns:
 ### Frontend Architecture
 
 #### Blazor Server
+
 - **Interactive Mode**: Server-side rendering with SignalR for interactivity
 - **Render Modes**: `@rendermode InteractiveServer` for dynamic components
 - **State Management**: Component state + cascading parameters
 - **Real-time Updates**: SignalR connection for bidirectional communication
 
 #### Component Hierarchy
+
 ```
 App.razor (Root)
 ├── Routes.razor (Routing)
@@ -64,6 +66,7 @@ App.razor (Root)
 #### Service Layer Pattern
 
 **Service Responsibilities**:
+
 1. Business logic implementation
 2. Transaction management
 3. Permission validation
@@ -133,6 +136,7 @@ public interface IOntologyRepository : IRepository<Ontology>
 ```
 
 **Benefits**:
+
 - Testability (easy to mock)
 - Consistency in data access
 - Single responsibility
@@ -157,6 +161,7 @@ public interface IOntologyRepository : IRepository<Ontology>
 ```
 
 **Hub Methods**:
+
 - `JoinOntology(ontologyId)` - User joins collaboration session
   - Validates permissions via OntologyPermissionService
   - Adds to SignalR group
@@ -177,6 +182,7 @@ public interface IOntologyRepository : IRepository<Ontology>
   - Detects disconnections
 
 **Presence Tracking**:
+
 ```csharp
 public interface IPresenceService
 {
@@ -220,7 +226,7 @@ public class OntologyDbContext : IdentityDbContext<ApplicationUser>
 ```csharp
 // Service registration
 builder.Services.AddDbContextFactory<OntologyDbContext>(options =>
-    options.UseSqlite(connectionString)
+    options.UseSqlServer(connectionString)
 );
 
 // Usage in services (creates scoped context per operation)
@@ -237,6 +243,7 @@ public class OntologyService
 ```
 
 **Why DbContextFactory?**
+
 - Singleton services can create scoped contexts
 - Better memory management
 - Thread-safe
@@ -403,31 +410,37 @@ User Accesses Ontology
 ## Design Patterns Used
 
 ### 1. Repository Pattern
+
 **Purpose**: Abstract data access
 **Location**: `Data/Repositories/`
 **Example**: `OntologyRepository`, `ConceptRepository`
 
 ### 2. Command Pattern
+
 **Purpose**: Undo/redo functionality
 **Location**: `Services/Commands/`
 **Example**: `AddConceptCommand`, `DeleteRelationshipCommand`
 
 ### 3. Factory Pattern
+
 **Purpose**: Create DbContext instances
 **Location**: Built-in `IDbContextFactory<T>`
 **Usage**: All services use factory instead of direct injection
 
 ### 4. Service Layer Pattern
+
 **Purpose**: Business logic encapsulation
 **Location**: `Services/`
 **Example**: `OntologyService`, `CollaborationBoardService`
 
 ### 5. Dependency Injection
+
 **Purpose**: Loose coupling, testability
 **Location**: `Program.cs` registration
 **Usage**: Constructor injection throughout
 
 ### 6. Observer Pattern
+
 **Purpose**: Real-time updates
 **Implementation**: SignalR (pub/sub model)
 **Usage**: Presence tracking, concurrent editing
@@ -512,10 +525,11 @@ User opens ontology
 ## Scalability Considerations
 
 ### Current Architecture (Single Server)
+
 - **SignalR**: In-process (no backplane)
 - **Presence**: In-memory dictionary
 - **Cache**: In-memory cache
-- **Database**: Single SQLite/SQL Server
+- **Database**: SQL Server (Docker for dev, Azure SQL for production)
 
 **Suitable for**: Small to medium deployments (< 100 concurrent users)
 
@@ -524,6 +538,7 @@ User opens ontology
 **Required Changes**:
 
 1. **SignalR Backplane**:
+
 ```csharp
 builder.Services.AddSignalR()
     .AddStackExchangeRedis(connectionString, options => {
@@ -532,11 +547,13 @@ builder.Services.AddSignalR()
 ```
 
 2. **Distributed Presence**:
+
 ```csharp
 builder.Services.AddSingleton<IPresenceService, RedisPresenceService>();
 ```
 
 3. **Distributed Cache**:
+
 ```csharp
 builder.Services.AddStackExchangeRedisCache(options =>
 {
@@ -546,6 +563,7 @@ builder.Services.AddStackExchangeRedisCache(options =>
 ```
 
 4. **Session Management**:
+
 ```csharp
 builder.Services.AddStackExchangeRedisCache(options => { ... });
 builder.Services.AddSession();
@@ -640,6 +658,7 @@ User visits /Account/Login
 ```
 
 **Current Coverage**:
+
 - **Unit Tests**: LoginModel OAuth detection
 - **Integration Tests**: OntologyPermissionService (20+ tests)
 - **Component Tests**: (Planned with bUnit)

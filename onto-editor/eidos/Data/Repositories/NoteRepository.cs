@@ -262,6 +262,31 @@ namespace Eidos.Data.Repositories
         }
 
         /// <summary>
+        /// Update note title
+        /// </summary>
+        public async Task UpdateTitleAsync(int noteId, string newTitle)
+        {
+            try
+            {
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                var note = await context.Notes.FindAsync(noteId);
+                if (note != null)
+                {
+                    note.Title = newTitle;
+                    note.UpdatedAt = DateTime.UtcNow;
+                    await context.SaveChangesAsync();
+                }
+
+                _logger.LogInformation("Updated note {NoteId} title", noteId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating note {NoteId} title", noteId);
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Update note content
         /// </summary>
         public async Task UpdateContentAsync(int noteId, string markdownContent)

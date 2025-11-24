@@ -38,11 +38,6 @@
             <span class="ms-auto text-muted small">⌘⇧T</span>
         </button>
 
-        <button class="btn btn-sm @(CurrentViewMode == ViewMode.Notes ? "btn-primary" : "btn-outline-primary") text-start"
-                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)">
-            <i class="bi bi-journal-text me-2"></i> Notes
-        </button>
-
         <button class="btn btn-sm @(CurrentViewMode == ViewMode.Templates ? "btn-primary" : "btn-outline-primary") text-start"
                 @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Templates)">
             <i class="bi bi-journal-code me-2"></i> Templates

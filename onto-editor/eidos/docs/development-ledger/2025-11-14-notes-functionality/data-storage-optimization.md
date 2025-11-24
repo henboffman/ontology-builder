@@ -533,20 +533,20 @@ private string ExtractContextSnippet(string content, int position, int radius = 
 
 ## Database Technology Recommendations
 
-### SQLite (Current - Development)
+### SQL Server (Current - All Environments)
 
 **Pros**:
-- ✅ Zero configuration
-- ✅ Fast for single-user
-- ✅ Easy backup (single file)
-- ✅ Perfect for development
+- ✅ Excellent full-text search
+- ✅ Great concurrent performance
+- ✅ Advanced features (indexes, stored procedures)
+- ✅ Same engine in development and production
+- ✅ Docker makes dev setup easy
 
 **Cons**:
-- ⚠️ No full-text search (limited)
-- ⚠️ Concurrent writes are slow
-- ⚠️ Database size limit (practical: ~100 GB)
+- ⚠️ Requires Docker for development
+- ⚠️ More complex than file-based databases
 
-**Use for**: Development, single-user deployments
+**Use for**: All environments (development via Docker, production via Azure SQL)
 
 ### PostgreSQL (Recommended for Production)
 

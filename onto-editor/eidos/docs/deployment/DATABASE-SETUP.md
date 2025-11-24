@@ -1,17 +1,17 @@
 # Database Configuration Guide for Eidos
 
-This guide explains the hybrid database setup: **SQLite for local development** and **SQL Server for Azure production**.
+This guide explains the database setup: **SQL Server for both local development and production**.
 
 ---
 
 ## Overview
 
-Eidos uses a hybrid database approach:
+Eidos uses SQL Server for all environments:
 
-- **Development (local)**: SQLite - simple, no setup required
+- **Development (local)**: SQL Server in Docker container - production-like environment
 - **Production (Azure)**: Azure SQL Database - scalable, managed cloud database
 
-The application automatically switches based on the environment (configured in `Program.cs:94-109`).
+This ensures consistency between development and production environments.
 
 ---
 
@@ -39,7 +39,7 @@ builder.Services.AddDbContextFactory<OntologyDbContext>(options =>
     if (builder.Environment.IsDevelopment())
     {
         // SQLite for local development
-        options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+        // options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
     }
     else
     {
@@ -53,27 +53,9 @@ builder.Services.AddDbContextFactory<OntologyDbContext>(options =>
 
 ## Local Development Setup
 
-### No Setup Required!
+### SQL Server in Docker (Required)
 
-Just run the application - SQLite is used automatically in development:
-
-```bash
-dotnet run
-```
-
-The database file (`ontology.db`) will be created in your project directory on first run.
-
-### Benefits of SQLite for Development
-
-- **Zero configuration** - no database server to install
-- **File-based** - easy to backup, delete, or reset
-- **Fast** - perfect for development and testing
-- **Cross-platform** - works on macOS, Windows, and Linux
-- **Portable** - commit the .db file to git for seed data (optional)
-
-### If You Want to Use SQL Server Locally (Optional)
-
-You can test with SQL Server locally if needed:
+The recommended approach for local development is to use SQL Server in Docker:
 
 #### macOS
 
@@ -97,11 +79,13 @@ docker logs eidos-sqlserver
 ```
 
 Then update your `appsettings.Development.json` ConnectionString to:
+
 ```json
 "DefaultConnection": "Server=localhost,1433;Database=EidosDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true"
 ```
 
 **Note**: The password must meet SQL Server requirements:
+
 - At least 8 characters
 - Contains uppercase, lowercase, numbers, and symbols
 
@@ -127,6 +111,7 @@ docker exec -it eidos-sqlserver /opt/mssql-tools/bin/sqlcmd \
 #### Option 1: SQL Server LocalDB (Comes with Visual Studio)
 
 Already configured in `appsettings.json`:
+
 ```json
 "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=EidosDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
 ```
@@ -135,9 +120,10 @@ Just run the app - LocalDB will start automatically.
 
 #### Option 2: SQL Server Express
 
-Download from: https://www.microsoft.com/en-us/sql-server/sql-server-downloads
+Download from: <https://www.microsoft.com/en-us/sql-server/sql-server-downloads>
 
 Use this connection string:
+
 ```json
 "DefaultConnection": "Server=localhost\\SQLEXPRESS;Database=EidosDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
 ```
@@ -148,14 +134,15 @@ Use this connection string:
 
 ### Development (Default)
 
-Just run the application - SQLite is used automatically:
+With SQL Server running in Docker:
 
 ```bash
 dotnet run
 ```
 
 The first time you run the app, Entity Framework will:
-1. Create the `ontology.db` file in your project directory
+
+1. Create the `EidosDb` database in SQL Server
 2. Create all tables and relationships
 3. Seed initial feature toggles
 
@@ -164,6 +151,7 @@ The first time you run the app, Entity Framework will:
 To test the production SQL Server configuration locally:
 
 1. Set the environment to Production:
+
    ```bash
    export ASPNETCORE_ENVIRONMENT=Production  # macOS/Linux
    # or
@@ -173,6 +161,7 @@ To test the production SQL Server configuration locally:
 2. Ensure you have SQL Server running and a connection string configured
 
 3. Run the application:
+
    ```bash
    dotnet run
    ```
@@ -230,6 +219,7 @@ az sql db show-connection-string \
 ```
 
 Example output:
+
 ```
 Server=tcp:eidos-sql-server.database.windows.net,1433;Initial Catalog=EidosDb;Persist Security Info=False;User ID=<username>;Password=<password>;MultipleActiveResultSets=True;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
 ```
@@ -252,6 +242,7 @@ az keyvault secret set \
 Your `Program.cs` is already configured to load secrets from Azure Key Vault in production. Just ensure:
 
 1. Key Vault URI is set in App Service Configuration:
+
    ```
    KeyVault__Uri = https://your-keyvault.vault.azure.net/
    ```
@@ -267,12 +258,14 @@ Your `Program.cs` is already configured to load secrets from Azure Key Vault in 
 ### "Cannot connect to SQL Server"
 
 **On macOS:**
+
 - Verify Docker container is running: `docker ps`
 - Check container logs: `docker logs eidos-sqlserver`
 - Ensure password meets requirements
 - Verify connection string port is `1433`
 
 **On Windows:**
+
 - For LocalDB: Ensure Visual Studio is installed
 - For SQL Server Express: Verify service is running
 - Check firewall isn't blocking port 1433
@@ -286,6 +279,7 @@ Your `Program.cs` is already configured to load secrets from Azure Key Vault in 
 ### Database doesn't exist
 
 Entity Framework should create it automatically. If not:
+
 ```bash
 # Clean and rebuild
 dotnet clean
@@ -296,6 +290,7 @@ dotnet run
 ### Migration issues
 
 If you get migration errors:
+
 ```bash
 # Install EF tools if not already installed
 dotnet tool install --global dotnet-ef
@@ -312,21 +307,25 @@ dotnet ef database update
 ## Connection String Reference
 
 ### Local Development (macOS - Docker)
+
 ```
 Server=localhost,1433;Database=EidosDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true
 ```
 
 ### Local Development (Windows - LocalDB)
+
 ```
 Server=(localdb)\\mssqllocaldb;Database=EidosDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
 ```
 
 ### Local Development (Windows - SQL Server Express)
+
 ```
 Server=localhost\\SQLEXPRESS;Database=EidosDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
 ```
 
 ### Azure SQL Database
+
 ```
 Server=tcp:your-server.database.windows.net,1433;Initial Catalog=EidosDb;Persist Security Info=False;User ID=your-admin;Password=your-password;MultipleActiveResultSets=True;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
 ```
@@ -337,19 +336,20 @@ Server=tcp:your-server.database.windows.net,1433;Initial Catalog=EidosDb;Persist
 
 ### Azure Data Studio (Cross-platform, Recommended)
 
-Download: https://aka.ms/azuredatastudio
+Download: <https://aka.ms/azuredatastudio>
 
 Works on macOS, Windows, and Linux. Great for managing both local and Azure SQL databases.
 
 ### SQL Server Management Studio (Windows only)
 
-Download: https://aka.ms/ssmsfullsetup
+Download: <https://aka.ms/ssmsfullsetup>
 
 The classic tool for SQL Server management.
 
 ### Command Line (sqlcmd)
 
 Included in the Docker container:
+
 ```bash
 docker exec -it eidos-sqlserver /opt/mssql-tools/bin/sqlcmd \
   -S localhost -U sa -P 'YourStrong!Passw0rd'

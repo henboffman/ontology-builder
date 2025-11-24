@@ -45,11 +45,6 @@
                 <i class="bi bi-file-code me-2"></i>TTL
                 @RenderViewerIndicators(ViewMode.Ttl)
             </button>
-            <button class="list-group-item list-group-item-action view-mode-item @(CurrentViewMode == ViewMode.Notes ? "active" : "")"
-                @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)" title="@GetViewerTooltip(ViewMode.Notes)">
-                <i class="bi bi-journal-text me-2"></i>Notes
-                @RenderViewerIndicators(ViewMode.Notes)
-            </button>
             <button class="list-group-item list-group-item-action view-mode-item @(CurrentViewMode == ViewMode.Templates ? "active" : "")"
                 @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Templates)" title="@GetViewerTooltip(ViewMode.Templates)">
                 <i class="bi bi-journal-code me-2"></i>Templates
@@ -134,12 +129,6 @@
                     <button class="dropdown-item @(CurrentViewMode == ViewMode.Ttl ? "active" : "")"
                         @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Ttl)">
                         <i class="bi bi-file-code me-2"></i> TTL
-                    </button>
-                </li>
-                <li>
-                    <button class="dropdown-item @(CurrentViewMode == ViewMode.Notes ? "active" : "")"
-                        @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)">
-                        <i class="bi bi-journal-text me-2"></i> Notes
                     </button>
                 </li>
                 <li>
@@ -244,7 +233,6 @@
         ViewMode.MindMap => "bi bi-share",
         ViewMode.Instances => "bi bi-person",
         ViewMode.Ttl => "bi bi-file-code",
-        ViewMode.Notes => "bi bi-journal-text",
         ViewMode.Templates => "bi bi-journal-code",
         ViewMode.Links => "bi bi-link-45deg",
         ViewMode.Collaborators => "bi bi-people-fill",
@@ -261,7 +249,6 @@
         ViewMode.MindMap => "Mind Map",
         ViewMode.Instances => "Instances",
         ViewMode.Ttl => "TTL",
-        ViewMode.Notes => "Notes",
         ViewMode.Templates => "Templates",
         ViewMode.Links => "Links",
         ViewMode.Collaborators => "Collaborators",
@@ -308,7 +295,6 @@
         ViewMode.MindMap => "Mind Map - Infinite zoom network diagram with hierarchical exploration",
         ViewMode.Instances => "Instances - Individual examples of concepts",
         ViewMode.Ttl => "Export/View TTL - View RDF/OWL representation",
-        ViewMode.Notes => "Notes - Personal documentation and markdown notes",
         ViewMode.Templates => "Templates - Reusable concept patterns for quick creation",
         ViewMode.Links => "Linked Ontologies - Connections to other ontologies",
         ViewMode.Collaborators => "Collaborators - View who has access and recent activity",

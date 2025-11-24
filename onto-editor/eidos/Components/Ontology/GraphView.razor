@@ -1,51 +1,88 @@
 @using Eidos.Models
 @using Eidos.Models.Enums
 @using Eidos.Components.Pages
+@inject IJSRuntime JSRuntime
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <div>
-            <h5 class="mb-0">
-                <i class="bi bi-diagram-3"></i> Interactive Graph
-                <button class="btn btn-sm btn-link" title="Graph Help" @onclick="() => showGraphHelp = !showGraphHelp">
-                    <i class="bi bi-question-circle"></i>
-                </button>
-            </h5>
-            <small class="text-muted">
-                Drag nodes to rearrange • Scroll to zoom • Click to select • Ctrl+Click to add relationship • Cmd+Shift+Click to add concept
-            </small>
-        </div>
-        <div class="d-flex gap-2 align-items-center">
-            @if ((FilteredOntology?.Concepts?.Count ?? 0) > 0)
-            {
-                <div class="btn-group btn-group-sm" title="Color nodes by custom colors or by source ontology">
-                    <button class="btn btn-outline-secondary" @onclick='() => OnColorModeChanged.InvokeAsync("concept")'
-                            disabled="@(ColorMode == "concept")" title="Use custom concept colors">
-                        <i class="bi bi-palette"></i> By Concept
+<div class="card @(isFullScreen ? "graph-full-screen" : "")">
+    @if (!isFullScreen)
+    {
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-0">
+                    <i class="bi bi-diagram-3"></i> Interactive Graph
+                    <button class="btn btn-sm btn-link" title="Graph Help" @onclick="() => showGraphHelp = !showGraphHelp">
+                        <i class="bi bi-question-circle"></i>
                     </button>
-                    <button class="btn btn-outline-secondary" @onclick='() => OnColorModeChanged.InvokeAsync("source")'
-                            disabled="@(ColorMode == "source")" title="Color by source ontology (useful for merged ontologies)">
-                        <i class="bi bi-folder"></i> By Source
+                </h5>
+                <small class="text-muted">
+                    Drag nodes to rearrange • Scroll to zoom • Click to select • Ctrl+Click to add relationship • Cmd+Shift+Click to add concept
+                </small>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                @if ((FilteredOntology?.Concepts?.Count ?? 0) > 0)
+                {
+                    <div class="btn-group btn-group-sm" title="Color nodes by custom colors or by source ontology">
+                        <button class="btn btn-outline-secondary" @onclick='() => OnColorModeChanged.InvokeAsync("concept")'
+                                disabled="@(ColorMode == "concept")" title="Use custom concept colors">
+                            <i class="bi bi-palette"></i> By Concept
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick='() => OnColorModeChanged.InvokeAsync("source")'
+                                disabled="@(ColorMode == "source")" title="Color by source ontology (useful for merged ontologies)">
+                            <i class="bi bi-folder"></i> By Source
+                        </button>
+                    </div>
+
+                    @if ((FilteredOntology?.Individuals?.Count ?? 0) > 0)
+                    {
+                        <div class="form-check form-switch ms-2">
+                            <input class="form-check-input" type="checkbox" id="showIndividualsToggle"
+                                   checked="@showIndividuals"
+                                   @onchange="@((ChangeEventArgs e) => OnShowIndividualsChanged((bool)e.Value!))"
+                                   title="Show individual instances in the graph">
+                            <label class="form-check-label" for="showIndividualsToggle">
+                                <i class="bi bi-person"></i> Show Individuals
+                            </label>
+                        </div>
+                    }
+
+                    <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="ToggleFullScreen" title="Toggle full screen mode (Alt+F)">
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
+                }
+            </div>
+        </div>
+    }
+    @if (isFullScreen)
+    {
+        <!-- Full Screen Overlay with Controls -->
+        <div class="graph-full-screen-overlay">
+            <div class="d-flex gap-2 align-items-center">
+                @if (CanAdd)
+                {
+                    <button class="btn btn-sm btn-primary" @onclick="OnAddConceptClick" title="Add new concept (Alt+C)">
+                        <i class="bi bi-plus-circle"></i> Add Concept
+                    </button>
+                    <button class="btn btn-sm btn-primary" @onclick="OnAddRelationshipClick" title="Add new relationship (Alt+R)">
+                        <i class="bi bi-arrow-left-right"></i> Add Relationship
+                    </button>
+                }
+                <div class="btn-group btn-group-sm ms-2">
+                    <button class="btn btn-outline-secondary" @onclick="OnUndoClick" disabled="@(!CanUndo)" title="Undo (Ctrl+Z)">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="OnRedoClick" disabled="@(!CanRedo)" title="Redo (Ctrl+Y)">
+                        <i class="bi bi-arrow-clockwise"></i>
                     </button>
                 </div>
-
-                @if ((FilteredOntology?.Individuals?.Count ?? 0) > 0)
-                {
-                    <div class="form-check form-switch ms-2">
-                        <input class="form-check-input" type="checkbox" id="showIndividualsToggle"
-                               checked="@showIndividuals"
-                               @onchange="@((ChangeEventArgs e) => OnShowIndividualsChanged((bool)e.Value!))"
-                               title="Show individual instances in the graph">
-                        <label class="form-check-label" for="showIndividualsToggle">
-                            <i class="bi bi-person"></i> Show Individuals
-                        </label>
-                    </div>
-                }
-            }
+            </div>
+            <button class="btn btn-sm btn-outline-light exit-fullscreen-btn" @onclick="ToggleFullScreen" title="Exit full screen (Alt+F or Esc)">
+                <i class="bi bi-fullscreen-exit"></i> Exit Full Screen
+            </button>
         </div>
-    </div>
+    }
+
     <div class="card-body">
-        @if (showGraphHelp)
+        @if (showGraphHelp && !isFullScreen)
         {
             <div class="alert alert-info alert-dismissible fade show" role="alert">
                 <h6 class="alert-heading"><i class="bi bi-lightbulb"></i> Graph View Tips</h6>
@@ -84,8 +121,8 @@
         else
         {
             <div class="row">
-                <div class="@(ColorMode == "source" ? "col-md-10" : "col-md-12")">
-                    <GraphVisualization Ontology="@FilteredOntology" Height="calc(100vh - 280px)" ColorMode="@ColorMode"
+                <div class="@(ColorMode == "source" && !isFullScreen ? "col-md-10" : "col-md-12")">
+                    <GraphVisualization Ontology="@FilteredOntology" Height="@(isFullScreen ? "100vh" : "calc(100vh - 280px)")" ColorMode="@ColorMode"
                                       ShowIndividuals="@showIndividuals"
                                       OnNodeCtrlClicked="@OnNodeCtrlClicked"
                                       OnNodeClicked="@OnNodeClicked"
@@ -98,7 +135,7 @@
                                       OnBackgroundCmdShiftClicked="@OnAddConceptClick"
                                       @ref="graphVisualization" />
                 </div>
-                @if (ColorMode == "source" && SourceOntologies.Any())
+                @if (ColorMode == "source" && SourceOntologies.Any() && !isFullScreen)
                 {
                     <div class="col-md-2">
                         <div class="card h-100">
@@ -188,6 +225,7 @@
 
     private GraphVisualization? graphVisualization;
     private bool showGraphHelp = false;
+    private bool isFullScreen = false;
 
     /// <summary>
     /// Controls whether individual instances are displayed in the graph alongside concepts.
@@ -195,6 +233,25 @@
     /// connected to their parent concepts via "instance of" edges.
     /// </summary>
     private bool showIndividuals = false;
+
+    /// <summary>
+    /// Toggles the full screen mode for the graph view.
+    /// Uses CSS-based fullscreen (not browser Fullscreen API) to ensure Bootstrap modals remain visible.
+    /// </summary>
+    [JSInvokable]
+    public async Task ToggleFullScreen()
+    {
+        isFullScreen = !isFullScreen;
+        StateHasChanged();
+
+        // Allow time for the DOM to update and CSS transitions
+        await Task.Delay(300);
+
+        if (graphVisualization != null)
+        {
+            await graphVisualization.RefreshGraph();
+        }
+    }
 
     /// <summary>
     /// Handles changes to the "Show Individuals" toggle.

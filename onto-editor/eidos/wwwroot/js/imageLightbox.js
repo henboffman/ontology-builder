@@ -11,14 +11,7 @@ let lightboxContainer = null;
 export function initializeImageLightbox(previewElementId) {
     const previewElement = document.getElementById(previewElementId);
     if (!previewElement) {
-        console.warn(`Preview element ${previewElementId} not found yet - will retry`);
-        // Try again after a short delay
-        setTimeout(() => {
-            const retryElement = document.getElementById(previewElementId);
-            if (retryElement) {
-                attachLightboxHandlers(retryElement, previewElementId);
-            }
-        }, 100);
+        // Silently return - element may not exist for grid notes
         return;
     }
 
@@ -41,7 +34,6 @@ function attachLightboxHandlers(previewElement, previewElementId) {
         img.style.cursor = 'pointer';
     });
 
-    console.log(`Image lightbox initialized for ${previewElementId} (${images.length} images)`);
 }
 
 /**
@@ -137,5 +129,4 @@ export function disposeImageLightbox() {
         lightboxContainer = null;
     }
     document.removeEventListener('keydown', handleKeyPress);
-    console.log('Image lightbox disposed');
 }

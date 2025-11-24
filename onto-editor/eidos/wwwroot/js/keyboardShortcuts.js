@@ -49,95 +49,102 @@ window.keyboardShortcuts = {
         }
 
         // Navigation and editing shortcuts (Alt + key)
+        // Use e.code instead of e.key to avoid macOS special character issue
         if (e.altKey && !e.ctrlKey && !e.metaKey) {
-            switch (e.key.toLowerCase()) {
-                case 'g':
+            switch (e.code) {
+                case 'KeyG':
                     e.preventDefault();
-                    this.triggerViewMode('Graph');
+                    this.switchView('Graph');
                     break;
-                case 'l':
+                case 'KeyL':
                     e.preventDefault();
-                    this.triggerViewMode('List');
+                    this.switchView('List');
                     break;
-                case 't':
+                case 'KeyT':
                     e.preventDefault();
-                    this.triggerViewMode('Ttl');
+                    this.switchView('Ttl');
                     break;
-                case 'n':
+                case 'KeyH':
                     e.preventDefault();
-                    this.triggerViewMode('Notes');
+                    this.switchView('Hierarchy');
                     break;
-                case 'p':
+                case 'KeyC':
                     e.preventDefault();
-                    this.triggerViewMode('Templates');
+                    this.showAddConcept();
                     break;
-                case 'c':
+                case 'KeyR':
                     e.preventDefault();
-                    this.triggerAction('addConcept');
+                    this.showAddRelationship();
                     break;
-                case 'r':
+                case 'KeyF':
                     e.preventDefault();
-                    this.triggerAction('addRelationship');
+                    this.toggleFullScreen();
                     break;
-            }
-        }
-
-        // Editing shortcuts (Ctrl/Cmd + key)
-        if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
-            switch (e.key.toLowerCase()) {
-                case 'z':
+                case 'KeyN':
                     e.preventDefault();
-                    this.triggerAction('undo');
+                    // Check if we're in an ontology or workspace context
+                    const ontologyMatch = window.location.pathname.match(/\/(ontology|workspace)\/(\d+)/);
+                    if (ontologyMatch) {
+                        // We're in an ontology/workspace, navigate to workspace view
+                        const workspaceId = ontologyMatch[2];
+                        window.location.href = `/workspace/${workspaceId}`;
+                    } else {
+                        // We're not in a workspace, go to workspaces dashboard
+                        window.location.href = '/workspaces';
+                    }
                     break;
-                case 'y':
+                case 'KeyO':
                     e.preventDefault();
-                    this.triggerAction('redo');
-                    break;
-                case 's':
-                    // Allow default browser save in specific contexts
-                    const formElement = activeElement?.closest('form');
-                    if (formElement) {
-                        e.preventDefault();
-                        this.triggerAction('save');
+                    // Check if we're in an ontology or workspace context
+                    const workspaceMatch = window.location.pathname.match(/\/(ontology|workspace)\/(\d+)/);
+                    if (workspaceMatch) {
+                        // We're in an ontology/workspace, navigate to ontology view
+                        const ontologyId = workspaceMatch[2];
+                        window.location.href = `/ontology/${ontologyId}`;
+                    } else {
+                        // We're not in a workspace, go to ontologies dashboard
+                        window.location.href = '/';
                     }
                     break;
             }
         }
 
-        // Editing shortcuts with Shift (Ctrl/Cmd + Shift + key) to avoid browser conflicts
+        // Editing shortcuts (Ctrl/Cmd + key)
+        // Use e.code for letter keys, e.key for special keys like comma
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+            switch (e.code) {
+                case 'KeyZ':
+                    e.preventDefault();
+                    this.performUndo();
+                    break;
+                case 'KeyY':
+                    e.preventDefault();
+                    this.performRedo();
+                    break;
+                case 'KeyK':
+                    // Command palette shortcut
+                    e.preventDefault();
+                    // Focus the global search input
+                    const searchInput = document.querySelector('[data-global-search-input]');
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+                    break;
+            }
+
+            // Comma key - use e.key for this
+            if (e.key === ',') {
+                e.preventDefault();
+                this.showSettings();
+            }
+        }
+
+        // Redo with Shift (Ctrl/Cmd + Shift + Z for macOS compatibility)
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey) {
-            switch (e.key.toLowerCase()) {
-                case 'g':
+            switch (e.code) {
+                case 'KeyZ':
                     e.preventDefault();
-                    this.triggerViewMode('Graph');
-                    break;
-                case 'l':
-                    e.preventDefault();
-                    this.triggerViewMode('List');
-                    break;
-                case 't':
-                    e.preventDefault();
-                    this.triggerViewMode('Ttl');
-                    break;
-                case 'h':
-                    e.preventDefault();
-                    this.triggerViewMode('Hierarchy');
-                    break;
-                case 'c':
-                    e.preventDefault();
-                    this.triggerAction('addConcept');
-                    break;
-                case 'r':
-                    e.preventDefault();
-                    this.triggerAction('addRelationship');
-                    break;
-                case 'i':
-                    e.preventDefault();
-                    this.triggerAction('importTtl');
-                    break;
-                case ',':
-                    e.preventDefault();
-                    this.triggerAction('openSettings');
+                    this.performRedo();
                     break;
             }
         }
@@ -148,17 +155,37 @@ window.keyboardShortcuts = {
         });
     },
 
-    triggerViewMode: function (mode) {
-        // Dispatch custom event for Blazor components to handle
-        document.dispatchEvent(new CustomEvent('viewModeChange', {
-            detail: { mode: mode }
-        }));
+    switchView: function (mode) {
+        this.triggerAction('switchView', { mode: mode });
     },
 
-    triggerAction: function (action) {
-        // Dispatch custom event for Blazor components to handle
+    showAddConcept: function () {
+        this.triggerAction('addConcept');
+    },
+
+    showAddRelationship: function () {
+        this.triggerAction('addRelationship');
+    },
+
+    performUndo: function () {
+        this.triggerAction('undo');
+    },
+
+    performRedo: function () {
+        this.triggerAction('redo');
+    },
+
+    showSettings: function () {
+        this.triggerAction('settings');
+    },
+
+    toggleFullScreen: function () {
+        this.triggerAction('toggleFullScreen');
+    },
+
+    triggerAction: function (action, data = {}) {
         document.dispatchEvent(new CustomEvent('keyboardShortcut', {
-            detail: { action: action }
+            detail: { action: action, ...data }
         }));
     },
 

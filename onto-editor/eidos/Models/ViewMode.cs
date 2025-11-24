@@ -7,7 +7,6 @@ public enum ViewMode
     Hierarchy,
     Instances,
     Ttl,
-    Notes,
     Templates,
     Links,
     Collaborators,

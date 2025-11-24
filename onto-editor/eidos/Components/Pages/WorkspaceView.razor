@@ -14,12 +14,16 @@
 <link href="css/workspace-view.css" rel="stylesheet" />
 <link href="css/components/workspace-quick-switcher.css" rel="stylesheet" />
 <link href="css/image-lightbox.css" rel="stylesheet" />
+<link href="css/note-grid-layout.css" rel="stylesheet" />
+<link href="css/note-grid-animations.css" rel="stylesheet" />
 <script src="js/wikiLinkEditor.js"></script>
 <script src="js/wikiLinkPreview.js"></script>
 <script src="js/workspaceKeyboardHandler.js"></script>
 <script src="js/fileDownload.js"></script>
 <script src="js/markdownToolbar.js"></script>
 <script src="js/noteGraphVisualization.js"></script>
+<script src="js/noteGridAnimations.js"></script>
+<script src="js/noteGridKeyboardHandler.js"></script>
 
 <!-- Quick Switcher Component -->
 <WorkspaceQuickSwitcher @ref="quickSwitcher" WorkspaceId="@WorkspaceId" OnNoteSelected="HandleQuickSwitcherNoteSelected"
@@ -203,6 +207,13 @@
                     </button>
                 </div>
 
+                <!-- Grid Mode Toggle -->
+                <button class="btn btn-sm @(isGridModeEnabled ? "btn-primary" : "btn-outline-primary")"
+                    @onclick="ToggleGridMode" title="Toggle Grid Mode (Alt/⌥ + G)">
+                    <i class="bi @(isGridModeEnabled ? "bi-grid-3x3-gap-fill" : "bi-grid-3x3-gap") me-1"></i>
+                    Grid Mode
+                </button>
+
                 <!-- Switch to Ontology -->
                 @if (workspace.Ontology != null)
                 {
@@ -221,13 +232,34 @@
             <div class="keyboard-hints-banner">
                 <div class="hints-content">
                     <i class="bi bi-keyboard me-2"></i>
-                    <span class="hints-text">
-                        <kbd>Cmd/Ctrl + K</kbd> Quick switcher
-                        <span class="mx-2">•</span>
-                        <kbd>Cmd/Ctrl + E</kbd> Toggle preview
-                        <span class="mx-2">•</span>
-                        Type <code>[[Concept]]</code> to create links
-                    </span>
+                    @if (isGridModeEnabled)
+                    {
+                        <span class="hints-text">
+                            <kbd>Alt + G</kbd> Exit grid
+                            <span class="mx-2">•</span>
+                            <kbd>Alt + N</kbd> New note
+                            <span class="mx-2">•</span>
+                            <kbd>Alt + W</kbd> Close note
+                            <span class="mx-2">•</span>
+                            <kbd>Alt + 1-4</kbd> Focus note
+                            <span class="mx-2">•</span>
+                            <kbd>Alt + Tab</kbd> Cycle notes
+                            <span class="mx-2">•</span>
+                            <kbd>Alt + Shift + F</kbd> Full screen
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="hints-text">
+                            <kbd>Cmd/Ctrl + K</kbd> Quick switcher
+                            <span class="mx-2">•</span>
+                            <kbd>Cmd/Ctrl + E</kbd> Toggle preview
+                            <span class="mx-2">•</span>
+                            <kbd>Alt + G</kbd> Grid mode
+                            <span class="mx-2">•</span>
+                            Type <code>[[Concept]]</code> to create links
+                        </span>
+                    }
                 </div>
                 <button class="btn-close-hints" @onclick="DismissKeyboardHints" title="Dismiss">
                     <i class="bi bi-x"></i>
@@ -236,9 +268,9 @@
         }
 
         <!-- Three-Pane Layout (Obsidian-style) -->
-        <div class="three-pane-layout">
+        <div class="three-pane-layout @(isWorkspaceFullScreen ? "full-screen-mode" : "")">
             <!-- Left Pane: File Explorer -->
-            <div class="pane pane-left">
+            <div class="pane pane-left" style="@(isWorkspaceFullScreen ? "display: none;" : "")">
                 <div class="pane-header-vertical">
                     <div class="pane-header-row">
                         <h5>Notes</h5>
@@ -422,9 +454,53 @@
                 </div>
             </div>
 
-            <!-- Center Pane: Markdown Editor or Graph View -->
-            <div class="pane pane-center">
-                @if (showNoteGraph)
+            <!-- Center Pane: Markdown Editor, Graph View, or Grid Mode -->
+            <div class="pane pane-center @(isGridModeEnabled ? "grid-mode-active" : "")">
+                @if (isGridModeEnabled)
+                {
+                    <!-- Grid Mode -->
+                    <div class="pane-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-grid-3x3-gap me-2"></i>Grid Mode
+                            <span class="badge bg-secondary ms-2">@openNotesInGrid.Count notes</span>
+                        </h5>
+                        <div class="d-flex align-items-center gap-2">
+                            @* @if (isWorkspaceFullScreen)
+                            {
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="ToggleFullScreen" title="Exit Full Screen (Alt/⌥ + Shift + F)">
+                                    <i class="bi bi-fullscreen-exit me-1"></i> Exit Full Screen
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="ToggleFullScreen" title="Enter Full Screen (Alt/⌥ + Shift + F)">
+                                    <i class="bi bi-arrows-fullscreen me-1"></i> Full Screen
+                                </button>
+                            } *@
+                            <button class="btn btn-sm btn-success" @onclick="AddNoteToGrid" title="Add Note (Alt/⌥ + N)">
+                                <i class="bi bi-plus-lg me-1"></i> Add Note
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="ToggleGridMode"
+                                title="Exit Grid Mode (Alt/⌥ + G)">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="pane-content p-0" style="height: calc(100% - 60px); overflow: hidden;">
+                        <NoteGridLayout @ref="noteGridLayoutRef" OpenNotes="@openNotesInGrid"
+                            OnNoteContentChanged="HandleGridNoteContentChanged" OnNoteTitleChanged="HandleGridNoteTitleChanged"
+                            OnNoteClose="HandleGridNoteClose" OnNoteFocus="@((noteId) => Task.CompletedTask)"
+                            MaxVisibleNotes="@maxVisibleNotesInGrid" />
+
+                        <!-- Note Switcher for 5+ notes -->
+                        @if (openNotesInGrid.Count > maxVisibleNotesInGrid)
+                        {
+                            <NoteGridSwitcher AllNotes="@openNotesInGrid" MaxVisibleNotes="@maxVisibleNotesInGrid"
+                                OnSwapNote="HandleSwapNote" OnCloseNote="HandleGridNoteClose" />
+                        }
+                    </div>
+                }
+                else if (showNoteGraph)
                 {
                     <!-- Graph View Mode -->
                     <div class="pane-header">
@@ -583,7 +659,8 @@
             </div>
 
             <!-- Right Pane: Tags, Related Concepts & Backlinks -->
-            <div class="pane pane-right @(isRightPaneCollapsed ? "collapsed" : "")">
+            <div class="pane pane-right @(isRightPaneCollapsed || isGridModeEnabled ? "collapsed" : "")"
+                style="@(isGridModeEnabled || isWorkspaceFullScreen ? "display: none;" : "")">
                 @if (isRightPaneCollapsed)
                 {
                     <div class="collapsed-sidebar-label">

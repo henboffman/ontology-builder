@@ -39,8 +39,6 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
             elements.nodes.length > 0 &&
             elements.nodes.every(n => n.position != null && n.position.x != null && n.position.y != null);
 
-        console.log('📊 Position check - Total nodes:', elements.nodes?.length, 'All have positions:', allNodesHavePositions);
-        console.log('📋 Sample node data:', elements.nodes?.[0]);
 
 
         // Initialize Cytoscape
@@ -316,7 +314,6 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
             // Save all positions after COSE layout finishes
             stop: function() {
                 if (!allNodesHavePositions && dotNetHelper) {
-                    console.log('💾 COSE layout finished - saving all node positions...');
                     const updates = [];
                     cy.nodes().forEach(node => {
                         const nodeData = node.data();
@@ -342,7 +339,6 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
 
                     if (updates.length > 0) {
                         dotNetHelper.invokeMethodAsync('SaveNodePositionsBatch', updates)
-                            .then(() => console.log(`✓ Saved ${updates.length} node positions after layout`))
                             .catch(err => console.error('❌ Error saving positions after layout:', err));
                     }
                 }
@@ -467,7 +463,6 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
                         const conceptIdStr = data.id;
                         const conceptId = parseInt(conceptIdStr.replace('concept-', ''), 10);
 
-                        console.log('Edit button clicked for concept:', conceptIdStr, '-> ID:', conceptId);
 
                         // Call the .NET helper to open the edit dialog
                         if (dotNetHelper && !isNaN(conceptId)) {
@@ -564,19 +559,15 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
      * Saves batched position updates to the server
      */
     const saveBatchedPositions = async () => {
-        console.log('💾 saveBatchedPositions called - Updates:', positionUpdates.length, 'dotNetHelper:', !!dotNetHelper);
 
         if (positionUpdates.length > 0 && dotNetHelper) {
             try {
-                console.log(`Saving ${positionUpdates.length} node positions...`, positionUpdates);
                 await dotNetHelper.invokeMethodAsync('SaveNodePositionsBatch', positionUpdates);
-                console.log('✓ Node positions saved successfully');
                 positionUpdates = [];
             } catch (error) {
                 console.error('❌ Error saving node positions:', error);
             }
         } else if (positionUpdates.length === 0) {
-            console.log('⚠️ No position updates to save');
         } else if (!dotNetHelper) {
             console.error('❌ dotNetHelper is not available!');
         }
@@ -618,7 +609,6 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
         const nodeData = node.data();
         const pos = node.position();
 
-        console.log('🎯 Node dragged:', nodeData);
 
         // Determine node type and ID
         const nodeType = nodeData.type || 'concept';  // 'concept' or 'ontologyLink'
@@ -630,7 +620,6 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
             nodeId = nodeData.nodeId;
         }
 
-        console.log('📍 Node info - Type:', nodeType, 'ID:', nodeId, 'Position:', pos);
 
         // Only save if we have a valid ID
         if (nodeId) {
@@ -642,7 +631,6 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
                 y: Math.round(pos.y * 100) / 100
             };
             positionUpdates.push(update);
-            console.log('✅ Added to batch:', update, 'Total queued:', positionUpdates.length);
 
             // Clear existing timeout
             if (batchSaveTimeout) {
@@ -651,7 +639,6 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
 
             // Schedule batch save after 1 second of inactivity
             batchSaveTimeout = setTimeout(saveBatchedPositions, 1000);
-            console.log('⏱️ Scheduled save in 1 second');
         } else {
             console.warn('⚠️ No valid nodeId found, cannot save position');
         }
@@ -693,29 +680,24 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
                 const nodeId = node.data('id');
                 const nodeType = node.data('nodeType');
 
-                console.log('Node clicked:', { nodeId, nodeType });
 
                 // Handle different node types
                 if (nodeType === 'individual') {
                     // Extract the individual ID from the node ID (format: "individual-123")
                     const individualId = parseInt(nodeId.replace('individual-', ''));
-                    console.log('Individual node clicked, ID:', individualId);
 
                     // Call the individual click handler
                     if (dotNetHelper.invokeMethodAsync) {
                         dotNetHelper.invokeMethodAsync('OnIndividualClick', individualId)
-                            .then(() => console.log('OnIndividualClick succeeded'))
                             .catch(err => console.error('OnIndividualClick failed:', err));
                     }
                 } else if (nodeType === 'ontologyLink') {
                     // Extract the ontology link ID from the node ID (format: "ontologylink-123")
                     const linkId = parseInt(nodeId.replace('ontologylink-', ''));
-                    console.log('Ontology link node clicked, ID:', linkId);
 
                     // Call the ontology link click handler
                     if (dotNetHelper.invokeMethodAsync) {
                         dotNetHelper.invokeMethodAsync('OnOntologyLinkClick', linkId)
-                            .then(() => console.log('OnOntologyLinkClick succeeded'))
                             .catch(err => console.error('OnOntologyLinkClick failed:', err));
                     }
                 } else if (nodeType === 'virtualConcept') {
@@ -765,7 +747,6 @@ window.renderOntologyGraph = function (containerId, elements, dotNetHelper, disp
                     if ((event.originalEvent.metaKey || event.originalEvent.ctrlKey) && event.originalEvent.shiftKey) {
                         // Call back to Blazor to show add concept dialog
                         dotNetHelper.invokeMethodAsync('OnBackgroundCmdShiftClick')
-                            .then(() => console.log('OnBackgroundCmdShiftClick succeeded'))
                             .catch(err => console.error('OnBackgroundCmdShiftClick failed:', err));
                     }
                 }

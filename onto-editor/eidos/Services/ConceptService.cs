@@ -91,6 +91,17 @@ public class ConceptService : IConceptService
         // Check if approval workflow is required (throws ApprovalRequiredException if needed)
         await CheckApprovalModeAsync(concept.OntologyId, currentUser?.Id, "create concept");
 
+        // Check for duplicate concept name in this ontology
+        var existingConcepts = await _conceptRepository.GetByOntologyIdAsync(concept.OntologyId);
+        var duplicateName = existingConcepts.FirstOrDefault(c =>
+            c.Name.Equals(concept.Name, StringComparison.OrdinalIgnoreCase));
+
+        if (duplicateName != null)
+        {
+            throw new InvalidOperationException(
+                $"A concept named '{concept.Name}' already exists in this ontology. Please choose a different name.");
+        }
+
         if (recordUndo)
         {
             var command = _commandFactory.CreateConceptCommand(concept);
@@ -134,6 +145,20 @@ public class ConceptService : IConceptService
         // Capture before state for activity tracking
         var beforeConcept = await _conceptRepository.GetByIdAsync(concept.Id);
         var nameChanged = beforeConcept?.Name != concept.Name;
+
+        // Check for duplicate concept name in this ontology (if name is changing)
+        if (nameChanged)
+        {
+            var existingConcepts = await _conceptRepository.GetByOntologyIdAsync(concept.OntologyId);
+            var duplicateName = existingConcepts.FirstOrDefault(c =>
+                c.Id != concept.Id && c.Name.Equals(concept.Name, StringComparison.OrdinalIgnoreCase));
+
+            if (duplicateName != null)
+            {
+                throw new InvalidOperationException(
+                    $"A concept named '{concept.Name}' already exists in this ontology. Please choose a different name.");
+            }
+        }
 
         if (recordUndo)
         {
@@ -181,6 +206,20 @@ public class ConceptService : IConceptService
 
         // Check if approval workflow is required (throws ApprovalRequiredException if needed)
         await CheckApprovalModeAsync(ontologyId, currentUser?.Id, "delete concept");
+
+        // Check if concept is used in any relationships
+        var relationships = await _relationshipRepository.GetByConceptIdAsync(id);
+        var relationshipsList = relationships.ToList();
+
+        if (relationshipsList.Any())
+        {
+            var relationshipCount = relationshipsList.Count;
+            var relationshipWord = relationshipCount == 1 ? "relationship" : "relationships";
+
+            throw new InvalidOperationException(
+                $"Cannot delete concept '{concept.Name}' because it is used in {relationshipCount} {relationshipWord}. " +
+                $"Please delete those {relationshipWord} first, then try again.");
+        }
 
         if (recordUndo)
         {
@@ -492,11 +531,27 @@ public class ConceptService : IConceptService
             if (string.IsNullOrWhiteSpace(newName))
                 return false;
 
+            var trimmedName = newName.Trim();
+
+            // Check for duplicate concept name in this ontology (if name is actually changing)
+            if (!concept.Name.Equals(trimmedName, StringComparison.OrdinalIgnoreCase))
+            {
+                var existingConcepts = await _conceptRepository.GetByOntologyIdAsync(concept.OntologyId);
+                var duplicateName = existingConcepts.FirstOrDefault(c =>
+                    c.Id != conceptId && c.Name.Equals(trimmedName, StringComparison.OrdinalIgnoreCase));
+
+                if (duplicateName != null)
+                {
+                    _logger.LogWarning("Cannot rename concept {ConceptId} to '{NewName}': name already exists", conceptId, trimmedName);
+                    return false;
+                }
+            }
+
             // Update name
             var oldName = concept.Name;
             var beforeConcept = new Concept { Id = concept.Id, Name = oldName };
 
-            concept.Name = newName.Trim();
+            concept.Name = trimmedName;
             await _conceptRepository.UpdateAsync(concept);
             await _ontologyRepository.UpdateTimestampAsync(concept.OntologyId);
 
@@ -511,8 +566,9 @@ public class ConceptService : IConceptService
 
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Error updating concept name for concept {ConceptId}", conceptId);
             return false;
         }
     }

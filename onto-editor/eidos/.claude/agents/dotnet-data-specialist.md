@@ -213,7 +213,6 @@ Design data access layers that are efficient, maintainable, and scalable. Levera
 - **Unit testing**: DbContext mocking, in-memory providers, test doubles
 - **Integration testing**: Test databases, container databases, TestContainers
 - **InMemory provider**: Microsoft.EntityFrameworkCore.InMemory, limitations, unit test usage
-- **SQLite provider**: In-memory SQLite, testing alternative, schema limitations
 - **Test data builders**: Fluent test data creation, consistent test data, test fixtures
 - **Transaction rollback**: Test isolation, automatic rollback, database cleanup
 - **Repository testing**: Mocking repositories, testing business logic, integration tests

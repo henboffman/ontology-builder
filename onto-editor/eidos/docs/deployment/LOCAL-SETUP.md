@@ -7,10 +7,11 @@ This document explains how to run Eidos locally without Azure Key Vault.
 The application is now configured for **local-only development** with the following setup:
 
 ### Database
-- **Type**: SQLite (file-based)
-- **Location**: `ontology.db` in the project root
-- **Connection String**: `Data Source=ontology.db`
-- **Status**: ✓ Database file exists and is ready
+- **Type**: SQL Server (Docker container)
+- **Server**: localhost,1433
+- **Database Name**: EidosDb
+- **Connection String**: `Server=localhost,1433;Database=EidosDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=True`
+- **Status**: ✓ SQL Server container running and database ready
 
 ### Authentication Providers
 
@@ -41,10 +42,11 @@ dotnet run
 ```
 
 On first run, the application will:
-1. Automatically create the SQLite database (`ontology.db`)
-2. Create all necessary tables from the current schema
-3. Seed admin roles and users
-4. Start the web server
+1. Connect to SQL Server in Docker
+2. Create the EidosDb database if it doesn't exist
+3. Create all necessary tables from the current schema
+4. Seed admin roles and users
+5. Start the web server
 
 ### Startup Messages
 
@@ -52,8 +54,8 @@ You should see these confirmations:
 ```
 ℹ️  Azure Key Vault not configured. Using User Secrets and appsettings.
 ℹ️  GitHub OAuth not configured (credentials not found in User Secrets or Key Vault)
-ℹ️  Using SQLite database: Data Source=ontology.db
-ℹ️  SQLite database schema ensured
+ℹ️  Using SQL Server database: Server=localhost,1433;Database=EidosDb;...
+ℹ️  SQL Server database schema ensured
 ```
 
 The application will be available at:
@@ -97,7 +99,7 @@ dotnet user-secrets list
 ❌ **NOT in source control** (already gitignored):
 - appsettings.Development.json
 - User Secrets (stored in `~/.microsoft/usersecrets/`)
-- ontology.db (local database)
+- SQL Server data (stored in Docker volume)
 
 ## Switching Back to Azure
 
@@ -119,13 +121,11 @@ The following modifications enable fully local development without Azure depende
 
 ### 1. appsettings.Development.json (gitignored)
 - Set `KeyVault:Uri` to empty string → Disables Azure Key Vault
-- Changed `ConnectionStrings:DefaultConnection` to `Data Source=ontology.db` → Uses SQLite
+- Changed `ConnectionStrings:DefaultConnection` to SQL Server connection string
 - Removed OAuth credentials (now handled by User Secrets)
 
 ### 2. Program.cs
-- Added auto-detection for database provider based on connection string
-  - SQLite: `Data Source=...`
-  - SQL Server: `Server=...`
+- Configured to use SQL Server for all environments
 - Made GitHub OAuth optional (was required, now only enables if credentials present)
 - Added helpful console messages for configuration status
 
@@ -138,7 +138,7 @@ The following modifications enable fully local development without Azure depende
 ## Current Status
 
 - ✓ Build succeeds
-- ✓ SQLite database auto-detection working
+- ✓ SQL Server connection working (Docker container)
 - ✓ Key Vault disabled for local development
 - ✓ All OAuth providers optional
 - ✓ All secrets excluded from source control

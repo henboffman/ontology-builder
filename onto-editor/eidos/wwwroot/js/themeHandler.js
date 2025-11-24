@@ -14,9 +14,7 @@ const ThemeHandler = {
         const stored = localStorage.getItem('theme');
         if (stored) {
             this.applyTheme(stored);
-            console.log('Theme handler initialized from localStorage:', stored);
         } else {
-            console.log('Theme handler ready, waiting for Blazor initialization');
         }
     },
 
@@ -51,11 +49,9 @@ const ThemeHandler = {
      * @param {string} theme - 'light' or 'dark'
      */
     applyTheme: function(theme) {
-        console.log('[ThemeHandler.applyTheme] Called with theme:', theme);
 
         // Validate theme
         if (theme !== 'light' && theme !== 'dark') {
-            console.log('[ThemeHandler.applyTheme] Invalid theme, defaulting to light');
             theme = 'light';
         }
 
@@ -65,28 +61,23 @@ const ThemeHandler = {
         // Apply to document using Bootstrap 5.3+ data-bs-theme attribute
         window.isApplying = true;
         if (theme === 'dark') {
-            console.log('[ThemeHandler.applyTheme] Setting data-bs-theme="dark"');
             document.documentElement.setAttribute('data-bs-theme', 'dark');
         } else {
-            console.log('[ThemeHandler.applyTheme] Setting data-bs-theme="light"');
             document.documentElement.setAttribute('data-bs-theme', 'light');
         }
         window.isApplying = false;
 
         // Verify it was set
         const actualTheme = document.documentElement.getAttribute('data-bs-theme');
-        console.log('[ThemeHandler.applyTheme] Verified DOM attribute data-bs-theme:', actualTheme);
 
         // Save to localStorage
         localStorage.setItem('theme', theme);
-        console.log('[ThemeHandler.applyTheme] Saved to localStorage:', theme);
 
         // Dispatch custom event for components that need to react
         window.dispatchEvent(new CustomEvent('themeChanged', {
             detail: { theme: theme }
         }));
 
-        console.log('[ThemeHandler.applyTheme] Complete. Theme applied:', theme);
     },
 
     /**
@@ -115,9 +106,7 @@ const ThemeHandler = {
      */
     setThemeDelayed: function(theme, delay = 50) {
         const self = this;
-        console.log(`[ThemeHandler.setThemeDelayed] Scheduling theme '${theme}' to be applied in ${delay}ms`);
         setTimeout(function() {
-            console.log(`[ThemeHandler.setThemeDelayed] Now applying theme '${theme}'`);
             self.applyTheme(theme);
         }, delay);
     }
@@ -135,10 +124,8 @@ if (window.matchMedia) {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
         // Only auto-switch if user hasn't manually set a preference
         if (!localStorage.getItem('theme')) {
-            console.log('[ThemeHandler] System theme changed, applying:', e.matches ? 'dark' : 'light');
             ThemeHandler.applyTheme(e.matches ? 'dark' : 'light');
         } else {
-            console.log('[ThemeHandler] System theme changed but user has manual preference, ignoring');
         }
     });
 }
@@ -152,11 +139,9 @@ const observer = new MutationObserver(function(mutations) {
         if (mutation.type === 'attributes' && mutation.attributeName === 'data-bs-theme') {
             const currentValue = document.documentElement.getAttribute('data-bs-theme');
 
-            console.log('[ThemeHandler] DOM MUTATION DETECTED: data-bs-theme changed to:', currentValue);
 
             // If Blazor changed our theme, reapply it instantly
             if (!window.isApplying && window.expectedTheme && currentValue !== window.expectedTheme) {
-                console.log('[ThemeHandler] AUTO-FIX: Blazor changed theme to', currentValue, 'but expected', window.expectedTheme, '- reapplying!');
                 window.isApplying = true;
                 document.documentElement.setAttribute('data-bs-theme', window.expectedTheme);
                 localStorage.setItem('theme', window.expectedTheme);
@@ -171,4 +156,3 @@ observer.observe(document.documentElement, {
     attributeFilter: ['data-bs-theme']
 });
 
-console.log('[ThemeHandler] Auto-fix monitoring enabled for data-bs-theme');

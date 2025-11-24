@@ -132,6 +132,13 @@ public partial class WorkspaceView : ComponentBase, IAsyncDisposable
     private IJSObjectReference? imageLightboxModule;
     private DotNetObjectReference<WorkspaceView>? dotNetHelper;
 
+    // Grid Mode State
+    private bool isGridModeEnabled = false;
+    private List<OpenNoteState> openNotesInGrid = new();
+    private int maxVisibleNotesInGrid = 4;
+    private bool isWorkspaceFullScreen = false;
+    private NoteGridLayout? noteGridLayoutRef;
+
     private IEnumerable<Note> FilteredNotes
     {
         get
@@ -297,6 +304,47 @@ public partial class WorkspaceView : ComponentBase, IAsyncDisposable
             if (note != null)
             {
                 Console.WriteLine($"[SelectNote] Loaded note: {note.Title} (ID: {note.Id})");
+
+                // If grid mode is enabled, add note to grid
+                if (isGridModeEnabled)
+                {
+                    // Check if note is already in grid
+                    if (!openNotesInGrid.Any(n => n.NoteId == note.Id))
+                    {
+                        var noteState = new OpenNoteState
+                        {
+                            NoteId = note.Id,
+                            Title = note.Title,
+                            Content = note.Content?.MarkdownContent ?? string.Empty,
+                            OriginalContent = note.Content?.MarkdownContent ?? string.Empty,
+                            GridPosition = openNotesInGrid.Count,
+                            IsDirty = false,
+                            IsFocused = true
+                        };
+
+                        // Unfocus all other notes
+                        foreach (var openNote in openNotesInGrid)
+                        {
+                            openNote.IsFocused = false;
+                        }
+
+                        openNotesInGrid.Add(noteState);
+                        Console.WriteLine($"[SelectNote] Added note to grid: {note.Title}");
+                    }
+                    else
+                    {
+                        // Just focus the existing note in grid
+                        foreach (var openNote in openNotesInGrid)
+                        {
+                            openNote.IsFocused = openNote.NoteId == note.Id;
+                        }
+                        Console.WriteLine($"[SelectNote] Note already in grid, focused it: {note.Title}");
+                    }
+
+                    await InvokeAsync(StateHasChanged);
+                    return; // Don't continue with normal note selection
+                }
+
                 selectedNote = note;
                 noteContent = note.Content?.MarkdownContent ?? string.Empty;
                 showPreview = true; // Default to preview mode
@@ -730,6 +778,9 @@ public partial class WorkspaceView : ComponentBase, IAsyncDisposable
                 await Task.Delay(100);
                 await JSRuntime.InvokeVoidAsync("WorkspaceKeyboardHandler.initialize", dotNetHelper);
                 await JSRuntime.InvokeVoidAsync("initializeWikiLinkPreview", dotNetHelper);
+
+                // Initialize grid keyboard handler
+                await JSRuntime.InvokeVoidAsync("noteGridKeyboard.register", dotNetHelper);
 
                 // Initialize wiki-link editor when a note is selected
                 if (selectedNote != null)
@@ -1391,6 +1442,292 @@ public partial class WorkspaceView : ComponentBase, IAsyncDisposable
     }
 
     // Cleanup
+    #region Grid Mode Methods
+
+    /// <summary>
+    /// Toggles grid mode on/off
+    /// </summary>
+    [JSInvokable]
+    public async Task ToggleGridMode()
+    {
+        isGridModeEnabled = !isGridModeEnabled;
+
+        if (isGridModeEnabled)
+        {
+            // Initialize grid with currently selected note
+            if (selectedNote != null)
+            {
+                var noteState = new OpenNoteState
+                {
+                    NoteId = selectedNote.Id,
+                    Title = selectedNote.Title,
+                    Content = noteContent,
+                    OriginalContent = noteContent,
+                    GridPosition = 0,
+                    IsDirty = false,
+                    IsFocused = true
+                };
+                openNotesInGrid.Add(noteState);
+            }
+
+            // Update JavaScript grid mode state
+            await JSRuntime.InvokeVoidAsync("noteGridKeyboard.setGridMode", true);
+        }
+        else
+        {
+            // Save any dirty notes before exiting grid mode
+            foreach (var noteState in openNotesInGrid.Where(n => n.IsDirty))
+            {
+                await SaveGridNote(noteState);
+            }
+
+            openNotesInGrid.Clear();
+            await JSRuntime.InvokeVoidAsync("noteGridKeyboard.setGridMode", false);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Adds a new note to the grid
+    /// </summary>
+    [JSInvokable]
+    public async Task AddNoteToGrid()
+    {
+        if (!isGridModeEnabled) return;
+
+        // Create a new note
+        var noteTitle = $"New Note {DateTime.Now:HH:mm:ss}";
+        var createdNote = await NoteService.CreateNoteAsync(WorkspaceId, currentUserId!, noteTitle, string.Empty);
+        await LoadNotesAsync(); // Refresh notes list
+
+        // Add to grid
+        var noteState = new OpenNoteState
+        {
+            NoteId = createdNote.Id,
+            Title = createdNote.Title,
+            Content = string.Empty,
+            OriginalContent = string.Empty,
+            GridPosition = openNotesInGrid.Count,
+            IsDirty = false,
+            IsFocused = true
+        };
+
+        // Unfocus all other notes
+        foreach (var note in openNotesInGrid)
+        {
+            note.IsFocused = false;
+        }
+
+        openNotesInGrid.Add(noteState);
+        await InvokeAsync(StateHasChanged);
+
+        ToastService.ShowSuccess("Note added to grid");
+    }
+
+    /// <summary>
+    /// Closes the currently focused note
+    /// </summary>
+    [JSInvokable]
+    public async Task CloseCurrentNote()
+    {
+        if (!isGridModeEnabled) return;
+
+        var focusedNote = openNotesInGrid.FirstOrDefault(n => n.IsFocused);
+        if (focusedNote == null) return;
+
+        // Save if dirty
+        if (focusedNote.IsDirty)
+        {
+            await SaveGridNote(focusedNote);
+        }
+
+        openNotesInGrid.Remove(focusedNote);
+
+        // Reorder grid positions
+        for (int i = 0; i < openNotesInGrid.Count; i++)
+        {
+            openNotesInGrid[i].GridPosition = i;
+        }
+
+        // Focus next note if available
+        if (openNotesInGrid.Any())
+        {
+            openNotesInGrid.First().IsFocused = true;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Focuses a specific note by grid index (0-based)
+    /// </summary>
+    [JSInvokable]
+    public async Task FocusNote(int index)
+    {
+        if (!isGridModeEnabled || index < 0 || index >= openNotesInGrid.Count) return;
+
+        var visibleNotes = openNotesInGrid.OrderBy(n => n.GridPosition).Take(maxVisibleNotesInGrid).ToList();
+        if (index >= visibleNotes.Count) return;
+
+        // Unfocus all notes
+        foreach (var note in openNotesInGrid)
+        {
+            note.IsFocused = false;
+        }
+
+        // Focus the selected note
+        visibleNotes[index].IsFocused = true;
+
+        await InvokeAsync(StateHasChanged);
+        await JSRuntime.InvokeVoidAsync("noteGridKeyboard.focusNoteByIndex", index);
+    }
+
+    /// <summary>
+    /// Cycles through notes in the grid (direction: 1 for forward, -1 for backward)
+    /// </summary>
+    [JSInvokable]
+    public async Task CycleNoteFocus(int direction)
+    {
+        if (!isGridModeEnabled || !openNotesInGrid.Any()) return;
+
+        var visibleNotes = openNotesInGrid.OrderBy(n => n.GridPosition).Take(maxVisibleNotesInGrid).ToList();
+        var currentIndex = visibleNotes.FindIndex(n => n.IsFocused);
+
+        if (currentIndex == -1) currentIndex = 0; // Default to first if none focused
+
+        // Calculate next index with wrapping
+        var nextIndex = (currentIndex + direction + visibleNotes.Count) % visibleNotes.Count;
+
+        // Unfocus all
+        foreach (var note in openNotesInGrid)
+        {
+            note.IsFocused = false;
+        }
+
+        // Focus next
+        visibleNotes[nextIndex].IsFocused = true;
+
+        await InvokeAsync(StateHasChanged);
+        await JSRuntime.InvokeVoidAsync("noteGridKeyboard.focusNoteByIndex", nextIndex);
+    }
+
+    /// <summary>
+    /// Toggles full screen mode for workspace
+    /// </summary>
+    [JSInvokable]
+    public async Task ToggleFullScreen()
+    {
+        isWorkspaceFullScreen = !isWorkspaceFullScreen;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Saves a grid note
+    /// </summary>
+    private async Task SaveGridNote(OpenNoteState noteState)
+    {
+        try
+        {
+            // Update note content
+            await NoteService.UpdateNoteContentAsync(noteState.NoteId, currentUserId!, noteState.Content);
+
+            noteState.OriginalContent = noteState.Content;
+            noteState.IsDirty = false;
+            noteState.IsSaving = false;
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to save note: {ex.Message}");
+            noteState.IsSaving = false;
+        }
+    }
+
+    /// <summary>
+    /// Handles content changes in grid notes
+    /// </summary>
+    private async Task HandleGridNoteContentChanged(OpenNoteState noteState)
+    {
+        // Save the note content to the database
+        await SaveGridNote(noteState);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Handles title changes in grid notes
+    /// </summary>
+    private async Task HandleGridNoteTitleChanged((int NoteId, string NewTitle) change)
+    {
+        try
+        {
+            // Update note title in database
+            await NoteService.UpdateNoteTitleAsync(change.NoteId, currentUserId!, change.NewTitle);
+
+            // Update the note state
+            var noteState = openNotesInGrid.FirstOrDefault(n => n.NoteId == change.NoteId);
+            if (noteState != null)
+            {
+                noteState.Title = change.NewTitle;
+            }
+
+            // Also reload notes list to update sidebar
+            await LoadNotesAsync();
+
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to save note title: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Handles closing a note from the grid
+    /// </summary>
+    private async Task HandleGridNoteClose(int noteId)
+    {
+        var noteState = openNotesInGrid.FirstOrDefault(n => n.NoteId == noteId);
+        if (noteState != null)
+        {
+            if (noteState.IsDirty)
+            {
+                await SaveGridNote(noteState);
+            }
+
+            openNotesInGrid.Remove(noteState);
+
+            // Reorder positions
+            for (int i = 0; i < openNotesInGrid.Count; i++)
+            {
+                openNotesInGrid[i].GridPosition = i;
+            }
+
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    /// <summary>
+    /// Handles swapping a note from the switcher into the grid
+    /// </summary>
+    private async Task HandleSwapNote(int noteId)
+    {
+        var noteToSwap = openNotesInGrid.FirstOrDefault(n => n.NoteId == noteId);
+        if (noteToSwap != null && noteGridLayoutRef != null)
+        {
+            // Find first visible note
+            var firstVisible = openNotesInGrid.OrderBy(n => n.GridPosition).First();
+
+            // Swap grid positions
+            var tempPosition = firstVisible.GridPosition;
+            firstVisible.GridPosition = noteToSwap.GridPosition;
+            noteToSwap.GridPosition = tempPosition;
+
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    #endregion
+
     public async ValueTask DisposeAsync()
     {
         try
@@ -1412,6 +1749,7 @@ public partial class WorkspaceView : ComponentBase, IAsyncDisposable
                 // Dispose JavaScript handlers
                 await JSRuntime.InvokeVoidAsync("WorkspaceKeyboardHandler.dispose");
                 await JSRuntime.InvokeVoidAsync("disposeWikiLinkPreview");
+                await JSRuntime.InvokeVoidAsync("noteGridKeyboard.unregister");
 
                 if (selectedNote != null || creatingNote)
                 {

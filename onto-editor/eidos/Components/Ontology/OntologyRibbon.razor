@@ -34,12 +34,6 @@
                 <i class="bi bi-file-code"></i>
                 @if (!IsCompact) { <span>TTL</span> }
             </button>
-            <button class="ribbon-btn @(CurrentViewMode == ViewMode.Notes ? "active" : "")"
-                    @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)"
-                    title="Notes">
-                <i class="bi bi-journal-text"></i>
-                @if (!IsCompact) { <span>Notes</span> }
-            </button>
             <button class="ribbon-btn @(CurrentViewMode == ViewMode.Templates ? "active" : "")"
                     @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Templates)"
                     title="Templates">

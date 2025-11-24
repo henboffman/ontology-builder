@@ -1,7 +1,9 @@
 @using Eidos.Models
 @using Eidos.Models.Enums
 @using Eidos.Services
+@using Eidos.Components.Shared
 @inject OntologyPermissionService PermissionService
+@inject UserGroupService UserGroupService
 @inject ToastService ToastService
 @inject ILogger<PermissionsSettingsTab> Logger
 
@@ -111,9 +113,21 @@
                             <div class="list-group-item d-flex justify-content-between align-items-center">
                                 <div>
                                     <strong>@access.GroupName</strong>
+                                    @if (access.IsOwnedByCurrentUser)
+                                    {
+                                        <span class="badge bg-info ms-1" style="font-size: 0.65rem;">You own this group</span>
+                                    }
                                     <p class="text-muted small mb-0">@access.MemberCount members</p>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
+                                    @if (access.IsOwnedByCurrentUser)
+                                    {
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                @onclick="@(() => ShowManageMembersDialog(access.GroupId, access.GroupName))"
+                                                title="Add users to this group">
+                                            <i class="bi bi-people me-1"></i>Manage Members
+                                        </button>
+                                    }
                                     <select class="form-select form-select-sm" style="width: auto;"
                                             @bind="access.PermissionLevel">
                                         <option value="@PermissionLevel.View">View Only</option>
@@ -148,6 +162,86 @@
     </div>
 </div>
 
+@* Manage Members Modal *@
+@if (showManageMembersDialog)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-people me-2"></i>Manage Members - @selectedGroupName
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseManageMembersDialog" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Current Members -->
+                    @if (currentMembers == null)
+                    {
+                        <div class="d-flex justify-content-center p-4">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-4">
+                            <h6 class="fw-bold">Current Members (@currentMembers.Count)</h6>
+                            @if (!currentMembers.Any())
+                            {
+                                <div class="alert alert-info py-2">
+                                    <small>No members yet. Add users below to get started.</small>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="list-group">
+                                    @foreach (var member in currentMembers)
+                                    {
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
+                                                     style="width: 32px; height: 32px; font-size: 14px;">
+                                                    @GetInitials(member.User?.DisplayName ?? "?")
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold">@(member.User?.DisplayName ?? "Unknown User")</div>
+                                                    <small class="text-muted">@(member.User?.Email)</small>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                    @onclick="@(() => RemoveGroupMember(member.UserId))"
+                                                    title="Remove from group">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Add New Members -->
+                        <div>
+                            <h6 class="fw-bold">Add New Members</h6>
+                            <UserPicker SelectedUserIds="selectedUsersToAdd" SelectedUserIdsChanged="@((ids) => selectedUsersToAdd = ids)" />
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="AddSelectedMembers" disabled="@(!selectedUsersToAdd.Any())">
+                        <i class="bi bi-plus-circle me-2"></i>Add @selectedUsersToAdd.Count User@(selectedUsersToAdd.Count != 1 ? "s" : "")
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="CloseManageMembersDialog">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
 @code {
     [Parameter]
     public int OntologyId { get; set; }
@@ -171,6 +265,13 @@
     private bool allowPublicEdit;
     private bool requiresApproval;
     private List<GroupAccessInfo>? groupAccess;
+
+    // Manage Members Dialog
+    private bool showManageMembersDialog = false;
+    private int selectedGroupId;
+    private string selectedGroupName = string.Empty;
+    private List<UserGroupMember>? currentMembers;
+    private List<string> selectedUsersToAdd = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -212,7 +313,9 @@
                         "admin" => PermissionLevel.FullAccess,
                         _ => PermissionLevel.View
                     },
-                    MemberCount = p.UserGroup?.Members?.Count ?? 0
+                    MemberCount = p.UserGroup?.Members?.Count ?? 0,
+                    CreatedByUserId = p.UserGroup?.CreatedByUserId,
+                    IsOwnedByCurrentUser = p.UserGroup?.CreatedByUserId == CurrentUserId
                 }).ToList();
 
                 Logger.LogInformation("Loaded {Count} group permissions for ontology {OntologyId}",
@@ -259,6 +362,111 @@
         return Task.CompletedTask;
     }
 
+    private async Task ShowManageMembersDialog(string groupId, string groupName)
+    {
+        selectedGroupId = int.Parse(groupId);
+        selectedGroupName = groupName;
+        selectedUsersToAdd.Clear();
+        currentMembers = null;
+        showManageMembersDialog = true;
+        StateHasChanged();
+
+        // Load current members
+        try
+        {
+            currentMembers = await UserGroupService.GetGroupMembersAsync(selectedGroupId);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading group members for group {GroupId}", selectedGroupId);
+            ToastService.ShowError("Failed to load group members");
+            currentMembers = new List<UserGroupMember>();
+        }
+    }
+
+    private void CloseManageMembersDialog()
+    {
+        showManageMembersDialog = false;
+        selectedUsersToAdd.Clear();
+        currentMembers = null;
+        StateHasChanged();
+    }
+
+    private async Task AddSelectedMembers()
+    {
+        if (!selectedUsersToAdd.Any() || string.IsNullOrEmpty(CurrentUserId))
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var userId in selectedUsersToAdd)
+            {
+                await UserGroupService.AddUserToGroupAsync(selectedGroupId, userId, CurrentUserId);
+            }
+
+            ToastService.ShowSuccess($"Added {selectedUsersToAdd.Count} user{(selectedUsersToAdd.Count != 1 ? "s" : "")} to {selectedGroupName}");
+
+            // Reload members
+            currentMembers = await UserGroupService.GetGroupMembersAsync(selectedGroupId);
+            selectedUsersToAdd.Clear();
+
+            // Update member count in the group access list
+            var groupAccessItem = groupAccess?.FirstOrDefault(g => g.GroupId == selectedGroupId.ToString());
+            if (groupAccessItem != null && currentMembers != null)
+            {
+                groupAccessItem.MemberCount = currentMembers.Count;
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error adding users to group {GroupId}", selectedGroupId);
+            ToastService.ShowError("Failed to add users to group");
+        }
+    }
+
+    private async Task RemoveGroupMember(string userId)
+    {
+        try
+        {
+            await UserGroupService.RemoveUserFromGroupAsync(selectedGroupId, userId);
+            ToastService.ShowSuccess("Member removed from group");
+
+            // Reload members
+            currentMembers = await UserGroupService.GetGroupMembersAsync(selectedGroupId);
+
+            // Update member count in the group access list
+            var groupAccessItem = groupAccess?.FirstOrDefault(g => g.GroupId == selectedGroupId.ToString());
+            if (groupAccessItem != null && currentMembers != null)
+            {
+                groupAccessItem.MemberCount = currentMembers.Count;
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error removing user {UserId} from group {GroupId}", userId, selectedGroupId);
+            ToastService.ShowError("Failed to remove member from group");
+        }
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "?";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+
+        return parts[0][0].ToString().ToUpper();
+    }
+
     // Placeholder model
     private class GroupAccessInfo
     {
@@ -266,5 +474,7 @@
         public string GroupName { get; set; } = string.Empty;
         public int MemberCount { get; set; }
         public PermissionLevel PermissionLevel { get; set; }
+        public string? CreatedByUserId { get; set; }
+        public bool IsOwnedByCurrentUser { get; set; }
     }
 }

@@ -1,0 +1,147 @@
+@using Eidos.Models
+@using Eidos.Components.Workspace
+@rendermode InteractiveServer
+
+<div class="note-grid-container grid-@GridClass">
+    @foreach (var noteState in VisibleNotes)
+    {
+        <GridNoteEditor NoteState="@noteState"
+                        OnContentChanged="HandleContentChanged"
+                        OnTitleChanged="HandleTitleChanged"
+                        OnClose="HandleNoteClose"
+                        OnFocus="HandleNoteFocus"
+                        ShowClose="@(OpenNotes.Count > 1)" />
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public List<OpenNoteState> OpenNotes { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<OpenNoteState> OnNoteContentChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<(int NoteId, string NewTitle)> OnNoteTitleChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnNoteClose { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnNoteFocus { get; set; }
+
+    [Parameter]
+    public int MaxVisibleNotes { get; set; } = 4;
+
+    /// <summary>
+    /// Gets the notes that should be visible in the grid (first 4 by default)
+    /// </summary>
+    private List<OpenNoteState> VisibleNotes =>
+        OpenNotes.OrderBy(n => n.GridPosition).Take(MaxVisibleNotes).ToList();
+
+    /// <summary>
+    /// Gets the appropriate grid class based on number of visible notes
+    /// </summary>
+    private int GridClass
+    {
+        get
+        {
+            var count = VisibleNotes.Count;
+            return count > 4 ? 4 : count; // Max 4 for grid layout
+        }
+    }
+
+    private async Task HandleContentChanged(OpenNoteState noteState)
+    {
+        await OnNoteContentChanged.InvokeAsync(noteState);
+    }
+
+    private async Task HandleTitleChanged((int NoteId, string NewTitle) change)
+    {
+        await OnNoteTitleChanged.InvokeAsync(change);
+    }
+
+    private async Task HandleNoteClose(int noteId)
+    {
+        await OnNoteClose.InvokeAsync(noteId);
+    }
+
+    private async Task HandleNoteFocus(int noteId)
+    {
+        // Update focus state for all notes
+        foreach (var note in OpenNotes)
+        {
+            note.IsFocused = note.NoteId == noteId;
+        }
+
+        await OnNoteFocus.InvokeAsync(noteId);
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Public method to add a new note to the grid
+    /// </summary>
+    public void AddNote(OpenNoteState noteState)
+    {
+        if (!OpenNotes.Any(n => n.NoteId == noteState.NoteId))
+        {
+            noteState.GridPosition = OpenNotes.Count;
+            OpenNotes.Add(noteState);
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Public method to remove a note from the grid
+    /// </summary>
+    public void RemoveNote(int noteId)
+    {
+        var note = OpenNotes.FirstOrDefault(n => n.NoteId == noteId);
+        if (note != null)
+        {
+            OpenNotes.Remove(note);
+
+            // Reorder remaining notes
+            for (int i = 0; i < OpenNotes.Count; i++)
+            {
+                OpenNotes[i].GridPosition = i;
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Public method to swap notes (for note switcher)
+    /// </summary>
+    public void SwapNotes(int noteId1, int noteId2)
+    {
+        var note1 = OpenNotes.FirstOrDefault(n => n.NoteId == noteId1);
+        var note2 = OpenNotes.FirstOrDefault(n => n.NoteId == noteId2);
+
+        if (note1 != null && note2 != null)
+        {
+            var tempPosition = note1.GridPosition;
+            note1.GridPosition = note2.GridPosition;
+            note2.GridPosition = tempPosition;
+
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Public method to focus a specific note by ID
+    /// </summary>
+    public void FocusNote(int noteId)
+    {
+        HandleNoteFocus(noteId).Wait();
+    }
+
+    /// <summary>
+    /// Public method to get the currently focused note
+    /// </summary>
+    public OpenNoteState? GetFocusedNote()
+    {
+        return OpenNotes.FirstOrDefault(n => n.IsFocused);
+    }
+}

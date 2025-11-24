@@ -191,6 +191,37 @@ namespace Eidos.Services
         }
 
         /// <summary>
+        /// Updates a note's title
+        /// </summary>
+        public async Task UpdateNoteTitleAsync(int noteId, string userId, string newTitle)
+        {
+            try
+            {
+                var note = await _noteRepository.GetByIdAsync(noteId);
+                if (note == null)
+                {
+                    throw new InvalidOperationException($"Note {noteId} not found");
+                }
+
+                // Check access (only owner can edit for now)
+                if (note.UserId != userId)
+                {
+                    throw new UnauthorizedAccessException($"User {userId} cannot edit note {noteId}");
+                }
+
+                // Update title
+                await _noteRepository.UpdateTitleAsync(noteId, newTitle);
+
+                _logger.LogInformation("Updated title for note {NoteId} to {NewTitle}", noteId, newTitle);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating title for note {NoteId}", noteId);
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Process [[wiki-links]] in note content
         /// Auto-creates concepts that don't exist
         /// </summary>

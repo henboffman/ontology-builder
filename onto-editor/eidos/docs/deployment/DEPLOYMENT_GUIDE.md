@@ -14,16 +14,23 @@ This guide covers deployment for:
 
 ### Prerequisites
 - .NET 9.0 SDK
+- Docker Desktop
 - macOS with terminal access
 
 ### Configuration
 
-The default configuration in `appsettings.json` uses SQLite, which works out-of-the-box:
+Start SQL Server in Docker:
+
+```bash
+docker-compose up -d
+```
+
+The default configuration uses SQL Server:
 
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Data Source=ontology.db"
+    "DefaultConnection": "Server=localhost,1433;Database=EidosDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=True"
   }
 }
 ```
@@ -44,7 +51,8 @@ dotnet run
 ```
 
 The application will:
-- ✅ Use SQLite database (`ontology.db` in the project directory)
+- ✅ Connect to SQL Server in Docker at localhost:1433
+- ✅ Create the EidosDb database automatically
 - ✅ Run automatic migrations in development
 - ✅ Use in-memory caching and presence tracking
 - ✅ Run on `https://localhost:7216` and `http://localhost:5000`
@@ -367,7 +375,7 @@ Only if you want to use Azure Application Insights:
 
 | Environment | Database | Migrations | Caching | Backplane |
 |-------------|----------|------------|---------|-----------|
-| **Mac Dev** | SQLite | Automatic | In-Memory | None |
+| **Mac Dev** | SQL Server (Docker) | Automatic | In-Memory | None |
 | **IIS Prod** | SQL Server | Manual | In-Memory | None |
 | **Multi-Server** | SQL Server | Manual | Redis | Redis |
 

@@ -7,7 +7,7 @@
 export function initializeImageUpload(editorId, noteId, workspaceId) {
     const editor = document.getElementById(editorId);
     if (!editor) {
-        console.error(`Editor ${editorId} not found`);
+        // Silently return - element may not exist for grid notes
         return;
     }
 
@@ -65,7 +65,6 @@ export function initializeImageUpload(editorId, noteId, workspaceId) {
         }
     });
 
-    console.log(`Image upload initialized for editor ${editorId}`);
 }
 
 /**
@@ -110,7 +109,6 @@ async function uploadImage(file, noteId, workspaceId, editor) {
         // Trigger input event for Blazor binding
         editor.dispatchEvent(new Event('input', { bubbles: true }));
 
-        console.log(`Image uploaded successfully: ${result.id}`);
     } catch (error) {
         console.error('Image upload failed:', error);
 
@@ -157,6 +155,5 @@ export function disposeImageUpload(editorId) {
     if (editor) {
         // Remove event listeners (note: this won't work with anonymous functions)
         // For production, we'd need to store references to the handlers
-        console.log(`Image upload disposed for editor ${editorId}`);
     }
 }

@@ -206,45 +206,7 @@ az webapp config appsettings set \
 
 ## Part 3: Database Setup
 
-### Option 1: SQLite (Simple, for small apps)
-
-Your app already uses SQLite. It will work as-is in Azure, but:
-- ⚠️ Data is stored in the container (ephemeral)
-- ⚠️ Data will be lost on app restart/redeployment
-
-**To persist SQLite data**, use Azure File Share:
-
-```bash
-# Create storage account
-az storage account create \
-  --name eidosstorage \
-  --resource-group $RESOURCE_GROUP \
-  --location $LOCATION \
-  --sku Standard_LRS
-
-# Create file share
-az storage share create \
-  --name eidos-data \
-  --account-name eidosstorage
-
-# Mount to App Service
-az webapp config storage-account add \
-  --name $APP_NAME \
-  --resource-group $RESOURCE_GROUP \
-  --custom-id EidosData \
-  --storage-type AzureFiles \
-  --share-name eidos-data \
-  --account-name eidosstorage \
-  --mount-path /data
-
-# Update connection string in App Settings
-az webapp config appsettings set \
-  --name $APP_NAME \
-  --resource-group $RESOURCE_GROUP \
-  --settings ConnectionStrings__DefaultConnection="Data Source=/data/ontology.db"
-```
-
-### Option 2: Azure SQL Database (Recommended for production)
+### Azure SQL Database (Required for production)
 
 ```bash
 # Create SQL Server
@@ -282,16 +244,7 @@ az keyvault secret set --vault-name $KEYVAULT_NAME \
   --value "YOUR_CONNECTION_STRING"
 ```
 
-Then update your `Program.cs` to use SQL Server:
-```csharp
-// In Eidos.csproj, add:
-// <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
-
-// In Program.cs, change:
-options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
-// to:
-options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-```
+The application is already configured to use SQL Server in all environments.
 
 ---
 

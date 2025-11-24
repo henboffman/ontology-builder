@@ -16,19 +16,15 @@ window.initializeConceptGrouping = function(graphId, cyOrNull, dotNetHelper, gro
     // Default to 100px if not provided
     const radius = groupingRadius || 100;
 
-    console.log('🚀 initializeConceptGrouping called for', graphId, 'with', groups ? groups.length : 0, 'groups', 'radius:', radius + 'px');
-    console.log('   cyOrNull:', !!cyOrNull, 'window.cytoscapeInstances:', !!window.cytoscapeInstances);
 
     // Find Cytoscape instance if not provided
     const cy = cyOrNull || (window.cytoscapeInstances && window.cytoscapeInstances.get(graphId));
 
     if (!cy) {
         console.error('❌ Cytoscape instance not found for', graphId);
-        console.log('   Available instances:', window.cytoscapeInstances ? Array.from(window.cytoscapeInstances.keys()) : 'none');
         return;
     }
 
-    console.log('✅ Found Cytoscape instance for', graphId);
 
     // Initialize state for this graph
     const state = {
@@ -45,7 +41,6 @@ window.initializeConceptGrouping = function(graphId, cyOrNull, dotNetHelper, gro
 
     groupingState.set(graphId, state);
 
-    console.log('🎯 Initialized concept grouping for', graphId, 'with', (groups || []).length, 'groups');
 
     // Apply existing groups
     applyGroupsToGraph(graphId, cy, groups);
@@ -55,9 +50,7 @@ window.initializeConceptGrouping = function(graphId, cyOrNull, dotNetHelper, gro
         setupDragHandlers(graphId, cy, dotNetHelper);
         setupGroupHandlers(graphId, cy, dotNetHelper);
         state.handlersInitialized = true;
-        console.log('✅ Event handlers initialized for', graphId);
     } else {
-        console.log('⏭️ Handlers already initialized, skipping setup');
     }
 };
 
@@ -65,10 +58,8 @@ window.initializeConceptGrouping = function(graphId, cyOrNull, dotNetHelper, gro
  * Apply existing groups to the graph visualization
  */
 function applyGroupsToGraph(graphId, cy, groups) {
-    console.log('📊 applyGroupsToGraph: Processing', groups.length, 'groups');
 
     groups.forEach(group => {
-        console.log('   Group', group.id, '- Parent:', group.parentConceptId, 'Children:', group.childConceptIds, 'Collapsed:', group.isCollapsed);
 
         if (group.isCollapsed) {
             // Hide child nodes and mark parent as grouped
@@ -143,24 +134,20 @@ function addFloatingIndicators(cy, node, childCount) {
     const container = cy.container();
     const nodeId = node.id();
 
-    console.log('🎨 Adding floating indicators for node', nodeId, 'with', childCount, 'children');
 
     // Remove existing indicators for this node from the document
     const existingIndicators = document.querySelectorAll(`.group-indicator-container[data-node-id="${nodeId}"]`);
     existingIndicators.forEach(ind => {
-        console.log('   Removing existing indicator');
         ind.remove();
     });
 
     // Don't show indicators if there are no children
     if (childCount === 0) {
-        console.log('   No children, skipping indicators');
         return;
     }
 
     // Limit to showing max 5 circles to avoid clutter
     const displayCount = Math.min(childCount, 5);
-    console.log('   Creating', displayCount, 'indicator circles');
 
     // Create container for indicators - append to the cy container's parent to avoid clipping
     const indicatorContainer = document.createElement('div');
@@ -168,7 +155,7 @@ function addFloatingIndicators(cy, node, childCount) {
     indicatorContainer.dataset.nodeId = nodeId;
     indicatorContainer.style.position = 'absolute';
     indicatorContainer.style.pointerEvents = 'none';
-    indicatorContainer.style.zIndex = '9999'; // Very high z-index to be above everything
+    indicatorContainer.style.zIndex = '100'; // Above graph elements but below modals
     indicatorContainer.style.top = '0';
     indicatorContainer.style.left = '0';
     indicatorContainer.style.width = '100%';
@@ -177,9 +164,6 @@ function addFloatingIndicators(cy, node, childCount) {
     // Append to container (not container's parent, but ensure it's visible)
     container.appendChild(indicatorContainer);
 
-    console.log('   Created indicator container:', indicatorContainer);
-    console.log('   Container parent:', container);
-    console.log('   Container dimensions:', container.getBoundingClientRect());
 
     // Create individual circle indicators positioned around the node
     for (let i = 0; i < displayCount; i++) {
@@ -188,7 +172,6 @@ function addFloatingIndicators(cy, node, childCount) {
         indicator.dataset.index = i;
         indicator.style.position = 'absolute'; // Ensure absolute positioning
         indicatorContainer.appendChild(indicator);
-        console.log('   Created circle', i);
     }
 
     // Position indicators around the node
@@ -206,10 +189,8 @@ function addFloatingIndicators(cy, node, childCount) {
     if (!node.data('indicatorUpdateHandler')) {
         cy.on('pan zoom position', updateHandler); // Listen to position changes too
         node.data('indicatorUpdateHandler', updateHandler);
-        console.log('   Added pan/zoom/position handler');
     }
 
-    console.log('✅ Floating indicators added for', nodeId);
 }
 
 /**
@@ -218,14 +199,13 @@ function addFloatingIndicators(cy, node, childCount) {
 function updateIndicatorPositions(cy, node, container, count) {
     const renderedPos = node.renderedPosition();
     const nodeWidth = node.renderedWidth();
-    const radius = nodeWidth / 2 + 15; // Closer orbit - just outside the node border
+    const radius = nodeWidth / 2 + 3; // Very close orbit - just barely touching the node border
 
     const circles = container.querySelectorAll('.group-indicator-circle');
 
     // Get the node's background color
     const nodeColor = node.style('background-color') || '#0d6efd';
 
-    console.log('📍 Updating indicator positions:', {
         nodeId: node.id(),
         renderedPos,
         nodeWidth,
@@ -258,12 +238,11 @@ function updateIndicatorPositions(cy, node, container, count) {
         circle.style.backgroundColor = nodeColor;
         circle.style.border = '2px solid rgba(255, 255, 255, 0.9)';
         circle.style.boxShadow = `0 2px 6px rgba(0, 0, 0, 0.3), 0 0 0 2px ${nodeColor}40, 0 0 10px ${nodeColor}60`;
-        circle.style.zIndex = '9999';
+        circle.style.zIndex = '100';
 
         // Add orbit animation delay based on index
         circle.style.animationDelay = (i * 0.15) + 's';
 
-        console.log(`   Circle ${i}: angle=${angle.toFixed(2)}, pos=(${x.toFixed(1)}, ${y.toFixed(1)})`);
     });
 }
 
@@ -318,7 +297,6 @@ function handleGroupedEdges(cy, parentConceptId, childIds, collapsedRelationship
                         classes: 'rerouted-edge'
                     });
 
-                    console.log(`✅ Rerouted edge ${relInfo.relationshipId}: concept-${sourceId} → concept-${targetId}`);
                 }
 
                 // Hide the original edge
@@ -330,11 +308,9 @@ function handleGroupedEdges(cy, parentConceptId, childIds, collapsedRelationship
             // This is an internal edge (both endpoints in the group) - just hide it
             originalEdge.addClass('grouped-edge-hidden');
             originalEdge.style('visibility', 'hidden');
-            console.log(`Hidden internal edge ${relInfo.relationshipId}`);
         }
     });
 
-    console.log(`📊 Group ${parentConceptId}: Processed ${collapsedRelationships.length} relationships, rerouted ${reroutedEdges.size}`);
 }
 
 /**
@@ -347,10 +323,6 @@ function setupDragHandlers(graphId, cy, dotNetHelper) {
     let dragThrottleTimer = null;
     const DRAG_THROTTLE_MS = 50; // Throttle drag event to 20fps for performance
 
-    console.log('🎯 Setting up drag handlers for', graphId);
-    console.log('   Cytoscape instance:', cy);
-    console.log('   DotNetHelper:', !!dotNetHelper);
-    console.log('   State:', state);
 
     // Mouse down - start tracking drag
     cy.on('mousedown', 'node', function(evt) {
@@ -369,7 +341,6 @@ function setupDragHandlers(graphId, cy, dotNetHelper) {
     cy.on('drag', 'node', function(evt) {
         const node = evt.target;
 
-        console.log('🖱️ Drag event fired on', node.id(), 'draggedNode:', state.draggedNode?.id());
 
         if (!state.draggedNode) return;
 
@@ -417,7 +388,6 @@ function setupDragHandlers(graphId, cy, dotNetHelper) {
     cy.on('mouseup', 'node', async function(evt) {
         const node = evt.target;
 
-        console.log('⬆️ Mouse up on node:', node.id(), {
             hasHoverTarget: !!state.hoverTarget,
             hasDraggedNode: !!state.draggedNode,
             isDragging: state.isDragging,
@@ -483,7 +453,6 @@ function setupDragHandlers(graphId, cy, dotNetHelper) {
         const draggedId = parseInt(draggedNode.id().replace('concept-', ''));
         const targetId = parseInt(targetNode.id().replace('concept-', ''));
 
-        console.log('🔍 Validating group creation:', {
             draggedId,
             targetId,
             hasDotNetHelper: !!dotNetHelper
@@ -491,7 +460,6 @@ function setupDragHandlers(graphId, cy, dotNetHelper) {
 
         try {
             const canCreate = await dotNetHelper.invokeMethodAsync('CanCreateGroup', targetId, [draggedId]);
-            console.log('✅ Validation result:', canCreate);
             state.canCreateGroup = canCreate;
 
             if (canCreate) {
@@ -646,7 +614,6 @@ function stopWiggleAnimation(node) {
  * Set up handlers for group interaction (expand/collapse)
  */
 function setupGroupHandlers(graphId, cy, dotNetHelper) {
-    console.log('🎯 Setting up group handlers for', graphId);
     const state = groupingState.get(graphId);
 
     let expandButton = null;
@@ -679,7 +646,7 @@ function setupGroupHandlers(graphId, cy, dotNetHelper) {
             expandButton.title = `Expand group (${childCount} node${childCount > 1 ? 's' : ''})`;
             expandButton.style.position = 'absolute';
             expandButton.style.pointerEvents = 'auto';
-            expandButton.style.zIndex = '9999';
+            expandButton.style.zIndex = '100';
             container.appendChild(expandButton);
 
             // Create and store click handler to prevent duplicates
@@ -687,11 +654,9 @@ function setupGroupHandlers(graphId, cy, dotNetHelper) {
                 e.stopPropagation();
                 const currentGroupId = expandButton.dataset.groupId;
 
-                console.log('🔄 Expanding group', currentGroupId);
 
                 try {
                     await dotNetHelper.invokeMethodAsync('ToggleConceptGroup', parseInt(currentGroupId));
-                    console.log('✅ Group expanded');
 
                     // Remove button after expansion
                     if (expandButton) {
@@ -793,7 +758,6 @@ window.expandConceptGroup = function(graphId, groupId) {
     // Remove floating indicators from anywhere in the document
     const indicators = document.querySelectorAll(`.group-indicator-container[data-node-id="${parentNode.id()}"]`);
     indicators.forEach(ind => {
-        console.log('🗑️ Removing indicator container for', parentNode.id());
         ind.remove();
     });
 
@@ -802,7 +766,6 @@ window.expandConceptGroup = function(graphId, groupId) {
     if (updateHandler) {
         cy.off('pan zoom position', updateHandler);
         parentNode.removeData('indicatorUpdateHandler');
-        console.log('🗑️ Removed update handler for', parentNode.id());
     }
 
     // Remove grouped class from parent
@@ -880,7 +843,6 @@ window.expandConceptGroup = function(graphId, groupId) {
                 }
             }
 
-            console.log(`📍 Positioning child ${childId} at (${bestPos.x.toFixed(1)}, ${bestPos.y.toFixed(1)}) with score ${bestScore.toFixed(1)}`);
 
             // Animate the node to its new position
             childNode.animate({
@@ -908,11 +870,9 @@ window.expandConceptGroup = function(graphId, groupId) {
         const reroutedEdge = cy.getElementById(reroutedId);
         if (reroutedEdge.length) {
             cy.remove(reroutedEdge);
-            console.log(`Removed rerouted edge ${reroutedId}`);
         }
     });
 
-    console.log('✅ Expanded group', groupId);
 };
 
 /**
@@ -930,15 +890,12 @@ window.collapseConceptGroup = function(graphId, groupId) {
 
     applyGroupsToGraph(graphId, cy, [group]);
 
-    console.log('✅ Collapsed group', groupId);
 };
 
 /**
  * Update groups after server-side changes
  */
 window.updateConceptGroups = function(graphId, groups) {
-    console.log('🔄 updateConceptGroups called for', graphId, 'with', groups ? groups.length : 0, 'groups');
-    console.log('   Groups data:', groups);
 
     const state = groupingState.get(graphId);
     if (!state) {
@@ -946,14 +903,12 @@ window.updateConceptGroups = function(graphId, groups) {
         return;
     }
 
-    console.log('📝 State before update:', {
         hasDotNetHelper: !!state.dotNetHelper,
         groupCount: state.groups?.length || 0
     });
 
     state.groups = groups;
 
-    console.log('📝 State after update:', {
         hasDotNetHelper: !!state.dotNetHelper,
         groupCount: state.groups?.length || 0
     });
@@ -964,14 +919,12 @@ window.updateConceptGroups = function(graphId, groups) {
         return;
     }
 
-    console.log('🧹 Clearing existing group styles...');
 
     // Clear all existing group styles and remove indicators
     cy.nodes('.grouped').forEach(node => {
         // Remove floating indicators for this node
         const indicators = document.querySelectorAll(`.group-indicator-container[data-node-id="${node.id()}"]`);
         indicators.forEach(ind => {
-            console.log('🗑️ Removing indicator container for', node.id());
             ind.remove();
         });
 
@@ -1057,7 +1010,6 @@ window.updateConceptGroups = function(graphId, groups) {
             }
 
             if (bestPos) {
-                console.log(`📍 Repositioning ${hiddenNode.id()} to (${bestPos.x.toFixed(1)}, ${bestPos.y.toFixed(1)}) with score ${bestScore.toFixed(1)}`);
                 hiddenNode.animate({
                     position: { x: bestPos.x, y: bestPos.y }
                 }, {
@@ -1073,12 +1025,10 @@ window.updateConceptGroups = function(graphId, groups) {
     // Remove any rerouted edges
     cy.edges('.rerouted-edge').remove();
 
-    console.log('✨ Reapplying', groups.length, 'groups...');
 
     // Reapply groups
     applyGroupsToGraph(graphId, cy, groups);
 
-    console.log('✅ Groups updated successfully');
 };
 
 /**
@@ -1098,7 +1048,7 @@ function showSuccessMessage(cy, message) {
     messageDiv.style.color = 'white';
     messageDiv.style.borderRadius = '8px';
     messageDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
-    messageDiv.style.zIndex = '10000';
+    messageDiv.style.zIndex = '100';
     messageDiv.style.fontSize = '14px';
     messageDiv.style.fontWeight = '500';
     messageDiv.style.pointerEvents = 'none';
@@ -1140,7 +1090,7 @@ function showErrorMessage(cy, message) {
     messageDiv.style.color = 'white';
     messageDiv.style.borderRadius = '8px';
     messageDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
-    messageDiv.style.zIndex = '10000';
+    messageDiv.style.zIndex = '100';
     messageDiv.style.fontSize = '14px';
     messageDiv.style.fontWeight = '500';
     messageDiv.style.pointerEvents = 'none';

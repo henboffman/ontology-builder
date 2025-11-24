@@ -53,14 +53,14 @@
                 Name <span class="text-danger">*</span>
                 @if (!IsEditing)
                 {
-                    <i class="bi bi-lightning-charge text-warning" title="💡 Tip: Press Ctrl+Enter to quickly save and add another concept"></i>
+                    <i class="bi bi-lightning-charge text-warning" title="💡 Tip: Press Ctrl+Enter or Cmd+Shift+Enter to quickly save and add another concept"></i>
                 }
             </label>
-            <input type="text" class="form-control form-control-sm" @bind="conceptName"
+            <input type="text" class="form-control form-control-sm" @bind="conceptName" @bind:event="oninput"
                    @onkeydown="HandleKeyDown"
                    @ref="nameInputRef"
                    placeholder="e.g., Mammal"
-                   title="@(!IsEditing ? "Type concept name (Ctrl+Enter to save and add another)" : "Type concept name")" />
+                   title="@(!IsEditing ? "Type concept name (Ctrl+Enter or Cmd+Shift+Enter to save and add another)" : "Type concept name")" />
         </div>
         <div class="mb-2">
             <label class="form-label small">
@@ -104,8 +104,8 @@
             {
                 <button class="btn btn-sm btn-success" @onclick="OnSaveAndAddAnotherClick"
                         disabled="@string.IsNullOrWhiteSpace(ConceptName)"
-                        title="💡 Keyboard Shortcut: Ctrl+Enter - Save this concept and immediately add another">
-                    <i class="bi bi-plus-circle"></i> Save & Add Another <span class="badge bg-dark ms-1">Ctrl+Enter</span>
+                        title="💡 Keyboard Shortcuts: Ctrl+Enter or Cmd+Shift+Enter - Save this concept and immediately add another">
+                    <i class="bi bi-plus-circle"></i> Save & Add Another <span class="badge bg-dark ms-1">Ctrl+Enter or Cmd+Shift+Enter</span>
                 </button>
             }
             <button class="btn btn-sm btn-outline-secondary" @onclick="OnCancelClick">
@@ -248,8 +248,15 @@
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
-        // Ctrl+Enter triggers "Save & Add Another" (only when not editing)
-        if (e.CtrlKey && e.Key == "Enter" && !IsEditing && !string.IsNullOrWhiteSpace(ConceptName))
+        // Check for Ctrl+Enter or Cmd+Shift+Enter
+        bool isCtrlEnter = e.CtrlKey && !e.ShiftKey && !e.MetaKey && e.Key == "Enter";
+        bool isCmdShiftEnter = e.MetaKey && e.ShiftKey && !e.CtrlKey && e.Key == "Enter";
+
+        // Triggers "Save & Add Another" (only when not editing)
+        bool isSaveAndAddAnother = !IsEditing && !string.IsNullOrWhiteSpace(ConceptName) &&
+                                  (isCtrlEnter || isCmdShiftEnter);
+
+        if (isSaveAndAddAnother)
         {
             await OnSaveAndAddAnotherClick.InvokeAsync();
         }

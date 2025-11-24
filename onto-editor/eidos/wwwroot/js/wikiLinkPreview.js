@@ -4,7 +4,6 @@
 window.wikiLinkPreviewHandler = null;
 
 window.handleWikiLinkClick = function (element, event) {
-    console.log('Wiki-link clicked:', element);
 
     // Prevent default link behavior
     if (event) {
@@ -13,7 +12,6 @@ window.handleWikiLinkClick = function (element, event) {
 
     // Get concept name from data attribute
     const conceptName = element.getAttribute('data-concept');
-    console.log('Concept name:', conceptName);
 
     if (!conceptName) {
         console.error('Wiki-link missing data-concept attribute');
@@ -22,9 +20,7 @@ window.handleWikiLinkClick = function (element, event) {
 
     // Call back to Blazor
     if (window.wikiLinkPreviewHandler) {
-        console.log('Calling NavigateToConcept with:', conceptName);
         window.wikiLinkPreviewHandler.invokeMethodAsync('NavigateToConcept', conceptName)
-            .then(() => console.log('NavigateToConcept succeeded'))
             .catch(err => console.error('NavigateToConcept failed:', err));
     } else {
         console.error('Wiki-link preview handler not initialized! Handler is:', window.wikiLinkPreviewHandler);
@@ -35,7 +31,6 @@ window.handleWikiLinkClick = function (element, event) {
 
 window.initializeWikiLinkPreview = function (dotNetHelper) {
     window.wikiLinkPreviewHandler = dotNetHelper;
-    console.log('Wiki-link preview handler initialized');
 };
 
 window.disposeWikiLinkPreview = function () {

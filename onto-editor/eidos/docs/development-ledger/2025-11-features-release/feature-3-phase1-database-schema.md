@@ -134,21 +134,21 @@ public class ConceptProperty
 ### Table: ConceptProperties
 
 ```sql
-CREATE TABLE "ConceptProperties" (
-    "Id" INTEGER PRIMARY KEY AUTOINCREMENT,
-    "ConceptId" INTEGER NOT NULL,
-    "Name" TEXT NOT NULL,
-    "PropertyType" INTEGER NOT NULL,
-    "DataType" TEXT NULL,
-    "RangeConceptId" INTEGER NULL,
-    "IsRequired" INTEGER NOT NULL DEFAULT 0,
-    "IsFunctional" INTEGER NOT NULL DEFAULT 0,
-    "Description" TEXT NULL,
-    "Uri" TEXT NULL,
-    "CreatedAt" TEXT NOT NULL,
-    "UpdatedAt" TEXT NOT NULL,
-    FOREIGN KEY ("ConceptId") REFERENCES "Concepts" ("Id") ON DELETE CASCADE,
-    FOREIGN KEY ("RangeConceptId") REFERENCES "Concepts" ("Id") ON DELETE RESTRICT
+CREATE TABLE ConceptProperties (
+    Id INT PRIMARY KEY IDENTITY(1,1),
+    ConceptId INT NOT NULL,
+    Name NVARCHAR(200) NOT NULL,
+    PropertyType INT NOT NULL,
+    DataType NVARCHAR(50) NULL,
+    RangeConceptId INT NULL,
+    IsRequired BIT NOT NULL DEFAULT 0,
+    IsFunctional BIT NOT NULL DEFAULT 0,
+    Description NVARCHAR(MAX) NULL,
+    Uri NVARCHAR(500) NULL,
+    CreatedAt DATETIME2 NOT NULL,
+    UpdatedAt DATETIME2 NOT NULL,
+    CONSTRAINT FK_ConceptProperties_Concepts FOREIGN KEY (ConceptId) REFERENCES Concepts (Id) ON DELETE CASCADE,
+    CONSTRAINT FK_ConceptProperties_RangeConcept FOREIGN KEY (RangeConceptId) REFERENCES Concepts (Id) ON DELETE NO ACTION
 );
 ```
 
@@ -156,10 +156,10 @@ CREATE TABLE "ConceptProperties" (
 
 ```sql
 -- Performance index for querying properties by concept
-CREATE INDEX "IX_ConceptProperty_ConceptId" ON "ConceptProperties" ("ConceptId");
+CREATE INDEX IX_ConceptProperty_ConceptId ON ConceptProperties (ConceptId);
 
 -- Index for ObjectProperty range lookups
-CREATE INDEX "IX_ConceptProperties_RangeConceptId" ON "ConceptProperties" ("RangeConceptId");
+CREATE INDEX IX_ConceptProperties_RangeConceptId ON ConceptProperties (RangeConceptId);
 ```
 
 **Rationale**:

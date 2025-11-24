@@ -1,0 +1,258 @@
+/* Note Grid Animations */
+
+/* Entry Animation - New note appears with wiggle */
+@keyframes noteEnter {
+    0% {
+        opacity: 0;
+        transform: scale(0.9) rotate(-2deg) translateY(-10px);
+    }
+
+    60% {
+        transform: scale(1.02) rotate(1deg) translateY(0);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg) translateY(0);
+    }
+}
+
+/* Exit Animation - Note leaves with wiggle */
+@keyframes noteExit {
+    0% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+
+    40% {
+        transform: scale(1.05) rotate(-1deg);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(0.9) rotate(2deg) translateY(10px);
+    }
+}
+
+/* Pulse animation for focus */
+@keyframes noteFocusPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 8px rgba(13, 110, 253, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+    }
+}
+
+/* Slide and fade for grid reflow */
+@keyframes gridReflow {
+    0% {
+        opacity: 0.7;
+        transform: translateX(-10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Subtle bounce for "unsaved" indicator */
+@keyframes unsavedBounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+/* Spinner for saving state */
+@keyframes savingSpinner {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Apply animations to grid notes */
+.grid-note.entering {
+    animation: noteEnter 350ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.grid-note.exiting {
+    animation: noteExit 300ms ease-in forwards;
+}
+
+.grid-note.focused {
+    animation: noteFocusPulse 0.6s ease-out;
+}
+
+.grid-note.reflowing {
+    animation: gridReflow 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Stagger animations when multiple notes change */
+.grid-note.entering:nth-child(1) {
+    animation-delay: 0ms;
+}
+
+.grid-note.entering:nth-child(2) {
+    animation-delay: 50ms;
+}
+
+.grid-note.entering:nth-child(3) {
+    animation-delay: 100ms;
+}
+
+.grid-note.entering:nth-child(4) {
+    animation-delay: 150ms;
+}
+
+/* Stagger exit animations */
+.grid-note.exiting:nth-child(1) {
+    animation-delay: 0ms;
+}
+
+.grid-note.exiting:nth-child(2) {
+    animation-delay: 40ms;
+}
+
+.grid-note.exiting:nth-child(3) {
+    animation-delay: 80ms;
+}
+
+.grid-note.exiting:nth-child(4) {
+    animation-delay: 120ms;
+}
+
+/* Unsaved indicator bounce */
+.grid-note-status.dirty {
+    /* animation: unsavedBounce 1s ease-in-out infinite; */
+}
+
+/* Saving spinner */
+.grid-note-status.saving::before {
+    content: "↻ ";
+    display: inline-block;
+    animation: savingSpinner 1s linear infinite;
+}
+
+/* Container transitions */
+.note-grid-container {
+    transition: grid-template-columns 400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        grid-template-rows 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Smooth border transitions */
+.grid-note {
+    transition: border-color 0.3s ease,
+        box-shadow 0.3s ease,
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Full screen mode transition */
+.workspace-full-screen {
+    animation: fullscreenEnter 300ms ease-out;
+}
+
+@keyframes fullscreenEnter {
+    0% {
+        opacity: 0.9;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Hover effects */
+.grid-note:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-bs-theme="dark"] .grid-note:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.grid-note.focused:hover {
+    transform: none;
+    /* Don't lift when focused */
+}
+
+/* Close button animation */
+.grid-note-close-btn {
+    transition: all 0.2s ease;
+}
+
+.grid-note-close-btn:hover {
+    transform: scale(1.1);
+}
+
+.grid-note-close-btn:active {
+    transform: scale(0.95);
+}
+
+/* Smooth opacity transitions for status indicators */
+.grid-note-status {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Shimmer effect for loading state */
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+.grid-note.loading {
+    background: linear-gradient(90deg,
+            var(--bs-body-bg) 0%,
+            var(--bs-secondary-bg) 50%,
+            var(--bs-body-bg) 100%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+
+    .grid-note.entering,
+    .grid-note.exiting,
+    .grid-note.reflowing,
+    .note-grid-container,
+    .grid-note,
+    .grid-note-close-btn,
+    .workspace-full-screen {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .grid-note.focused {
+        animation: none !important;
+    }
+
+    .grid-note-status.dirty {
+        animation: none !important;
+    }
+
+    .grid-note-status.saving::before {
+        animation: none !important;
+    }
+}

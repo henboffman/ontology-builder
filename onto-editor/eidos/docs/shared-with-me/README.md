@@ -45,7 +45,7 @@ Users can access ontologies through two mechanisms:
 
 - **Backend**: .NET 9, Entity Framework Core, Minimal APIs
 - **Frontend**: Blazor Server (pending implementation)
-- **Database**: SQL Server / SQLite with EF Core migrations
+- **Database**: SQL Server with EF Core migrations
 - **Architecture**: Service layer pattern with caching
 
 ## Current Status

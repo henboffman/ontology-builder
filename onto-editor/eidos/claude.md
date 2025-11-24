@@ -32,7 +32,9 @@ mkdir -p ~/docs/dev/active/[task-name]/
 - **.NET 9.0** - Modern C# web framework
 - **Blazor Server** - Interactive web UI framework with SignalR
 - **Entity Framework Core 9.0** - ORM for database operations
-- **SQLite** (Development) / **Azure SQL** (Production) - Data persistence
+- **SQL Server** (Development & Production) - Data persistence
+  - Development: SQL Server in Docker container
+  - Production: Azure SQL Database
 - **ASP.NET Core Identity** - Authentication and user management
 - **SignalR** - Real-time collaboration and presence tracking
 
@@ -76,8 +78,7 @@ eidos/
 │   ├── css/              # Stylesheets
 │   └── js/               # JavaScript files
 ├── Eidos.Tests/           # Test project (157+ tests, 100% passing)
-├── DEVELOPMENT_LEDGER.md  # Development history and changes
-└── ontology.db            # SQLite database (development)
+└── DEVELOPMENT_LEDGER.md  # Development history and changes
 ```
 
 ## Core Features
@@ -284,8 +285,8 @@ dotnet ef migrations remove --force
 # Update database
 dotnet ef database update
 
-# View migration history
-sqlite3 ontology.db "SELECT * FROM __EFMigrationsHistory;"
+# View migration history (SQL Server)
+sqlcmd -S localhost,1433 -U sa -P YourStrong!Passw0rd -d EidosDb -Q "SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId DESC"
 ```
 
 ### Development Tools

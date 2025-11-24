@@ -164,9 +164,6 @@
                 <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Ttl ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Ttl)">
                     <i class="bi bi-file-code me-2"></i> TTL
                 </button></li>
-                <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Notes ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Notes)">
-                    <i class="bi bi-journal-text me-2"></i> Notes
-                </button></li>
                 <li><button class="dropdown-item @(CurrentViewMode == ViewMode.Templates ? "active" : "")" @onclick="() => OnViewModeChanged.InvokeAsync(ViewMode.Templates)">
                     <i class="bi bi-journal-code me-2"></i> Templates
                 </button></li>

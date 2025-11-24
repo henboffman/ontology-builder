@@ -30,7 +30,6 @@ window.WikiLinkEditor = {
         // Initial highlight
         this.highlightWikiLinks(textareaElement);
 
-        console.log('WikiLinkEditor initialized');
     },
 
     // Add event listeners to textarea

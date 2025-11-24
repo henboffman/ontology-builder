@@ -1,0 +1,261 @@
+/* Note Grid Layout Styles */
+
+.note-grid-container {
+    display: grid;
+    gap: 1rem;
+    height: calc(100vh - 140px);
+    /* Adjust based on header height */
+    padding: 1rem;
+    width: 100%;
+    transition: all 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Full screen mode - maximize viewport */
+.workspace-full-screen .note-grid-container {
+    height: 100vh;
+    padding: 0.5rem;
+}
+
+/* Single Note - Full Width */
+.note-grid-container.grid-1 {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+}
+
+/* Two Notes - 50/50 Vertical Split */
+.note-grid-container.grid-2 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
+}
+
+/* Three Notes - Left Column Split, Right Single */
+.note-grid-container.grid-3 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+.note-grid-container.grid-3 .grid-note:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.note-grid-container.grid-3 .grid-note:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.note-grid-container.grid-3 .grid-note:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1 / 3;
+}
+
+/* Four Notes - 2x2 Grid */
+.note-grid-container.grid-4 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+/* Grid Note Editor Wrapper */
+.grid-note {
+    display: flex;
+    flex-direction: column;
+    background: var(--bs-body-bg);
+    border: 2px solid var(--bs-border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+}
+
+/* Focus indicator */
+.grid-note.focused {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+}
+
+/* Dirty (unsaved) indicator */
+.grid-note.dirty {
+    /* border-top: 3px solid var(--bs-warning); */
+}
+
+/* Grid Note Header */
+.grid-note-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: var(--bs-secondary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+    min-height: 40px;
+}
+
+.grid-note-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 0.5rem;
+}
+
+.grid-note-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.grid-note-status {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 12px;
+    background: var(--bs-success-bg-subtle);
+    color: var(--bs-success-text-emphasis);
+}
+
+.grid-note-status.saving {
+    background: var(--bs-info-bg-subtle);
+    color: var(--bs-info-text-emphasis);
+}
+
+.grid-note-status.dirty {
+    background: var(--bs-warning-bg-subtle);
+    color: var(--bs-warning-text-emphasis);
+}
+
+/* Grid Note Content Area */
+.grid-note-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.grid-note-content textarea {
+    width: 100%;
+    height: 100%;
+    border: none;
+    resize: none;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    background: transparent;
+    color: var(--bs-body-color);
+}
+
+.grid-note-content textarea:focus {
+    outline: none;
+}
+
+/* Title editing input */
+.grid-note-title-input {
+    flex: 1;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: 1px solid var(--bs-primary);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    outline: none;
+}
+
+.grid-note-title-input:focus {
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+.grid-note-title {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.grid-note-title:hover {
+    background-color: var(--bs-secondary-bg);
+}
+
+/* Close button styling */
+.grid-note-close-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 1rem;
+    line-height: 1;
+    background: transparent;
+    border: none;
+    color: var(--bs-secondary-color);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.grid-note-close-btn:hover {
+    background: var(--bs-danger-bg-subtle);
+    color: var(--bs-danger-text-emphasis);
+}
+
+/* Responsive - Tablet */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .note-grid-container {
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
+
+    .grid-note-header {
+        padding: 0.4rem 0.75rem;
+    }
+
+    .grid-note-title {
+        font-size: 0.875rem;
+    }
+}
+
+/* Responsive - Mobile (fallback to single note) */
+@media (max-width: 768px) {
+
+    .note-grid-container.grid-2,
+    .note-grid-container.grid-3,
+    .note-grid-container.grid-4 {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr;
+    }
+
+    /* Hide notes beyond first on mobile */
+    .note-grid-container.grid-2 .grid-note:nth-child(n+2),
+    .note-grid-container.grid-3 .grid-note:nth-child(n+2),
+    .note-grid-container.grid-4 .grid-note:nth-child(n+2) {
+        display: none;
+    }
+
+    .note-grid-container {
+        gap: 0.5rem;
+        padding: 0.5rem;
+    }
+}
+
+/* Dark mode specific adjustments */
+[data-bs-theme="dark"] .grid-note {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-bs-theme="dark"] .grid-note.focused {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.2);
+}
+
+[data-bs-theme="dark"] .grid-note-header {
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Light mode specific adjustments */
+[data-bs-theme="light"] .grid-note {
+    border-color: rgba(0, 0, 0, 0.125);
+}
+
+[data-bs-theme="light"] .grid-note.focused {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+}
+
+[data-bs-theme="light"] .grid-note-header {
+    background: rgba(0, 0, 0, 0.03);
+}

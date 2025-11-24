@@ -45,7 +45,7 @@
     min-width: 20px;
     text-align: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
+    z-index: 100;
 }
 
 /* Hover target for grouping (wiggle animation) */
@@ -129,7 +129,7 @@
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     transition: all 0.2s ease;
-    z-index: 9999;
+    z-index: 100;
     pointer-events: auto;
 }
 
@@ -167,7 +167,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 1000;
+    z-index: 100;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     transition: transform 0.2s ease, background-color 0.2s ease;
 }
@@ -238,7 +238,7 @@
     border-radius: 50%;
     background: radial-gradient(circle, rgba(13, 110, 253, 0.1) 0%, rgba(13, 110, 253, 0.05) 100%);
     pointer-events: none;
-    z-index: 1000;
+    z-index: 100;
     display: none;
     animation: pulseGlow 1s ease-in-out infinite;
 }
@@ -343,7 +343,7 @@
     right: 0;
     bottom: 0;
     pointer-events: none;
-    z-index: 9999;
+    z-index: 100;
 }
 
 .drag-group-hint {
@@ -392,7 +392,7 @@
 .group-indicator-container {
     position: absolute;
     pointer-events: none;
-    z-index: 1000; /* Increased z-index to ensure visibility */
+    z-index: 100; /* Below modals but above graph elements */
     width: 0;
     height: 0;
 }
